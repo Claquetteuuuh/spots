@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PROTECTED_PATHS = ["/map", "/spot", "/profile", "/settings", "/feed"];
+const PROTECTED_PATHS = ["/map", "/spot", "/profile", "/settings", "/feed", "/search"];
 const AUTH_PATHS = ["/login", "/register"];
 
 export function proxy(request: NextRequest) {

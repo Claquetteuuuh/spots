@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
-import { prisma } from "@trs/db";
-import { ApiError, successResponse, withAuth } from "@/lib/api-utils";
+import { Prisma, prisma } from "@trs/db";
+import { updateProfileSchema } from "@trs/shared/validation";
+import { ApiError, successResponse, validateBody, withAuth } from "@/lib/api-utils";
 import { toUserProfile } from "@/lib/serializers";
 
 export const GET = withAuth(async (_request: NextRequest, authUser) => {
@@ -18,4 +19,31 @@ export const GET = withAuth(async (_request: NextRequest, authUser) => {
   }
 
   return successResponse(toUserProfile(user));
+});
+
+export const PATCH = withAuth(async (request: NextRequest, authUser) => {
+  const body = await request.json();
+  const data = validateBody(updateProfileSchema, body);
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: authUser.userId },
+      data,
+      include: {
+        _count: {
+          select: { spots: true, followers: true, following: true },
+        },
+      },
+    });
+
+    return successResponse(toUserProfile(user));
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new ApiError("Username is already taken", 409);
+    }
+    throw error;
+  }
 });

@@ -75,59 +75,106 @@ export function Header() {
             >
               {t("spots.feed")}
             </Link>
+            <Link
+              href="/spot/new"
+              className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-dark transition-colors"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+              {t("spots.addSpot")}
+            </Link>
           </div>
         ) : null}
 
         {/* Right side */}
         {isAuthenticated && user ? (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex h-8 w-8 items-center justify-center rounded-sm bg-bg-tertiary text-xs font-medium text-text-secondary transition-colors hover:bg-accent hover:text-white cursor-pointer"
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <Link
+              href="/search"
+              className={`p-1.5 rounded-sm transition-colors ${
+                isActive("/search")
+                  ? "text-accent"
+                  : "text-text-secondary hover:text-text"
+              }`}
+              title={t("common.search")}
             >
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="h-8 w-8 rounded-sm object-cover"
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
                 />
-              ) : (
-                initials
-              )}
-            </button>
+              </svg>
+            </Link>
 
-            {menuOpen ? (
-              <div className="absolute right-0 top-10 z-50 w-48 border border-border bg-bg rounded-sm py-1">
-                <div className="px-3 py-2 border-b border-border">
-                  <p className="text-sm font-medium text-text truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-xs text-text-tertiary truncate">
-                    @{user.username}
-                  </p>
+            {/* User menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex h-8 w-8 items-center justify-center rounded-sm bg-bg-tertiary text-xs font-medium text-text-secondary transition-colors hover:bg-accent hover:text-white cursor-pointer"
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="h-8 w-8 rounded-sm object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </button>
+
+              {menuOpen ? (
+                <div className="absolute right-0 top-10 z-50 w-48 border border-border bg-bg rounded-sm py-1">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium text-text truncate">
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-text-tertiary truncate">
+                      @{user.username}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/profile/${user.username}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary transition-colors"
+                  >
+                    {t("users.profile")}
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary transition-colors"
+                  >
+                    {t("settings.title")}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-3 py-2 text-sm text-error hover:bg-error-light transition-colors cursor-pointer"
+                  >
+                    {t("auth.logout")}
+                  </button>
                 </div>
-                <Link
-                  href={`/profile/${user.username}`}
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary transition-colors"
-                >
-                  {t("users.profile")}
-                </Link>
-                <Link
-                  href="/settings"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary transition-colors"
-                >
-                  {t("settings.title")}
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-3 py-2 text-sm text-error hover:bg-error-light transition-colors cursor-pointer"
-                >
-                  {t("auth.logout")}
-                </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-3">

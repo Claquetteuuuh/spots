@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { getToken } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t } from "@/lib/i18n";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -32,9 +33,13 @@ export default function SettingsPage() {
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/users/${user?.id}`, {
+      const token = getToken();
+      const res = await fetch("/api/auth/me", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ name, username, bio }),
       });
 
@@ -43,6 +48,8 @@ export default function SettingsPage() {
         throw new Error(data.error ?? "Failed to save");
       }
 
+      // Refresh the user in context so header/nav updates
+      await refreshUser();
       setMessage({ type: "success", text: "Profile updated" });
     } catch (err) {
       setMessage({
