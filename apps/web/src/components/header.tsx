@@ -76,6 +76,16 @@ export function Header() {
               {t("spots.feed")}
             </Link>
             <Link
+              href="/explore"
+              className={`text-sm transition-colors ${
+                isActive("/explore")
+                  ? "text-accent font-medium"
+                  : "text-text-secondary hover:text-text"
+              }`}
+            >
+              {t("map.allSpots")}
+            </Link>
+            <Link
               href="/spot/new"
               className="flex items-center gap-1.5 rounded-sm bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-dark transition-colors"
             >

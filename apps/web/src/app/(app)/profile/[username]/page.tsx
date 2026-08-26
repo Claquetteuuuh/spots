@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import { ProfileSkeleton, SpotGridSkeleton } from "@/components/ui/skeleton";
 import { t } from "@/lib/i18n";
 
 export default function ProfilePage({
@@ -70,8 +71,11 @@ export default function ProfilePage({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-text-tertiary">{t("common.loading")}</p>
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <ProfileSkeleton />
+        <div className="mt-10">
+          <SpotGridSkeleton />
+        </div>
       </div>
     );
   }

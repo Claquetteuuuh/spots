@@ -2,12 +2,16 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { Spot } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { t } from "@/lib/i18n";
+
+const MiniMap = dynamic(() => import("@/components/mini-map"), { ssr: false });
 
 export default function SpotDetailPage({
   params,
@@ -52,8 +56,19 @@ export default function SpotDetailPage({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-text-tertiary">{t("common.loading")}</p>
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <Skeleton className="aspect-[16/10] w-full" />
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -61,7 +76,7 @@ export default function SpotDetailPage({
   if (error || !spot) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <p className="text-error">{error ?? "Spot not found"}</p>
+        <p className="text-error">{error ?? t("users.notFound")}</p>
         <Button variant="secondary" onClick={() => router.back()}>
           {t("common.back")}
         </Button>
@@ -127,7 +142,7 @@ export default function SpotDetailPage({
                     key={c}
                     className="inline-block px-2.5 py-1 text-sm bg-sage/10 text-sage border border-sage/20 rounded-sm"
                   >
-                    {c}
+                    {t(`compositions.${c}`)}
                   </span>
                 ))}
               </div>
@@ -220,14 +235,16 @@ export default function SpotDetailPage({
             ) : null}
           </div>
 
-          {/* Location coordinates */}
-          <div className="border border-border rounded-sm p-4">
-            <h2 className="text-xs uppercase tracking-wide text-text-tertiary mb-2">
-              GPS
-            </h2>
-            <p className="text-sm text-text-secondary font-mono">
-              {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
-            </p>
+          {/* Mini map */}
+          <div className="border border-border rounded-sm overflow-hidden">
+            <div className="h-40">
+              <MiniMap latitude={spot.latitude} longitude={spot.longitude} />
+            </div>
+            <div className="px-4 py-2 border-t border-border">
+              <p className="text-xs text-text-tertiary font-mono">
+                {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
