@@ -1,0 +1,31 @@
+{
+  "name": "the-right-spot",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "test:ci": "turbo test:ci",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @trs/db generate",
+    "db:push": "pnpm --filter @trs/db push",
+    "db:migrate": "pnpm --filter @trs/db migrate",
+    "db:studio": "pnpm --filter @trs/db studio",
+    "db:seed": "pnpm --filter @trs/db seed",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@playwright/mcp": "^0.0.79",
+    "turbo": "^2.5.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri": ">=3.1.5",
+      "js-yaml": ">=4.3.1",
+      "sharp": ">=0.35.0",
+      "deepmerge-ts": ">=8.0.0"
+    }
+  }
+}

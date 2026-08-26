@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String?
+  provider     AuthProvider @default(EMAIL)
+  providerId   String?
+
+  username  String  @unique
+  name      String
+  avatarUrl String?
+  bio       String?
+  locale    String  @default("fr")
+
+  spots     Spot[]
+  followers Follow[] @relation("following")
+  following Follow[] @relation("follower")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, providerId])
+}
+
+model Follow {
+  id          String @id @default(cuid())
+  followerId  String
+  followingId String
+  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ─── Spots ───────────────────────────────────────────────────────────
+
+enum CompositionType {
+  SYMMETRY
+  ASYMMETRY
+  FRAME_IN_FRAME
+  FIBONACCI
+  RULE_OF_THIRDS
+  LEADING_LINES
+  DIAGONAL
+  CENTERED
+  MINIMALIST
+  PATTERN
+}
+
+model Spot {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Location
+  latitude  Float
+  longitude Float
+  address   String?
+  city      String?
+  country   String?
+
+  // Photo
+  photoUrl String
+  photoKey String // R2 object key for lifecycle management
+
+  // Metadata
+  title       String?
+  description String?
+  isFree      Boolean @default(true)
+  priceInfo   String?
+
+  // Photography attributes — PostgreSQL native arrays
+  colors       String[]          // hex values e.g. ["#D4A574", "#2E4A3E"]
+  compositions CompositionType[]
+  tags         String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([latitude, longitude])
+  @@index([createdAt(sort: Desc)])
+}

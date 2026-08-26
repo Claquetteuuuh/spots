@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "The Right Spot",
+    "slug": "the-right-spot",
+    "scheme": "therightspot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trs.therightspot",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "The Right Spot uses your camera to photograph the composition of a spot when you add it.",
+        "NSPhotoLibraryUsageDescription": "The Right Spot needs access to your photo library so you can pick an existing photo of a spot.",
+        "NSLocationWhenInUseUsageDescription": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FAFAF8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.trs.therightspot",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "The Right Spot uses your camera to photograph the composition of a spot when you add it."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The Right Spot needs access to your photo library so you can pick an existing photo of a spot."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken."
+        }
+      ]
+    ]
+  }
+}

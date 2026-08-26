@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/* ─── Light theme tokens ──────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --color-bg: #FAFAF8;
+  --color-bg-secondary: #F2F0EB;
+  --color-bg-tertiary: #E8E5DE;
+
+  /* Text */
+  --color-text: #1A1A18;
+  --color-text-secondary: #6B6960;
+  --color-text-tertiary: #9C978C;
+
+  /* Accent */
+  --color-accent: #8B7355;
+  --color-accent-light: #B49A7A;
+  --color-accent-dark: #6B5740;
+
+  /* Sage */
+  --color-sage: #7D8C6E;
+  --color-sage-light: #A3AE96;
+  --color-sage-dark: #5B6850;
+
+  /* Borders */
+  --color-border: #E5E2DB;
+  --color-border-dark: #D1CCC2;
+
+  /* Semantic */
+  --color-error: #C44536;
+  --color-error-light: #F8E8E5;
+  --color-success: #5B7553;
+  --color-success-light: #E8F0E5;
+  --color-warning: #D4A017;
+  --color-warning-light: #FBF4E0;
+}
+
+/* ─── Dark theme tokens ───────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #141413;
+    --color-bg-secondary: #1E1E1C;
+    --color-bg-tertiary: #2A2A27;
+    --color-text: #F2F0EB;
+    --color-text-secondary: #9C978C;
+    --color-text-tertiary: #6B6960;
+    --color-border: #2A2A27;
+    --color-border-dark: #3A3A36;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #141413;
+  --color-bg-secondary: #1E1E1C;
+  --color-bg-tertiary: #2A2A27;
+  --color-text: #F2F0EB;
+  --color-text-secondary: #9C978C;
+  --color-text-tertiary: #6B6960;
+  --color-border: #2A2A27;
+  --color-border-dark: #3A3A36;
+}
+
+/* ─── Tailwind v4 theme tokens ────────────────────────────────────── */
+
+@theme inline {
+  /* Backgrounds */
+  --color-bg: var(--color-bg);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-tertiary: var(--color-bg-tertiary);
+
+  /* Text */
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+
+  /* Accent */
+  --color-accent: var(--color-accent);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-dark: var(--color-accent-dark);
+
+  /* Sage */
+  --color-sage: var(--color-sage);
+  --color-sage-light: var(--color-sage-light);
+  --color-sage-dark: var(--color-sage-dark);
+
+  /* Borders */
+  --color-border: var(--color-border);
+  --color-border-dark: var(--color-border-dark);
+
+  /* Semantic */
+  --color-error: var(--color-error);
+  --color-error-light: var(--color-error-light);
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+}
+
+/* ─── Base styles ─────────────────────────────────────────────────── */
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
