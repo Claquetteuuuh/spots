@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { apiClient } from "@/lib/api-client";
 import type { Spot } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 import { t } from "@/lib/i18n";
 
 // react-leaflet must be loaded without SSR
@@ -12,6 +13,7 @@ const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
 type MapFilter = "mine" | "following" | "all";
 
 export default function MapPage() {
+  const { user } = useAuth();
   const [spots, setSpots] = useState<Spot[]>([]);
   const [filter, setFilter] = useState<MapFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -22,10 +24,10 @@ export default function MapPage() {
       let result;
       if (filter === "following") {
         result = await apiClient.spots.feed();
+      } else if (filter === "mine" && user) {
+        result = await apiClient.spots.list({ userId: user.id });
       } else {
-        result = await apiClient.spots.list(
-          filter === "mine" ? {} : undefined,
-        );
+        result = await apiClient.spots.list();
       }
       setSpots(result.items);
     } catch {
@@ -33,7 +35,7 @@ export default function MapPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [filter, user]);
 
   useEffect(() => {
     loadSpots();

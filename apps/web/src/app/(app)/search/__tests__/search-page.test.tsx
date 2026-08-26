@@ -76,6 +76,7 @@ describe("SearchPage", () => {
     fireEvent.submit(input.closest("form")!);
 
     await waitFor(() => {
+      // i18n key: users.noResults
       expect(
         screen.getByText("No photographers found"),
       ).toBeInTheDocument();

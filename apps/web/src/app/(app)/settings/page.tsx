@@ -6,6 +6,7 @@ import { getToken } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t } from "@/lib/i18n";
+import { getTheme, setTheme, type ThemeMode } from "@/lib/theme";
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -19,6 +20,8 @@ export default function SettingsPage() {
     text: string;
   } | null>(null);
 
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+
   useEffect(() => {
     if (user) {
       setName(user.name ?? "");
@@ -26,6 +29,15 @@ export default function SettingsPage() {
       setBio(user.bio ?? "");
     }
   }, [user]);
+
+  useEffect(() => {
+    setThemeMode(getTheme());
+  }, []);
+
+  function handleThemeChange(mode: ThemeMode) {
+    setThemeMode(mode);
+    setTheme(mode);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,9 +60,8 @@ export default function SettingsPage() {
         throw new Error(data.error ?? "Failed to save");
       }
 
-      // Refresh the user in context so header/nav updates
       await refreshUser();
-      setMessage({ type: "success", text: "Profile updated" });
+      setMessage({ type: "success", text: t("common.profileUpdated") });
     } catch (err) {
       setMessage({
         type: "error",
@@ -67,6 +78,7 @@ export default function SettingsPage() {
         {t("settings.title")}
       </h1>
 
+      {/* Profile form */}
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         <Input
           label={t("auth.name")}
@@ -113,15 +125,44 @@ export default function SettingsPage() {
         </Button>
       </form>
 
-      {/* Language */}
+      {/* Dark mode */}
       <div className="mt-12 border-t border-border pt-8">
+        <h2 className="text-lg font-medium text-text">
+          {t("settings.darkMode")}
+        </h2>
+        <div className="mt-4 flex gap-2">
+          {(
+            [
+              { key: "system", label: "System" },
+              { key: "light", label: "Light" },
+              { key: "dark", label: "Dark" },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleThemeChange(key)}
+              className={`px-4 py-2 text-sm rounded-sm border transition-colors cursor-pointer ${
+                themeMode === key
+                  ? "border-accent text-accent bg-accent/5"
+                  : "border-border text-text-secondary hover:bg-bg-secondary"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Language */}
+      <div className="mt-8 border-t border-border pt-8">
         <h2 className="text-lg font-medium text-text">
           {t("settings.language")}
         </h2>
         <div className="mt-4 flex gap-3">
           <button
             type="button"
-            className="px-4 py-2 text-sm rounded-sm border border-accent text-accent bg-bg cursor-pointer"
+            className="px-4 py-2 text-sm rounded-sm border border-accent text-accent bg-accent/5 cursor-pointer"
           >
             English
           </button>

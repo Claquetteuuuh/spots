@@ -46,7 +46,7 @@ export default function FeedPage() {
         <div className="mt-16 text-center">
           <p className="text-text-secondary">{t("spots.noSpots")}</p>
           <p className="mt-2 text-sm text-text-tertiary">
-            Follow photographers to see their spots here
+            {t("spots.followHint")}
           </p>
         </div>
       ) : (

@@ -14,6 +14,7 @@ export const en = {
     or: "or",
     free: "Free",
     paid: "Paid",
+    profileUpdated: "Profile updated",
   },
   auth: {
     login: "Sign in",
@@ -58,6 +59,8 @@ export const en = {
     addFirstSpot: "Add your first photo spot!",
     deleteConfirm: "Delete this spot?",
     deleteMessage: "This action cannot be undone.",
+    followHint: "Follow photographers to see their spots here",
+    yourSpotsHere: "Your spots will appear here",
   },
   compositions: {
     SYMMETRY: "Symmetry",
@@ -82,6 +85,8 @@ export const en = {
     noFollowers: "No followers",
     noFollowing: "Not following anyone",
     searchPlaceholder: "Search for a photographer...",
+    notFound: "User not found",
+    noResults: "No photographers found",
   },
   map: {
     title: "Map",
@@ -97,5 +102,11 @@ export const en = {
     notifications: "Notifications",
     about: "About",
     version: "Version",
+  },
+  errors: {
+    notFound: "Page not found",
+    notFoundMessage:
+      "The page you're looking for doesn't exist or has been moved.",
+    goHome: "Go home",
   },
 } as const;

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@trs/db";
 import { ApiError, handleApiError, successResponse } from "@/lib/api-utils";
+import { getUserFromRequest } from "@/lib/auth";
 import { toUserProfile } from "@/lib/serializers";
 
 interface RouteParams {
@@ -8,7 +9,7 @@ interface RouteParams {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
@@ -27,7 +28,26 @@ export async function GET(
       throw new ApiError("User not found", 404);
     }
 
-    return successResponse(toUserProfile(user));
+    const profile = toUserProfile(user);
+
+    // If the viewer is authenticated, check if they follow this user
+    const viewer = await getUserFromRequest(request);
+    let isFollowing = false;
+
+    if (viewer && viewer.userId !== user.id) {
+      const follow = await prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewer.userId,
+            followingId: user.id,
+          },
+        },
+        select: { id: true },
+      });
+      isFollowing = !!follow;
+    }
+
+    return successResponse({ ...profile, isFollowing });
   } catch (error) {
     return handleApiError(error);
   }

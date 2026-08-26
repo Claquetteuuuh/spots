@@ -16,7 +16,7 @@ export default function ProfilePage({
   const { username } = use(params);
   const { user: currentUser } = useAuth();
 
-  const [profile, setProfile] = useState<User | null>(null);
+  const [profile, setProfile] = useState<(User & { isFollowing?: boolean }) | null>(null);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -26,8 +26,9 @@ export default function ProfilePage({
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      const userData = await apiClient.users.profile(username);
+      const userData = await apiClient.users.profile(username) as User & { isFollowing?: boolean };
       setProfile(userData);
+      setIsFollowing(userData.isFollowing ?? false);
 
       const spotsData = await apiClient.spots.list({ userId: userData.id });
       setSpots(spotsData.items);
@@ -48,9 +49,19 @@ export default function ProfilePage({
       if (isFollowing) {
         await apiClient.users.unfollow(profile.username);
         setIsFollowing(false);
+        setProfile((p) =>
+          p?._count
+            ? { ...p, _count: { ...p._count, followers: p._count.followers - 1 } }
+            : p,
+        );
       } else {
         await apiClient.users.follow(profile.username);
         setIsFollowing(true);
+        setProfile((p) =>
+          p?._count
+            ? { ...p, _count: { ...p._count, followers: p._count.followers + 1 } }
+            : p,
+        );
       }
     } catch {
       // Silently fail
@@ -68,7 +79,7 @@ export default function ProfilePage({
   if (!profile) {
     return (
       <div className="flex items-center justify-center py-24">
-        <p className="text-error">User not found</p>
+        <p className="text-error">{t("users.notFound")}</p>
       </div>
     );
   }

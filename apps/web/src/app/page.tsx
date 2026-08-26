@@ -66,7 +66,7 @@ export default function LandingPage() {
             ))}
           </div>
           <p className="mt-3 text-center text-xs text-text-tertiary tracking-wide uppercase">
-            Your spots will appear here
+            {t("spots.yourSpotsHere")}
           </p>
         </div>
       </section>

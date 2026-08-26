@@ -56,7 +56,7 @@ export default function SearchPage() {
           </p>
         ) : hasSearched && results.length === 0 ? (
           <p className="text-center text-text-secondary py-8">
-            No photographers found
+            {t("users.noResults")}
           </p>
         ) : (
           <div className="space-y-1">
