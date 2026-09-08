@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import AddSpotPage from "../new/page";
 
 // Mock next/navigation
@@ -29,6 +30,12 @@ vi.mock("@/lib/auth-context", () => ({
   }),
 }));
 
+// Mock locale context
+vi.mock("@/lib/locale-context", () => ({
+  useLocale: () => ({ locale: "en", setLocale: vi.fn() }),
+  LocaleProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Mock api client
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
@@ -43,27 +50,35 @@ describe("AddSpotPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the photo upload step initially", () => {
-    render(<AddSpotPage />);
+  it("renders the photo upload step initially", async () => {
+    await act(async () => {
+      render(<AddSpotPage />);
+    });
     expect(screen.getByText("Add a spot")).toBeInTheDocument();
     expect(screen.getByText("Pick from gallery")).toBeInTheDocument();
   });
 
-  it("shows next button disabled when no photo selected", () => {
-    render(<AddSpotPage />);
+  it("shows next button disabled when no photo selected", async () => {
+    await act(async () => {
+      render(<AddSpotPage />);
+    });
     const nextBtn = screen.getByText("Next");
     expect(nextBtn).toBeDisabled();
   });
 
-  it("shows step indicators", () => {
-    render(<AddSpotPage />);
+  it("shows step indicators", async () => {
+    await act(async () => {
+      render(<AddSpotPage />);
+    });
     expect(screen.getByText("Take a photo")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
     expect(screen.getByText("Spot details")).toBeInTheDocument();
   });
 
-  it("shows cancel button on first step", () => {
-    render(<AddSpotPage />);
+  it("shows cancel button on first step", async () => {
+    await act(async () => {
+      render(<AddSpotPage />);
+    });
     expect(screen.getByText("Cancel")).toBeInTheDocument();
   });
 });

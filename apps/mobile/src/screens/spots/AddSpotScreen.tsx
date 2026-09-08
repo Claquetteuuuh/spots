@@ -23,6 +23,7 @@ import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { uploadPhoto, reverseGeocode } from "../../lib/api";
+import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import type { MainTabNavigationProp } from "../../navigation/types";
@@ -286,8 +287,8 @@ export function AddSpotScreen() {
       await createSpot({
         latitude: location.latitude,
         longitude: location.longitude,
-        photoUrl: uploaded.url,
-        photoKey: uploaded.key,
+        photoUrl: uploaded.photoUrl,
+        photoKey: uploaded.photoKey,
         title: title.trim() || undefined,
         description: description.trim() || undefined,
         isFree,
@@ -299,7 +300,7 @@ export function AddSpotScreen() {
       resetWizard();
       navigation.navigate("Map");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Unable to save spot");
+      setSubmitError(extractErrorMessage(err, t("spots.errors.saveFailed")));
     } finally {
       setIsSubmitting(false);
     }
@@ -326,6 +327,7 @@ export function AddSpotScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {/* Header */}
         <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg }}>
           <Text
             style={{
@@ -346,22 +348,32 @@ export function AddSpotScreen() {
           {step === 0 ? (
             <View style={{ gap: theme.spacing.md }}>
               {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="cover" />
+                <Image
+                  source={{ uri: photoUri }}
+                  style={[styles.preview, { borderRadius: theme.radius.sm }]}
+                  resizeMode="cover"
+                />
               ) : (
                 <View
                   style={[
                     styles.previewPlaceholder,
-                    { borderColor: theme.colors.border, borderRadius: theme.radius.md },
+                    {
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radius.sm,
+                      backgroundColor: theme.colors.bgSecondary,
+                    },
                   ]}
                 >
-                  <Text style={{ color: theme.colors.textTertiary }}>{t("spots.takePhoto")}</Text>
+                  <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.base }}>
+                    {t("spots.takePhoto")}
+                  </Text>
                 </View>
               )}
 
               <Button title={t("spots.takePhoto")} onPress={openCamera} variant="secondary" />
               <Button title={t("spots.pickPhoto")} onPress={pickFromGallery} variant="secondary" />
 
-              <View style={{ marginTop: theme.spacing.sm }}>
+              <View style={{ marginTop: theme.spacing.xs }}>
                 {isLocating ? (
                   <ActivityIndicator color={theme.colors.textSecondary} />
                 ) : location ? (
@@ -381,9 +393,9 @@ export function AddSpotScreen() {
               <Text
                 style={{
                   color: theme.colors.text,
-                  fontSize: theme.typography.size.lg,
+                  fontSize: theme.typography.size.md,
                   fontWeight: theme.typography.weight.semibold,
-                  marginBottom: theme.spacing.md,
+                  marginBottom: theme.spacing.lg,
                 }}
               >
                 {t("spots.colors")}
@@ -401,6 +413,7 @@ export function AddSpotScreen() {
                           backgroundColor: color,
                           borderColor: selected ? theme.colors.text : theme.colors.border,
                           borderWidth: selected ? theme.borderWidth.thick : theme.borderWidth.hairline,
+                          borderRadius: theme.radius.sm,
                         },
                       ]}
                     />
@@ -415,9 +428,9 @@ export function AddSpotScreen() {
               <Text
                 style={{
                   color: theme.colors.text,
-                  fontSize: theme.typography.size.lg,
+                  fontSize: theme.typography.size.md,
                   fontWeight: theme.typography.weight.semibold,
-                  marginBottom: theme.spacing.md,
+                  marginBottom: theme.spacing.lg,
                 }}
               >
                 {t("spots.composition")}
@@ -501,8 +514,13 @@ export function AddSpotScreen() {
                       styles.tagInput,
                       {
                         color: theme.colors.text,
-                        borderBottomColor: theme.colors.border,
+                        backgroundColor: theme.colors.bgSecondary,
+                        borderColor: theme.colors.border,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderRadius: theme.radius.md,
                         fontSize: theme.typography.size.base,
+                        paddingHorizontal: theme.spacing.lg,
+                        paddingVertical: theme.spacing.md,
                       },
                     ]}
                   />
@@ -515,7 +533,11 @@ export function AddSpotScreen() {
                       onPress={() => removeTag(tag)}
                       style={[
                         styles.tagChip,
-                        { borderColor: theme.colors.borderDark, borderRadius: theme.radius.sm },
+                        {
+                          borderColor: theme.colors.border,
+                          borderRadius: theme.radius.sm,
+                          backgroundColor: theme.colors.bgSecondary,
+                        },
                       ]}
                     >
                       <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
@@ -558,7 +580,11 @@ export function AddSpotScreen() {
           {step === 4 ? (
             <View style={{ gap: theme.spacing.md }}>
               {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="cover" />
+                <Image
+                  source={{ uri: photoUri }}
+                  style={[styles.preview, { borderRadius: theme.radius.sm }]}
+                  resizeMode="cover"
+                />
               ) : null}
               <Text
                 style={{
@@ -591,6 +617,7 @@ export function AddSpotScreen() {
           ) : null}
         </ScrollView>
 
+        {/* Footer navigation */}
         <View style={[styles.footer, { borderTopColor: theme.colors.border, padding: theme.spacing.lg }]}>
           {step > 0 ? (
             <Button title={t("common.back")} onPress={goBack} variant="ghost" fullWidth={false} />
@@ -680,8 +707,6 @@ const styles = StyleSheet.create({
   },
   tagInput: {
     flex: 1,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 8,
   },
   tagList: {
     flexDirection: "row",
@@ -691,8 +716,8 @@ const styles = StyleSheet.create({
   },
   tagChip: {
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   freeToggleRow: {
     flexDirection: "row",

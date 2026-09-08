@@ -1,15 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma, Prisma } from "@trs/db";
+import { prisma, Prisma } from "@/lib/db";
 import { registerSchema } from "@trs/shared/validation";
-import { ApiError, handleApiError, successResponse, validateBody } from "@/lib/api-utils";
+import { ApiError, errorResponse, handleApiError, successResponse, validateBody } from "@/lib/api-utils";
 import { signAccessToken, signRefreshToken } from "@/lib/auth";
 import { toPublicUser } from "@/lib/serializers";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const BCRYPT_ROUNDS = 12;
 
+// 5 registrations per hour per IP
+const REGISTER_RATE_LIMIT = 5;
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const ip = getClientIp(request);
+    const limit = rateLimit(`register:${ip}`, REGISTER_RATE_LIMIT, REGISTER_WINDOW_MS);
+    if (!limit.allowed) {
+      return errorResponse("Too many registration attempts. Please try again later.", 429);
+    }
     const body = await request.json().catch(() => {
       throw new ApiError("Request body must be valid JSON", 400);
     });

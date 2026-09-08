@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { prisma } from "@trs/db";
+import { prisma } from "@/lib/db";
 import { oauthSchema } from "@trs/shared/validation";
 import { ApiError, handleApiError, successResponse, validateBody } from "@/lib/api-utils";
 import { signAccessToken, signRefreshToken } from "@/lib/auth";

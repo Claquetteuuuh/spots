@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Dimensions, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +11,9 @@ import type { MainTabNavigationProp } from "../../navigation/types";
 import type { Spot } from "../../types";
 
 const GRID_COLUMNS = 3;
+const GRID_GAP = 1;
+const screenWidth = Dimensions.get("window").width;
+const cellSize = (screenWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
 export function ProfileScreen() {
   const { t } = useTranslation();
@@ -43,22 +46,23 @@ export function ProfileScreen() {
         data={spots}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLUMNS}
-        columnWrapperStyle={{ gap: 2 }}
-        contentContainerStyle={{ gap: 2, paddingBottom: theme.spacing.xxl }}
+        columnWrapperStyle={{ gap: GRID_GAP }}
+        contentContainerStyle={{ gap: GRID_GAP, paddingBottom: theme.spacing.xxl }}
         renderItem={({ item }) => (
           <Pressable onPress={() => openSpot(item)} style={styles.gridItem}>
             <Image source={{ uri: item.photoUrl }} style={styles.gridImage} resizeMode="cover" />
           </Pressable>
         )}
         ListEmptyComponent={
-          <View style={{ padding: theme.spacing.xl, alignItems: "center" }}>
+          <View style={{ padding: theme.spacing.xxxl, alignItems: "center" }}>
             <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.base }}>
               {t("spots.noSpots")}
             </Text>
           </View>
         }
         ListHeaderComponent={
-          <View style={{ padding: theme.spacing.xl }}>
+          <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xl }}>
+            {/* Avatar + Stats row */}
             <View style={styles.headerRow}>
               {user.avatarUrl ? (
                 <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
@@ -73,7 +77,7 @@ export function ProfileScreen() {
                   <Text
                     style={{
                       color: theme.colors.textSecondary,
-                      fontSize: theme.typography.size.lg,
+                      fontSize: theme.typography.size.xl,
                       fontWeight: theme.typography.weight.semibold,
                     }}
                   >
@@ -97,10 +101,11 @@ export function ProfileScreen() {
               </View>
             </View>
 
+            {/* Name + username + bio */}
             <Text
               style={{
                 color: theme.colors.text,
-                fontSize: theme.typography.size.lg,
+                fontSize: theme.typography.size.base,
                 fontWeight: theme.typography.weight.semibold,
                 marginTop: theme.spacing.lg,
               }}
@@ -121,27 +126,25 @@ export function ProfileScreen() {
                 style={{
                   color: theme.colors.text,
                   fontSize: theme.typography.size.sm,
-                  marginTop: theme.spacing.sm,
+                  marginTop: theme.spacing.xs,
+                  lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
                 }}
               >
                 {user.bio}
               </Text>
             ) : null}
 
-            <View style={[styles.actionsRow, { marginTop: theme.spacing.lg, gap: theme.spacing.sm }]}>
+            {/* Full-width Edit Profile + Logout */}
+            <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
               <Button
                 title={t("users.editProfile")}
                 variant="secondary"
                 onPress={() => navigation.navigate("EditProfile")}
-                fullWidth={false}
-                style={{ flex: 1 }}
               />
               <Button
                 title={t("auth.logout")}
                 variant="ghost"
                 onPress={() => void logout()}
-                fullWidth={false}
-                style={{ flex: 1 }}
               />
             </View>
           </View>
@@ -177,9 +180,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 9999,
   },
   avatarPlaceholder: {
     alignItems: "center",
@@ -189,16 +192,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-around",
+    marginLeft: 16,
   },
   stat: {
     alignItems: "center",
   },
-  actionsRow: {
-    flexDirection: "row",
-  },
   gridItem: {
-    flex: 1 / GRID_COLUMNS,
-    aspectRatio: 1,
+    width: cellSize,
+    height: cellSize,
   },
   gridImage: {
     width: "100%",

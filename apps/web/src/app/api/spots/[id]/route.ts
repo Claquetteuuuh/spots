@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@trs/db";
+import { prisma } from "@/lib/db";
 import { updateSpotSchema } from "@trs/shared/validation";
 import {
   ApiError,

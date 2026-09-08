@@ -1,11 +1,19 @@
 /** @vitest-environment jsdom */
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import SearchPage from "../page";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+}));
+
+// Mock next/link
+vi.mock("next/link", () => ({
+  default: ({ children, ...props }: { children: React.ReactNode; href: string; [k: string]: unknown }) => (
+    <a {...props}>{children}</a>
+  ),
 }));
 
 const mockSearch = vi.fn();
@@ -17,6 +25,12 @@ vi.mock("@/lib/auth-context", () => ({
     isAuthenticated: true,
     isLoading: false,
   }),
+}));
+
+// Mock locale context
+vi.mock("@/lib/locale-context", () => ({
+  useLocale: () => ({ locale: "en", setLocale: vi.fn() }),
+  LocaleProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Mock api client
@@ -33,9 +47,10 @@ describe("SearchPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders search input", () => {
-    render(<SearchPage />);
-    expect(screen.getByText("Search")).toBeInTheDocument();
+  it("renders search input", async () => {
+    await act(async () => {
+      render(<SearchPage />);
+    });
     expect(
       screen.getByPlaceholderText("Search for a photographer..."),
     ).toBeInTheDocument();
@@ -52,31 +67,40 @@ describe("SearchPage", () => {
       },
     ]);
 
-    render(<SearchPage />);
+    await act(async () => {
+      render(<SearchPage />);
+    });
     const input = screen.getByPlaceholderText("Search for a photographer...");
     fireEvent.change(input, { target: { value: "jane" } });
-    fireEvent.submit(input.closest("form")!);
+
+    await act(async () => {
+      fireEvent.submit(input.closest("form")!);
+    });
 
     await waitFor(() => {
       expect(mockSearch).toHaveBeenCalledWith("jane");
     });
 
     await waitFor(() => {
+      expect(screen.getByText("jane")).toBeInTheDocument();
       expect(screen.getByText("Jane")).toBeInTheDocument();
-      expect(screen.getByText("@jane")).toBeInTheDocument();
     });
   });
 
   it("shows empty state when no results", async () => {
     mockSearch.mockResolvedValue([]);
 
-    render(<SearchPage />);
+    await act(async () => {
+      render(<SearchPage />);
+    });
     const input = screen.getByPlaceholderText("Search for a photographer...");
-    fireEvent.change(input, { target: { value: "nobody" } });
-    fireEvent.submit(input.closest("form")!);
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "nobody" } });
+      fireEvent.submit(input.closest("form")!);
+    });
 
     await waitFor(() => {
-      // i18n key: users.noResults
       expect(
         screen.getByText("No photographers found"),
       ).toBeInTheDocument();

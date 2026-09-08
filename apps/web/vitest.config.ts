@@ -1,6 +1,15 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+// react-dom bundles its own react copy under node_modules/react-dom/node_modules/react.
+// Without aliasing, component code imports a DIFFERENT react instance
+// (apps/web/node_modules/react), causing "Invalid hook call" in tests.
+// Force everything to share the same React instance that react-dom uses.
+const reactDomDir = path.dirname(
+  require.resolve("react-dom/package.json", { paths: [__dirname] }),
+);
+const sharedReact = path.resolve(reactDomDir, "node_modules/react");
+
 export default defineConfig({
   test: {
     globals: true,
@@ -11,6 +20,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      react: sharedReact,
     },
   },
 });

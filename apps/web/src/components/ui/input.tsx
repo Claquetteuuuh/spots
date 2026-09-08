@@ -25,10 +25,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={`
-            w-full rounded-sm border px-3 py-2 text-sm
-            text-text bg-bg
+            w-full rounded-md border px-3 py-2.5 text-sm
+            text-text bg-bg-secondary
             placeholder:text-text-tertiary
-            focus:outline-none focus:ring-1 focus:bg-bg-secondary
+            focus:outline-none focus:ring-1 focus:bg-bg
             transition-colors duration-150
             ${
               error

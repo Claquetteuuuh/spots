@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
-import { useGoogleAuth, extractGoogleIdToken } from "../../lib/google-auth";
+import { useGoogleAuth, extractGoogleIdToken, isGoogleAuthAvailable } from "../../lib/google-auth";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import type { AuthStackScreenProps } from "../../navigation/types";
@@ -65,10 +65,10 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={[styles.content, { padding: theme.spacing.xl }]}
+          contentContainerStyle={[styles.content, { paddingHorizontal: theme.spacing.xxl }]}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ marginBottom: theme.spacing.xxxl }}>
+          <View style={{ alignItems: "center", marginBottom: theme.spacing.xxxl }}>
             <Text
               style={{
                 color: theme.colors.text,
@@ -82,15 +82,15 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
             <Text
               style={{
                 color: theme.colors.textSecondary,
-                fontSize: theme.typography.size.base,
-                marginTop: theme.spacing.xs,
+                fontSize: theme.typography.size.sm,
+                marginTop: theme.spacing.sm,
               }}
             >
               {t("auth.login")}
             </Text>
           </View>
 
-          <View style={{ gap: theme.spacing.lg }}>
+          <View style={{ gap: theme.spacing.md }}>
             <Input
               label={t("auth.email")}
               value={email}
@@ -125,6 +125,7 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
                 color: theme.colors.error,
                 fontSize: theme.typography.size.sm,
                 marginTop: theme.spacing.md,
+                textAlign: "center",
               }}
             >
               {storeError}
@@ -135,35 +136,32 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
             <Button title={t("auth.login")} onPress={handleSubmit} loading={isLoading} testID="login-submit" />
           </View>
 
-          <View style={[styles.dividerRow, { marginVertical: theme.spacing.xl }]}>
-            <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-            <Text
-              style={{
-                color: theme.colors.textTertiary,
-                fontSize: theme.typography.size.xs,
-                marginHorizontal: theme.spacing.md,
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {t("common.or")}
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-          </View>
+          {isGoogleAuthAvailable ? (
+            <>
+              <View style={[styles.dividerRow, { marginVertical: theme.spacing.xl }]}>
+                <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
+                <Text
+                  style={{
+                    color: theme.colors.textTertiary,
+                    fontSize: theme.typography.size.xs,
+                    marginHorizontal: theme.spacing.md,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {t("common.or")}
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
+              </View>
 
-          <View style={{ gap: theme.spacing.md }}>
-            <Button
-              title={t("auth.continueWith", { provider: "Google" })}
-              variant="secondary"
-              onPress={() => googlePromptAsync()}
-              disabled={!googleRequest}
-            />
-            <Button
-              title={t("auth.continueWith", { provider: "Apple" })}
-              variant="secondary"
-              onPress={() => undefined}
-            />
-          </View>
+              <Button
+                title={t("auth.continueWith", { provider: "Google" })}
+                variant="secondary"
+                onPress={() => googlePromptAsync()}
+                disabled={!googleRequest}
+              />
+            </>
+          ) : null}
 
           <View style={[styles.footerRow, { marginTop: theme.spacing.xxl }]}>
             <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>

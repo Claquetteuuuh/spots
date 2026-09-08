@@ -21,7 +21,16 @@ export const loginSchema = z.object({
 
 export const oauthSchema = z.object({
   token: z.string().min(1),
-  provider: z.enum(["GOOGLE", "APPLE"]),
+  provider: z.enum(["GOOGLE"]),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8).max(128),
 });
 
 // ─── Spots ───────────────────────────────────────────────────────────
@@ -98,4 +107,6 @@ export type UpdateSpotInput = z.infer<typeof updateSpotSchema>;
 export type SpotQuery = z.infer<typeof spotQuerySchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UserSearchQuery = z.infer<typeof userSearchSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ReverseGeocodeInput = z.infer<typeof reverseGeocodeSchema>;

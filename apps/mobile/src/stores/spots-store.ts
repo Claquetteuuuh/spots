@@ -1,17 +1,9 @@
 import { create } from "zustand";
-import axios from "axios";
+import i18n from "../lib/i18n";
 import * as api from "../lib/api";
+import { extractErrorMessage } from "../lib/error";
 import type { Spot } from "../types";
 import type { CreateSpotParams } from "../lib/api";
-
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    if (data?.message) return data.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
 
 interface SpotsState {
   spots: Spot[];
@@ -52,7 +44,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
         isLoading: false,
       }));
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to load spots") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.loadFailed")) });
     }
   },
 
@@ -68,7 +60,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
         isLoading: false,
       }));
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to load feed") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.feedFailed")) });
     }
   },
 
@@ -79,7 +71,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
       set((state) => ({ spots: [spot, ...state.spots], isLoading: false }));
       return spot;
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to save spot") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.saveFailed")) });
       throw err;
     }
   },
@@ -90,7 +82,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
     try {
       await api.deleteSpot(id);
     } catch (err) {
-      set({ spots: previous, error: extractErrorMessage(err, "Unable to delete spot") });
+      set({ spots: previous, error: extractErrorMessage(err, i18n.t("spots.errors.deleteFailed")) });
       throw err;
     }
   },

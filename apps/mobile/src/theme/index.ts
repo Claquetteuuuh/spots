@@ -154,8 +154,11 @@ export const typography = {
 
 export const radius = {
   none: 0,
-  sm: 2, // inputs, small controls
-  md: 4, // cards, buttons, badges
+  sm: 4,
+  md: 8,
+  lg: 12,
+  xl: 20,
+  full: 9999, // pills, avatars
 } as const;
 
 // ─── Borders ─────────────────────────────────────────────────────────

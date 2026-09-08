@@ -1,4 +1,4 @@
-import { prisma } from "@trs/db";
+import { prisma } from "@/lib/db";
 import { spotQuerySchema } from "@trs/shared/validation";
 import { successResponse, validateBody, withAuth } from "@/lib/api-utils";
 import { paginate } from "@/lib/pagination";

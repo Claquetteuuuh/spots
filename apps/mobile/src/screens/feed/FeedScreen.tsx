@@ -6,13 +6,13 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { SpotCard } from "../../components/spots/SpotCard";
-import type { MainTabNavigationProp } from "../../navigation/types";
+import type { RootStackNavigationProp } from "../../navigation/types";
 import type { Spot } from "../../types";
 
 export function FeedScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const navigation = useNavigation<MainTabNavigationProp<"Feed">>();
+  const navigation = useNavigation<RootStackNavigationProp>();
 
   const feedSpots = useSpotsStore((s) => s.feedSpots);
   const isLoading = useSpotsStore((s) => s.isLoading);

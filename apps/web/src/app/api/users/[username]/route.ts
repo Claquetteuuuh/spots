@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@trs/db";
+import { prisma } from "@/lib/db";
 import { ApiError, handleApiError, successResponse } from "@/lib/api-utils";
 import { getUserFromRequest } from "@/lib/auth";
 import { toUserProfile } from "@/lib/serializers";

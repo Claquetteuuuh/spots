@@ -3,18 +3,24 @@
 import { useEffect, useRef } from "react";
 import type { Spot } from "@/lib/api-client";
 
-// Leaflet CSS is loaded via CDN link tag (added dynamically below)
+interface MapBounds {
+  swLat: number;
+  swLng: number;
+  neLat: number;
+  neLng: number;
+}
 
 interface SpotMapProps {
   spots: Spot[];
   onSpotClick?: (spot: Spot) => void;
+  onBoundsChange?: (bounds: MapBounds) => void;
 }
 
 // Default center: Paris
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 const DEFAULT_ZOOM = 5;
 
-export default function SpotMap({ spots, onSpotClick }: SpotMapProps) {
+export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -54,6 +60,23 @@ export default function SpotMap({ spots, onSpotClick }: SpotMapProps) {
         );
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       }
+
+      // Emit bounds on map move/zoom
+      if (onBoundsChange) {
+        const emitBounds = () => {
+          const b = map.getBounds();
+          onBoundsChange({
+            swLat: b.getSouthWest().lat,
+            swLng: b.getSouthWest().lng,
+            neLat: b.getNorthEast().lat,
+            neLng: b.getNorthEast().lng,
+          });
+        };
+
+        map.on("moveend", emitBounds);
+        // Emit initial bounds after the map is ready
+        setTimeout(emitBounds, 100);
+      }
     });
 
     return () => {
@@ -82,13 +105,6 @@ export default function SpotMap({ spots, onSpotClick }: SpotMapProps) {
       );
 
       addMarkers(L, mapRef.current, spots, onSpotClick);
-
-      if (spots.length > 0) {
-        const bounds = L.latLngBounds(
-          spots.map((s) => [s.latitude, s.longitude] as [number, number]),
-        );
-        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      }
     });
   }, [spots, onSpotClick]);
 
@@ -149,3 +165,5 @@ function addMarkers(
     }
   }
 }
+
+export type { MapBounds };

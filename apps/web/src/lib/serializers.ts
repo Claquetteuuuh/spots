@@ -1,4 +1,4 @@
-import type { User } from "@trs/db";
+import type { User } from "@/lib/db";
 
 /**
  * A `User` record with sensitive/internal fields stripped, safe to return

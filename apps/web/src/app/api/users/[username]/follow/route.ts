@@ -1,4 +1,4 @@
-import { Prisma, prisma } from "@trs/db";
+import { Prisma, prisma } from "@/lib/db";
 import { ApiError, successResponse, withAuth } from "@/lib/api-utils";
 
 interface RouteParams {

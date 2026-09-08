@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
+import { extractErrorMessage } from "../../lib/error";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import type { RootStackScreenProps } from "../../navigation/types";
 import type { Spot } from "../../types";
@@ -27,7 +28,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
         if (!cancelled) setSpot(result);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : t("common.error"));
+        if (!cancelled) setError(extractErrorMessage(err, t("common.error")));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -63,14 +64,16 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["bottom"]}>
       <ScrollView>
+        {/* Full-width photo — Instagram post style */}
         <Image source={{ uri: spot.photoUrl }} style={styles.photo} resizeMode="cover" />
 
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
+          {/* Title + location */}
           <View>
             <Text
               style={{
                 color: theme.colors.text,
-                fontSize: theme.typography.size.xxl,
+                fontSize: theme.typography.size.lg,
                 fontWeight: theme.typography.weight.bold,
               }}
             >
@@ -79,7 +82,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             <Text
               style={{
                 color: theme.colors.textSecondary,
-                fontSize: theme.typography.size.base,
+                fontSize: theme.typography.size.sm,
                 marginTop: theme.spacing.xs,
               }}
             >
@@ -87,6 +90,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </Text>
           </View>
 
+          {/* Description */}
           {spot.description ? (
             <Text
               style={{
@@ -99,6 +103,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </Text>
           ) : null}
 
+          {/* Compositions */}
           {spot.compositions.length > 0 ? (
             <View>
               <SectionLabel text={t("spots.composition")} color={theme.colors.textSecondary} size={theme.typography.size.xs} />
@@ -110,6 +115,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </View>
           ) : null}
 
+          {/* Colors */}
           {spot.colors.length > 0 ? (
             <View>
               <SectionLabel text={t("spots.colors")} color={theme.colors.textSecondary} size={theme.typography.size.xs} />
@@ -124,6 +130,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </View>
           ) : null}
 
+          {/* Tags */}
           {spot.tags.length > 0 ? (
             <View>
               <SectionLabel text={t("spots.tags")} color={theme.colors.textSecondary} size={theme.typography.size.xs} />
@@ -133,7 +140,11 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
                     key={tag}
                     style={[
                       styles.tagChip,
-                      { borderColor: theme.colors.borderDark, borderRadius: theme.radius.sm },
+                      {
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.radius.sm,
+                        backgroundColor: theme.colors.bgSecondary,
+                      },
                     ]}
                   >
                     <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
@@ -145,6 +156,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </View>
           ) : null}
 
+          {/* Price badge */}
           <Text
             style={{
               color: spot.isFree ? theme.colors.sage : theme.colors.accent,
@@ -157,6 +169,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             {spot.isFree ? t("common.free") : spot.priceInfo || t("common.paid")}
           </Text>
 
+          {/* Mini map */}
           <View
             style={[
               styles.mapThumb,
@@ -205,7 +218,7 @@ const styles = StyleSheet.create({
   },
   photo: {
     width: "100%",
-    aspectRatio: 4 / 3,
+    aspectRatio: 1,
   },
   wrapRow: {
     flexDirection: "row",
@@ -219,8 +232,8 @@ const styles = StyleSheet.create({
   },
   tagChip: {
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   mapThumb: {
     height: 140,

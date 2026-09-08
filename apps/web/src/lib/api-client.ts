@@ -10,21 +10,46 @@ import type {
 // ─── Token helpers ──────────────────────────────────────────────────
 
 const TOKEN_COOKIE = "trs_token";
+const REFRESH_COOKIE = "trs_refresh_token";
 
-export function getToken(): string | null {
+function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(
-    new RegExp(`(?:^|; )${TOKEN_COOKIE}=([^;]*)`),
+    new RegExp(`(?:^|; )${name}=([^;]*)`),
   );
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function setCookie(name: string, value: string, maxAge: number): void {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function clearCookie(name: string): void {
+  document.cookie = `${name}=; path=/; max-age=0`;
+}
+
+export function getToken(): string | null {
+  return getCookie(TOKEN_COOKIE);
+}
+
 export function setToken(token: string): void {
-  document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+  setCookie(TOKEN_COOKIE, token, 60 * 60 * 24 * 30);
 }
 
 export function clearToken(): void {
-  document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0`;
+  clearCookie(TOKEN_COOKIE);
+}
+
+export function getRefreshToken(): string | null {
+  return getCookie(REFRESH_COOKIE);
+}
+
+export function setRefreshToken(token: string): void {
+  setCookie(REFRESH_COOKIE, token, 60 * 60 * 24 * 30);
+}
+
+export function clearRefreshToken(): void {
+  clearCookie(REFRESH_COOKIE);
 }
 
 // ─── Base fetch helper ──────────────────────────────────────────────
@@ -42,9 +67,39 @@ interface ApiError {
 
 type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
+/** Guard against concurrent refresh attempts. */
+let refreshPromise: Promise<AuthResponse> | null = null;
+
+async function doRefresh(): Promise<AuthResponse> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    throw new Error("No refresh token");
+  }
+
+  const res = await fetch(API_ROUTES.auth.refresh, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const json = (await res.json()) as ApiResponse<AuthResponse>;
+
+  if (!res.ok || json.error) {
+    clearToken();
+    clearRefreshToken();
+    throw new Error(json.error ?? "Refresh failed");
+  }
+
+  const data = json.data as AuthResponse;
+  setToken(data.accessToken);
+  setRefreshToken(data.refreshToken);
+  return data;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  _skipRefresh = false,
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -64,6 +119,21 @@ async function request<T>(
     ...options,
     headers,
   });
+
+  // Auto-refresh on 401 — retry once with a fresh access token
+  if (res.status === 401 && !_skipRefresh && getRefreshToken()) {
+    try {
+      if (!refreshPromise) {
+        refreshPromise = doRefresh();
+      }
+      await refreshPromise;
+      refreshPromise = null;
+      return request<T>(path, options, true);
+    } catch {
+      refreshPromise = null;
+      // Fall through to the normal error path
+    }
+  }
 
   const json = (await res.json()) as ApiResponse<T>;
 
@@ -135,6 +205,7 @@ export const apiClient = {
         body: JSON.stringify(input),
       });
       setToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
       return res;
     },
 
@@ -147,6 +218,7 @@ export const apiClient = {
         body: JSON.stringify({ email, password }),
       });
       setToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
       return res;
     },
 
@@ -156,7 +228,22 @@ export const apiClient = {
         body: JSON.stringify({ token, provider: "GOOGLE" }),
       });
       setToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
       return res;
+    },
+
+    async forgotPassword(email: string): Promise<void> {
+      await request<{ sent: boolean }>(API_ROUTES.auth.forgotPassword, {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+    },
+
+    async resetPassword(token: string, password: string): Promise<void> {
+      await request<{ reset: boolean }>(API_ROUTES.auth.resetPassword, {
+        method: "POST",
+        body: JSON.stringify({ token, password }),
+      });
     },
 
     async me(): Promise<User> {
@@ -165,13 +252,11 @@ export const apiClient = {
 
     logout(): void {
       clearToken();
+      clearRefreshToken();
     },
 
     async refresh(): Promise<AuthResponse> {
-      const res = await request<AuthResponse>(API_ROUTES.auth.refresh, {
-        method: "POST",
-      });
-      setToken(res.accessToken);
+      const res = await doRefresh();
       return res;
     },
   },
@@ -268,9 +353,21 @@ export const apiClient = {
   upload: {
     async photo(file: File): Promise<{ url: string; key: string }> {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("photo", file);
       return request<{ url: string; key: string }>(
         API_ROUTES.upload.photo,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+    },
+
+    async avatar(file: File): Promise<{ url: string; key: string }> {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      return request<{ url: string; key: string }>(
+        API_ROUTES.upload.avatar,
         {
           method: "POST",
           body: formData,

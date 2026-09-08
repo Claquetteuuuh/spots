@@ -7,10 +7,12 @@ const AUTH_PATHS = ["/login", "/register"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("trs_token")?.value;
+  const refreshToken = request.cookies.get("trs_refresh_token")?.value;
 
   // Redirect unauthenticated users away from protected pages
+  // Allow through if they have a refresh token (client will auto-refresh)
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
-  if (isProtected && !token) {
+  if (isProtected && !token && !refreshToken) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);
@@ -18,7 +20,7 @@ export function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
-  if (isAuthPage && token) {
+  if (isAuthPage && (token || refreshToken)) {
     return NextResponse.redirect(new URL("/map", request.url));
   }
 

@@ -1,17 +1,9 @@
 import { create } from "zustand";
-import axios from "axios";
+import i18n from "../lib/i18n";
 import * as api from "../lib/api";
 import { clearTokens, hasStoredSession } from "../lib/auth";
+import { extractErrorMessage } from "../lib/error";
 import type { User } from "../types";
-
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    if (data?.message) return data.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
 
 interface RegisterParams {
   email: string;
@@ -49,7 +41,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       const { user } = await api.login({ email, password });
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to sign in") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("auth.errors.loginFailed")) });
       throw err;
     }
   },
@@ -60,7 +52,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       const { user } = await api.loginWithGoogle(idToken);
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to sign in with Google") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("auth.errors.googleFailed")) });
       throw err;
     }
   },
@@ -71,7 +63,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       const { user } = await api.register(params);
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (err) {
-      set({ isLoading: false, error: extractErrorMessage(err, "Unable to create account") });
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("auth.errors.registerFailed")) });
       throw err;
     }
   },

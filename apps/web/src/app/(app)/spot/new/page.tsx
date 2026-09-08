@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/use-t";
 import {
   COMPOSITION_TYPES,
   ACCEPTED_IMAGE_TYPES,
@@ -35,6 +35,7 @@ const SUGGESTED_COLORS = [
 
 export default function AddSpotPage() {
   const router = useRouter();
+  const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Step state
@@ -263,7 +264,7 @@ export default function AddSpotPage() {
                 // Only allow going back
                 if (i < currentIndex) setStep(s.key);
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-sm transition-colors cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
                 step === s.key
                   ? "bg-accent text-white"
                   : i < currentIndex
@@ -271,7 +272,7 @@ export default function AddSpotPage() {
                     : "text-text-tertiary"
               }`}
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-sm text-xs border border-current">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full text-xs border border-current">
                 {i + 1}
               </span>
               {s.label}
@@ -418,7 +419,7 @@ export default function AddSpotPage() {
                 placeholder={t("spots.descriptionPlaceholder")}
                 rows={3}
                 maxLength={2000}
-                className="w-full rounded-sm border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
+                className="w-full rounded-md border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
               />
               <p className="text-xs text-text-tertiary">
                 {description.length}/2000
@@ -441,7 +442,7 @@ export default function AddSpotPage() {
                       key={comp}
                       type="button"
                       onClick={() => toggleComposition(comp)}
-                      className={`px-2.5 py-1 text-sm rounded-sm border transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-sm rounded-md border transition-colors cursor-pointer ${
                         selected
                           ? "bg-sage/15 text-sage border-sage/30"
                           : "bg-bg text-text-secondary border-border hover:border-sage/30"

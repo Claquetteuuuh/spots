@@ -2,7 +2,14 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { getToken, setToken, clearToken } from "../api-client";
+import {
+  getToken,
+  setToken,
+  clearToken,
+  getRefreshToken,
+  setRefreshToken,
+  clearRefreshToken,
+} from "../api-client";
 
 // Mock document.cookie for token helpers
 let cookieStore = "";
@@ -57,12 +64,44 @@ describe("Token helpers", () => {
   });
 });
 
+describe("Refresh token helpers", () => {
+  it("getRefreshToken returns null when no token is set", () => {
+    expect(getRefreshToken()).toBeNull();
+  });
+
+  it("setRefreshToken stores and getRefreshToken retrieves", () => {
+    setRefreshToken("refresh-abc-123");
+    expect(getRefreshToken()).toBe("refresh-abc-123");
+  });
+
+  it("clearRefreshToken removes the refresh token", () => {
+    setRefreshToken("refresh-abc-123");
+    expect(getRefreshToken()).toBe("refresh-abc-123");
+
+    clearRefreshToken();
+    expect(getRefreshToken()).toBeNull();
+  });
+
+  it("access and refresh tokens are independent", () => {
+    setToken("access-tok");
+    setRefreshToken("refresh-tok");
+
+    expect(getToken()).toBe("access-tok");
+    expect(getRefreshToken()).toBe("refresh-tok");
+
+    clearToken();
+    expect(getToken()).toBeNull();
+    expect(getRefreshToken()).toBe("refresh-tok");
+  });
+});
+
 describe("apiClient", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
         json: () => Promise.resolve({ data: { id: "1" } }),
       }),
     );
@@ -102,12 +141,47 @@ describe("apiClient", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: false,
-        status: 401,
-        json: () => Promise.resolve({ error: "Unauthorized" }),
+        status: 400,
+        json: () => Promise.resolve({ error: "Bad request" }),
       }),
     );
 
     const { apiClient } = await import("../api-client");
-    await expect(apiClient.auth.me()).rejects.toThrow("Unauthorized");
+    await expect(apiClient.auth.me()).rejects.toThrow("Bad request");
+  });
+
+  it("login stores both access and refresh tokens", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: {
+              accessToken: "new-access",
+              refreshToken: "new-refresh",
+              user: { id: "1", name: "Test" },
+            },
+          }),
+      }),
+    );
+
+    const { apiClient } = await import("../api-client");
+    await apiClient.auth.login("test@test.com", "password");
+
+    expect(getToken()).toBe("new-access");
+    expect(getRefreshToken()).toBe("new-refresh");
+  });
+
+  it("logout clears both tokens", async () => {
+    setToken("access-tok");
+    setRefreshToken("refresh-tok");
+
+    const { apiClient } = await import("../api-client");
+    apiClient.auth.logout();
+
+    expect(getToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
   });
 });

@@ -17,18 +17,17 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
 }
 
 /**
- * Underlined text field — no boxed border, no rounded pill. The line
- * thickens and darkens on focus; errors swap the line and caption to
- * the error color.
+ * Clean boxed text field with subtle background fill and rounded corners.
+ * Instagram-style: light fill, thin border on focus, compact and quiet.
  */
 export function Input({ label, error, containerStyle, onFocus, onBlur, ...rest }: InputProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
-  const lineColor = error
+  const borderColor = error
     ? theme.colors.error
     : isFocused
-      ? theme.colors.text
+      ? theme.colors.borderDark
       : theme.colors.border;
 
   return (
@@ -62,10 +61,13 @@ export function Input({ label, error, containerStyle, onFocus, onBlur, ...rest }
           styles.input,
           {
             color: theme.colors.text,
-            borderBottomColor: lineColor,
-            borderBottomWidth: isFocused || error ? theme.borderWidth.thick : theme.borderWidth.hairline,
+            backgroundColor: theme.colors.bgSecondary,
+            borderColor,
+            borderWidth: theme.borderWidth.hairline,
+            borderRadius: theme.radius.md,
             fontSize: theme.typography.size.base,
-            paddingVertical: theme.spacing.sm,
+            paddingVertical: theme.spacing.md,
+            paddingHorizontal: theme.spacing.lg,
           },
         ]}
       />

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { Prisma, prisma } from "@trs/db";
+import { Prisma, prisma } from "@/lib/db";
 import { updateProfileSchema } from "@trs/shared/validation";
 import { ApiError, successResponse, validateBody, withAuth } from "@/lib/api-utils";
 import { toUserProfile } from "@/lib/serializers";

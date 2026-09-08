@@ -53,9 +53,9 @@ export function SearchScreen() {
     );
     try {
       if (wasFollowing) {
-        await unfollowUser(user.id);
+        await unfollowUser(user.username);
       } else {
-        await followUser(user.id);
+        await followUser(user.username);
       }
     } catch {
       setResults((prev) =>
@@ -72,17 +72,7 @@ export function SearchScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg }}>
-        <Text
-          style={{
-            color: theme.colors.text,
-            fontSize: theme.typography.size.xl,
-            fontWeight: theme.typography.weight.bold,
-            marginBottom: theme.spacing.md,
-          }}
-        >
-          {t("common.search")}
-        </Text>
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.md }}>
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -93,9 +83,10 @@ export function SearchScreen() {
             styles.searchInput,
             {
               color: theme.colors.text,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radius.sm,
-              paddingHorizontal: theme.spacing.md,
+              backgroundColor: theme.colors.bgSecondary,
+              borderRadius: theme.radius.full,
+              paddingHorizontal: theme.spacing.xl,
+              paddingVertical: theme.spacing.md,
               fontSize: theme.typography.size.base,
             },
           ]}
@@ -108,15 +99,14 @@ export function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.md }}
+          contentContainerStyle={{ paddingHorizontal: theme.spacing.lg }}
           renderItem={({ item }) => (
             <View
               style={[
                 styles.row,
                 {
-                  borderColor: theme.colors.border,
-                  borderRadius: theme.radius.md,
-                  padding: theme.spacing.md,
+                  paddingVertical: theme.spacing.md,
+                  borderBottomColor: theme.colors.border,
                 },
               ]}
             >
@@ -130,7 +120,7 @@ export function SearchScreen() {
                     { backgroundColor: theme.colors.bgTertiary },
                   ]}
                 >
-                  <Text style={{ color: theme.colors.textSecondary, fontWeight: "600" }}>
+                  <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: theme.typography.size.base }}>
                     {item.name.slice(0, 1).toUpperCase()}
                   </Text>
                 </View>
@@ -142,16 +132,16 @@ export function SearchScreen() {
                   style={{
                     color: theme.colors.text,
                     fontSize: theme.typography.size.base,
-                    fontWeight: theme.typography.weight.medium,
+                    fontWeight: theme.typography.weight.semibold,
                   }}
                 >
-                  {item.name}
+                  {item.username}
                 </Text>
                 <Text
                   numberOfLines={1}
                   style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}
                 >
-                  @{item.username}
+                  {item.name}
                 </Text>
               </View>
 
@@ -171,10 +161,10 @@ export function SearchScreen() {
                   color: theme.colors.textSecondary,
                   fontSize: theme.typography.size.base,
                   textAlign: "center",
-                  marginTop: theme.spacing.xl,
+                  marginTop: theme.spacing.xxxl,
                 }}
               >
-                No results found.
+                {t("users.noResults")}
               </Text>
             ) : null
           }
@@ -188,20 +178,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  searchInput: {
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
-  },
+  searchInput: {},
   row: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
   avatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 9999,
   },
   avatarPlaceholder: {
     alignItems: "center",

@@ -72,7 +72,8 @@ export const API_ROUTES = {
     refresh: "/api/auth/refresh",
     me: "/api/auth/me",
     google: "/api/auth/google",
-    apple: "/api/auth/apple",
+    forgotPassword: "/api/auth/forgot-password",
+    resetPassword: "/api/auth/reset-password",
   },
   spots: {
     list: "/api/spots",
@@ -90,6 +91,7 @@ export const API_ROUTES = {
   },
   upload: {
     photo: "/api/upload/photo",
+    avatar: "/api/upload/avatar",
   },
   geocoding: {
     reverse: "/api/geocoding/reverse",
@@ -105,6 +107,8 @@ export const MAX_PAGE_SIZE = 50;
 
 export const MAX_PHOTO_SIZE_MB = 10;
 export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+export const MAX_AVATAR_SIZE_MB = 2;
+export const MAX_AVATAR_SIZE_BYTES = MAX_AVATAR_SIZE_MB * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiClient, getToken } from "./api-client";
+import { apiClient, getToken, getRefreshToken } from "./api-client";
 import type { User } from "./api-client";
 import type { RegisterInput } from "@trs/shared/validation";
 
@@ -32,20 +32,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
+    async function restoreSession() {
+      const token = getToken();
+      if (!token && !getRefreshToken()) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Try the current access token first
+        const u = await apiClient.auth.me();
+        setUser(u);
+      } catch {
+        // Access token expired — auto-refresh handles the retry
+        // If that also failed, clear everything
+        if (!getToken()) {
+          apiClient.auth.logout();
+        }
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    apiClient.auth
-      .me()
-      .then(setUser)
-      .catch(() => {
-        // Token expired or invalid — clear silently
-        apiClient.auth.logout();
-      })
-      .finally(() => setIsLoading(false));
+    restoreSession();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

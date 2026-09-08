@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@trs/db";
+import { prisma } from "@/lib/db";
 import { userSearchSchema } from "@trs/shared/validation";
 import { handleApiError, successResponse, validateBody } from "@/lib/api-utils";
 

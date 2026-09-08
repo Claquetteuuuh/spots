@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot } from "@/lib/api-client";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/use-t";
 import { Button } from "@/components/ui/button";
 import { SpotCardSkeleton } from "@/components/ui/skeleton";
 
@@ -12,6 +12,7 @@ export default function ExplorePage() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const t = useT();
   const [hasMore, setHasMore] = useState(true);
 
   const loadSpots = useCallback(async (loadCursor?: string | null) => {
@@ -19,15 +20,15 @@ export default function ExplorePage() {
     try {
       const result = await apiClient.spots.list({
         cursor: loadCursor ?? undefined,
-        limit: 20,
+        limit: 21,
       });
       setSpots((prev) =>
         loadCursor ? [...prev, ...result.items] : result.items,
       );
       setCursor(result.nextCursor);
       setHasMore(!!result.nextCursor);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error("Failed to load spots:", err);
     } finally {
       setIsLoading(false);
     }
@@ -38,70 +39,39 @@ export default function ExplorePage() {
   }, [loadSpots]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-text">
-        {t("map.allSpots")}
-      </h1>
-
+    <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
       {/* Loading skeletons */}
       {isLoading && spots.length === 0 ? (
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SpotCardSkeleton />
-          <SpotCardSkeleton />
-          <SpotCardSkeleton />
-          <SpotCardSkeleton />
-          <SpotCardSkeleton />
-          <SpotCardSkeleton />
+        <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="aspect-square bg-bg-secondary animate-pulse" />
+          ))}
         </div>
       ) : spots.length === 0 ? (
-        <div className="mt-16 text-center">
+        <div className="px-4 py-16 text-center">
           <p className="text-text-secondary">{t("spots.noSpots")}</p>
         </div>
       ) : (
         <>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Instagram-style 3-column grid */}
+          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
             {spots.map((spot) => (
               <Link
                 key={spot.id}
                 href={`/spot/${spot.id}`}
-                className="group border border-border rounded-sm overflow-hidden hover:border-accent/30 transition-colors"
+                className="aspect-square overflow-hidden bg-bg-secondary group relative"
               >
-                <div className="aspect-[4/3] bg-bg-secondary overflow-hidden">
-                  <img
-                    src={spot.photoUrl}
-                    alt={spot.title ?? ""}
-                    className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                  />
-                </div>
-                <div className="px-3 py-2.5">
-                  {spot.title ? (
-                    <p className="text-sm font-medium text-text truncate">
-                      {spot.title}
-                    </p>
-                  ) : null}
-                  <div className="flex items-center justify-between mt-0.5">
-                    {spot.user ? (
-                      <span className="text-xs text-text-tertiary truncate">
-                        @{spot.user.username}
-                      </span>
-                    ) : null}
-                    {spot.city ? (
-                      <span className="text-xs text-text-tertiary truncate ml-2">
-                        {spot.city}
-                      </span>
-                    ) : null}
-                  </div>
-                  {spot.compositions.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {spot.compositions.slice(0, 2).map((c) => (
-                        <span
-                          key={c}
-                          className="inline-block px-1.5 py-0.5 text-[11px] bg-sage/10 text-sage border border-sage/20 rounded-sm"
-                        >
-                          {t(`compositions.${c}`)}
-                        </span>
-                      ))}
-                    </div>
+                <img
+                  src={spot.photoUrl}
+                  alt={spot.title ?? ""}
+                  className="h-full w-full object-cover group-hover:opacity-75 transition-opacity duration-200"
+                />
+                {/* Hover overlay with location */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {spot.city ? (
+                    <span className="text-white text-sm font-semibold drop-shadow-md">
+                      {spot.city}
+                    </span>
                   ) : null}
                 </div>
               </Link>
@@ -110,7 +80,7 @@ export default function ExplorePage() {
 
           {/* Load more */}
           {hasMore ? (
-            <div className="flex justify-center py-8">
+            <div className="flex justify-center py-8 px-4">
               <Button
                 variant="secondary"
                 onClick={() => loadSpots(cursor)}

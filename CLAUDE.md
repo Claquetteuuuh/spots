@@ -26,10 +26,13 @@ Follow other photographers to discover their spots too.
 ```text
 the-right-spot/
 ├── apps/
-│   ├── web/              # Next.js API + web frontend
+│   ├── web/              # Next.js API + web frontend + Prisma DB
+│   │   ├── prisma/       # Schema, migrations, seed
+│   │   └── src/
+│   │       ├── generated/prisma/  # Generated Prisma client
+│   │       └── lib/db.ts          # Prisma singleton export
 │   └── mobile/           # Expo React Native
 ├── packages/
-│   ├── db/               # Prisma schema + client (@trs/db)
 │   └── shared/           # Shared types, validation, i18n, constants (@trs/shared)
 ├── docker-compose.yml    # PostgreSQL for local dev
 ├── .pre-commit-config.yaml
@@ -97,7 +100,7 @@ This is not a suggestion — it is a hard gate.
 - Auth via `Authorization: Bearer <token>` header
 - Pagination: cursor-based with `?cursor=<id>&limit=<n>`
 - Validation: Zod schemas from `@trs/shared/validation`
-- Prisma client from `@trs/db`
+- Prisma client from `@/lib/db`
 
 ## Design Rules (CRITICAL)
 
@@ -138,4 +141,4 @@ Minimalist, earthy, photography-focused. The photos ARE the design.
 - Auth tokens in SecureStore (mobile) / httpOnly cookies (web)
 - Always write unit tests for new features
 - Use validation schemas from @trs/shared for all API input
-- Clean imports: @trs/shared, @trs/db — never relative cross-package
+- Clean imports: @trs/shared for shared code, @/lib/db for Prisma — never relative cross-package

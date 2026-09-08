@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import {
   DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
@@ -7,6 +7,7 @@ import {
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme";
 import { useAuthStore } from "../stores/auth-store";
@@ -14,7 +15,6 @@ import { useAuthStore } from "../stores/auth-store";
 import { LoginScreen } from "../screens/auth/LoginScreen";
 import { RegisterScreen } from "../screens/auth/RegisterScreen";
 import { MapScreen } from "../screens/map/MapScreen";
-import { FeedScreen } from "../screens/feed/FeedScreen";
 import { AddSpotScreen } from "../screens/spots/AddSpotScreen";
 import { SearchScreen } from "../screens/search/SearchScreen";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
@@ -27,19 +27,6 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
 
-/**
- * Simple square/letter glyph standing in for a proper icon set — plain
- * shapes only, no emoji, no third-party icon font.
- */
-function TabIcon({ letter, focused, accentColor, mutedColor }: { letter: string; focused: boolean; accentColor: string; mutedColor: string }) {
-  const color = focused ? accentColor : mutedColor;
-  return (
-    <View style={[styles.tabIcon, { borderColor: color }]}>
-      <Text style={[styles.tabIconLabel, { color }]}>{letter}</Text>
-    </View>
-  );
-}
-
 function AuthNavigator() {
   return (
     <AuthStackNav.Navigator screenOptions={{ headerShown: false }}>
@@ -49,77 +36,44 @@ function AuthNavigator() {
   );
 }
 
+const TAB_ICONS: Record<
+  keyof MainTabParamList,
+  { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }
+> = {
+  Map: { focused: "map", unfocused: "map-outline" },
+  Add: { focused: "add-circle", unfocused: "add-circle-outline" },
+  Search: { focused: "search", unfocused: "search-outline" },
+  Profile: { focused: "person-circle", unfocused: "person-circle-outline" },
+};
+
 function MainTabs() {
-  const { t } = useTranslation();
   const theme = useTheme();
 
   return (
     <MainTab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.accent,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: theme.colors.text,
         tabBarInactiveTintColor: theme.colors.textTertiary,
         tabBarStyle: {
           backgroundColor: theme.colors.bg,
           borderTopColor: theme.colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
+          height: Platform.OS === "ios" ? 84 : 56,
+          paddingTop: 8,
         },
-        tabBarLabelStyle: {
-          fontSize: theme.typography.size.xs,
-          fontWeight: theme.typography.weight.medium,
+        tabBarIcon: ({ focused, color }) => {
+          const icons = TAB_ICONS[route.name as keyof MainTabParamList];
+          const iconName = focused ? icons.focused : icons.unfocused;
+          return <Ionicons name={iconName} size={26} color={color} />;
         },
-      }}
+      })}
     >
-      <MainTab.Screen
-        name="Map"
-        component={MapScreen}
-        options={{
-          tabBarLabel: t("map.title"),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon letter="M" focused={focused} accentColor={theme.colors.accent} mutedColor={theme.colors.textTertiary} />
-          ),
-        }}
-      />
-      <MainTab.Screen
-        name="Feed"
-        component={FeedScreen}
-        options={{
-          tabBarLabel: t("spots.feed"),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon letter="F" focused={focused} accentColor={theme.colors.accent} mutedColor={theme.colors.textTertiary} />
-          ),
-        }}
-      />
-      <MainTab.Screen
-        name="Add"
-        component={AddSpotScreen}
-        options={{
-          tabBarLabel: t("spots.addSpot"),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon letter="+" focused={focused} accentColor={theme.colors.accent} mutedColor={theme.colors.textTertiary} />
-          ),
-        }}
-      />
-      <MainTab.Screen
-        name="Search"
-        component={SearchScreen}
-        options={{
-          tabBarLabel: t("common.search"),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon letter="S" focused={focused} accentColor={theme.colors.accent} mutedColor={theme.colors.textTertiary} />
-          ),
-        }}
-      />
-      <MainTab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarLabel: t("users.profile"),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon letter="P" focused={focused} accentColor={theme.colors.accent} mutedColor={theme.colors.textTertiary} />
-          ),
-        }}
-      />
+      <MainTab.Screen name="Map" component={MapScreen} />
+      <MainTab.Screen name="Add" component={AddSpotScreen} />
+      <MainTab.Screen name="Search" component={SearchScreen} />
+      <MainTab.Screen name="Profile" component={ProfileScreen} />
     </MainTab.Navigator>
   );
 }
@@ -209,16 +163,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  tabIcon: {
-    width: 22,
-    height: 22,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabIconLabel: {
-    fontSize: 11,
-    fontWeight: "700",
   },
 });

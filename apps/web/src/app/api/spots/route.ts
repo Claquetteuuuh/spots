@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { Prisma, prisma } from "@trs/db";
+import { Prisma, prisma } from "@/lib/db";
 import { createSpotSchema, spotQuerySchema } from "@trs/shared/validation";
 import {
   ApiError,

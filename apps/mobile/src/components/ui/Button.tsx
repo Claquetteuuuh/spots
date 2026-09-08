@@ -43,11 +43,15 @@ export function Button({
   const isDisabled = disabled || loading;
 
   const backgroundColor =
-    variant === "primary" ? theme.colors.accent : "transparent";
+    variant === "primary"
+      ? theme.colors.accent
+      : variant === "secondary"
+        ? theme.colors.bgSecondary
+        : "transparent";
 
   const borderColor =
     variant === "secondary"
-      ? theme.colors.text
+      ? theme.colors.border
       : variant === "primary"
         ? theme.colors.accent
         : "transparent";

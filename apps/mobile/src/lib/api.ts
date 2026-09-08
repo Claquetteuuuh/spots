@@ -45,17 +45,31 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const { data } = await axios.post<{ accessToken: string }>(
+    const { data: body } = await axios.post<{ data: { accessToken: string } }>(
       `${API_URL}${API_ROUTES.auth.refresh}`,
       { refreshToken }
     );
-    await setAccessToken(data.accessToken);
-    return data.accessToken;
+    const newAccessToken = body.data.accessToken;
+    await setAccessToken(newAccessToken);
+    return newAccessToken;
   } catch {
     await clearTokens();
     return null;
   }
 }
+
+// ─── Unwrap API envelope ─────────────────────────────────────────────
+// The API returns `{ data: T }` for success responses. This interceptor
+// unwraps the envelope so callers get `T` directly from `response.data`.
+
+client.interceptors.response.use((response) => {
+  if (response.data && typeof response.data === "object" && "data" in response.data) {
+    response.data = response.data.data;
+  }
+  return response;
+});
+
+// ─── Silent refresh on 401 ───────────────────────────────────────────
 
 client.interceptors.response.use(
   (response) => response,
@@ -183,12 +197,12 @@ export async function getFeed(cursor?: string, limit = 20): Promise<Paginated<Sp
 
 // ─── Users ───────────────────────────────────────────────────────────
 
-export async function followUser(userId: string): Promise<void> {
-  await client.post(API_ROUTES.users.follow(userId));
+export async function followUser(username: string): Promise<void> {
+  await client.post(API_ROUTES.users.follow(username));
 }
 
-export async function unfollowUser(userId: string): Promise<void> {
-  await client.delete(API_ROUTES.users.unfollow(userId));
+export async function unfollowUser(username: string): Promise<void> {
+  await client.delete(API_ROUTES.users.unfollow(username));
 }
 
 export async function searchUsers(query: string, limit = 10): Promise<User[]> {
@@ -224,7 +238,7 @@ export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<
   const mimeType = ext === "png" ? "image/png" : ext === "heic" ? "image/heic" : "image/jpeg";
 
   // React Native's FormData accepts this shape for file uploads.
-  formData.append("file", {
+  formData.append("photo", {
     uri,
     name: fileName,
     type: mimeType,

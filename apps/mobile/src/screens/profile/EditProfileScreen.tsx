@@ -2,22 +2,13 @@ import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import axios from "axios";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { updateProfile } from "../../lib/api";
+import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import type { RootStackScreenProps } from "../../navigation/types";
-
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    if (data?.message) return data.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
 
 export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProfile">) {
   const { t } = useTranslation();
@@ -84,7 +75,7 @@ export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProf
             autoCapitalize="none"
           />
           <Input
-            label="Bio"
+            label={t("users.bio")}
             value={bio}
             onChangeText={(value) => {
               setBio(value);

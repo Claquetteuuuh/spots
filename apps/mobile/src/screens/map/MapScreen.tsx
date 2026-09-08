@@ -70,58 +70,58 @@ export function MapScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-      <View
-        style={[
-          styles.toggleRow,
-          {
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.md,
-            margin: theme.spacing.lg,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={() => setShowAll(false)}
+      {/* Segmented toggle */}
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+        <View
           style={[
-            styles.toggleButton,
+            styles.toggleRow,
             {
-              backgroundColor: !showAll ? theme.colors.text : "transparent",
-              borderTopLeftRadius: theme.radius.md,
-              borderBottomLeftRadius: theme.radius.md,
+              backgroundColor: theme.colors.bgSecondary,
+              borderRadius: theme.radius.md,
             },
           ]}
         >
-          <Text
-            style={{
-              color: !showAll ? theme.colors.bg : theme.colors.textSecondary,
-              fontSize: theme.typography.size.sm,
-              fontWeight: theme.typography.weight.medium,
-            }}
+          <Pressable
+            onPress={() => setShowAll(false)}
+            style={[
+              styles.toggleButton,
+              {
+                backgroundColor: !showAll ? theme.colors.text : "transparent",
+                borderRadius: theme.radius.sm,
+              },
+            ]}
           >
-            {t("map.mySpots")}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setShowAll(true)}
-          style={[
-            styles.toggleButton,
-            {
-              backgroundColor: showAll ? theme.colors.text : "transparent",
-              borderTopRightRadius: theme.radius.md,
-              borderBottomRightRadius: theme.radius.md,
-            },
-          ]}
-        >
-          <Text
-            style={{
-              color: showAll ? theme.colors.bg : theme.colors.textSecondary,
-              fontSize: theme.typography.size.sm,
-              fontWeight: theme.typography.weight.medium,
-            }}
+            <Text
+              style={{
+                color: !showAll ? theme.colors.bg : theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+                fontWeight: theme.typography.weight.medium,
+              }}
+            >
+              {t("map.mySpots")}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setShowAll(true)}
+            style={[
+              styles.toggleButton,
+              {
+                backgroundColor: showAll ? theme.colors.text : "transparent",
+                borderRadius: theme.radius.sm,
+              },
+            ]}
           >
-            {t("map.allSpots")}
-          </Text>
-        </Pressable>
+            <Text
+              style={{
+                color: showAll ? theme.colors.bg : theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+                fontWeight: theme.typography.weight.medium,
+              }}
+            >
+              {t("map.allSpots")}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.mapWrapper}>
@@ -173,7 +173,7 @@ export function MapScreen() {
             styles.fab,
             {
               backgroundColor: theme.colors.accent,
-              borderRadius: theme.radius.md,
+              borderRadius: theme.radius.full,
             },
           ]}
           accessibilityLabel={t("spots.addSpot")}
@@ -201,13 +201,12 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     flexDirection: "row",
-    borderWidth: StyleSheet.hairlineWidth,
-    alignSelf: "flex-start",
-    overflow: "hidden",
+    padding: 2,
+    alignSelf: "center",
   },
   toggleButton: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   mapWrapper: {
     flex: 1,
@@ -222,17 +221,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 20,
     bottom: 28,
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
   },
   locateButton: {
     position: "absolute",
     right: 20,
-    bottom: 96,
-    width: 44,
-    height: 44,
+    bottom: 92,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,

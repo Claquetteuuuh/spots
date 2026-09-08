@@ -17,7 +17,7 @@ const variantClasses: Record<Variant, string> = {
   primary:
     "bg-accent text-white hover:bg-accent-dark active:bg-accent-dark disabled:opacity-50",
   secondary:
-    "border border-border bg-transparent text-text hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50",
+    "border border-border bg-bg-secondary text-text hover:bg-bg-tertiary active:bg-bg-tertiary disabled:opacity-50",
   ghost:
     "bg-transparent text-accent hover:text-accent-dark hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50",
   danger:
@@ -45,7 +45,7 @@ export function Button({
       disabled={disabled || loading}
       className={`
         inline-flex items-center justify-center gap-2
-        rounded-sm font-medium
+        rounded-md font-semibold
         transition-colors duration-150
         cursor-pointer disabled:cursor-not-allowed
         ${variantClasses[variant]}

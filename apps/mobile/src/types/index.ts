@@ -65,8 +65,8 @@ export interface ReverseGeocodeResult {
 }
 
 export interface UploadPhotoResult {
-  url: string;
-  key: string;
+  photoUrl: string;
+  photoKey: string;
 }
 
 export interface MapBounds {

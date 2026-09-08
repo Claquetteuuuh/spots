@@ -9,11 +9,11 @@
     "test": "turbo test",
     "test:ci": "turbo test:ci",
     "typecheck": "turbo typecheck",
-    "db:generate": "pnpm --filter @trs/db generate",
-    "db:push": "pnpm --filter @trs/db push",
-    "db:migrate": "pnpm --filter @trs/db migrate",
-    "db:studio": "pnpm --filter @trs/db studio",
-    "db:seed": "pnpm --filter @trs/db seed",
+    "db:generate": "pnpm --filter @trs/web db:generate",
+    "db:push": "pnpm --filter @trs/web db:push",
+    "db:migrate": "pnpm --filter @trs/web db:migrate",
+    "db:studio": "pnpm --filter @trs/web db:studio",
+    "db:seed": "pnpm --filter @trs/web db:seed",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
