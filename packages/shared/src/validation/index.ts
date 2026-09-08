@@ -75,6 +75,7 @@ export const spotQuerySchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  email: z.string().email().max(255).optional(),
   username: z
     .string()
     .min(3)

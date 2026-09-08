@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import type { Spot } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
 import { Button } from "@/components/ui/button";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SpotCardSkeleton } from "@/components/ui/skeleton";
 
 export default function FeedPage() {
@@ -40,7 +41,12 @@ export default function FeedPage() {
     });
   }, [loadSpots]);
 
+  const handleRefresh = useCallback(async () => {
+    await loadSpots();
+  }, [loadSpots]);
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="mx-auto max-w-lg px-0 sm:px-4 py-0 sm:py-4">
       {/* Loading skeletons */}
       {isLoading && spots.length === 0 ? (
@@ -158,5 +164,6 @@ export default function FeedPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

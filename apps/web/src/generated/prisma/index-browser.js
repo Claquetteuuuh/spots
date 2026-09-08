@@ -172,6 +172,16 @@ exports.Prisma.SpotScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.SpotPhotoScalarFieldEnum = {
+  id: 'id',
+  spotId: 'spotId',
+  userId: 'userId',
+  photoUrl: 'photoUrl',
+  photoKey: 'photoKey',
+  caption: 'caption',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -208,7 +218,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   Follow: 'Follow',
   PasswordResetToken: 'PasswordResetToken',
-  Spot: 'Spot'
+  Spot: 'Spot',
+  SpotPhoto: 'SpotPhoto'
 };
 
 /**

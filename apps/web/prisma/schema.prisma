@@ -29,6 +29,7 @@ model User {
   locale    String  @default("fr")
 
   spots              Spot[]
+  spotPhotos         SpotPhoto[]
   followers          Follow[]             @relation("following")
   following          Follow[]             @relation("follower")
   passwordResetTokens PasswordResetToken[]
@@ -107,10 +108,31 @@ model Spot {
   compositions CompositionType[]
   tags         String[]
 
+  spotPhotos SpotPhoto[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([latitude, longitude])
   @@index([createdAt(sort: Desc)])
+}
+
+// ─── Community Photos ───────────────────────────────────────────────
+
+model SpotPhoto {
+  id      String @id @default(cuid())
+  spotId  String
+  spot    Spot   @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  photoUrl String
+  photoKey String // R2 object key
+  caption  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([spotId, createdAt(sort: Desc)])
+  @@index([userId])
 }

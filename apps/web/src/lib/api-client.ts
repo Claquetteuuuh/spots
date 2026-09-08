@@ -190,6 +190,22 @@ export interface Spot {
   user?: User;
 }
 
+export interface SpotPhoto {
+  id: string;
+  spotId: string;
+  userId: string;
+  photoUrl: string;
+  photoKey: string;
+  caption: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+}
+
 interface PaginatedResponse<T> {
   items: T[];
   nextCursor: string | null;
@@ -298,6 +314,33 @@ export const apiClient = {
     async delete(id: string): Promise<void> {
       await request<void>(API_ROUTES.spots.detail(id), {
         method: "DELETE",
+      });
+    },
+
+    // Community photos
+    async listPhotos(
+      spotId: string,
+      cursor?: string,
+    ): Promise<PaginatedResponse<SpotPhoto>> {
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      const qs = params.toString();
+      return request<PaginatedResponse<SpotPhoto>>(
+        `${API_ROUTES.spots.photos(spotId)}${qs ? `?${qs}` : ""}`,
+      );
+    },
+
+    async uploadPhoto(
+      spotId: string,
+      file: File,
+      caption?: string,
+    ): Promise<SpotPhoto> {
+      const formData = new FormData();
+      formData.append("photo", file);
+      if (caption) formData.append("caption", caption);
+      return request<SpotPhoto>(API_ROUTES.spots.photos(spotId), {
+        method: "POST",
+        body: formData,
       });
     },
 

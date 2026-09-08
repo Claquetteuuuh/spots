@@ -79,6 +79,7 @@ export const API_ROUTES = {
     list: "/api/spots",
     create: "/api/spots",
     detail: (id: string) => `/api/spots/${id}`,
+    photos: (id: string) => `/api/spots/${id}/photos`,
     feed: "/api/spots/feed",
   },
   users: {

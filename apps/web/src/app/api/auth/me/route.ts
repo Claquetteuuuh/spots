@@ -42,6 +42,10 @@ export const PATCH = withAuth(async (request: NextRequest, authUser) => {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
+      const target = (error.meta?.target as string[]) ?? [];
+      if (target.includes("email")) {
+        throw new ApiError("Email is already in use", 409);
+      }
       throw new ApiError("Username is already taken", 409);
     }
     throw error;

@@ -1,11 +1,12 @@
 "use client";
 
-import { startTransition, use, useCallback, useEffect, useState } from "react";
+import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import type { Spot } from "@/lib/api-client";
+import type { Spot, SpotPhoto } from "@/lib/api-client";
+import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +28,19 @@ export default function SpotDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Community photos state
+  const [photos, setPhotos] = useState<SpotPhoto[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [photosCursor, setPhotosCursor] = useState<string | null>(null);
+  const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [caption, setCaption] = useState("");
+  const [uploadMessage, setUploadMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const loadSpot = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -39,11 +53,30 @@ export default function SpotDetailPage({
     }
   }, [id]);
 
+  const loadPhotos = useCallback(
+    async (cursor?: string) => {
+      setPhotosLoading(true);
+      try {
+        const result = await apiClient.spots.listPhotos(id, cursor);
+        setPhotos((prev) =>
+          cursor ? [...prev, ...result.items] : result.items,
+        );
+        setPhotosCursor(result.nextCursor);
+      } catch {
+        // Silently fail — not critical
+      } finally {
+        setPhotosLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     startTransition(() => {
       loadSpot();
+      loadPhotos();
     });
-  }, [loadSpot]);
+  }, [loadSpot, loadPhotos]);
 
   async function handleDelete() {
     if (!spot) return;
@@ -54,6 +87,43 @@ export default function SpotDetailPage({
       router.push("/map");
     } catch {
       // Show error
+    }
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setUploadMessage({ type: "error", text: t("settings.avatarHint") });
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      setUploadMessage({ type: "error", text: t("settings.avatarHint") });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadMessage(null);
+
+    try {
+      const newPhoto = await apiClient.spots.uploadPhoto(
+        id,
+        file,
+        caption || undefined,
+      );
+      setPhotos((prev) => [newPhoto, ...prev]);
+      setCaption("");
+      setShowAddPhoto(false);
+      setUploadMessage({ type: "success", text: t("spotPhotos.photoAdded") });
+    } catch (err) {
+      setUploadMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : t("common.error"),
+      });
+    } finally {
+      setIsUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
 
@@ -238,6 +308,132 @@ export default function SpotDetailPage({
             ) : null}
           </div>
         </div>
+      </div>
+
+      {/* ── Community Photos Section ─────────────────────────────── */}
+      <div className="mt-6 sm:mt-8">
+        <div className="flex items-center justify-between px-4 sm:px-0 mb-4">
+          <h2 className="text-base font-semibold text-text">
+            {t("spotPhotos.title")}
+          </h2>
+          {user ? (
+            <button
+              type="button"
+              onClick={() => setShowAddPhoto(!showAddPhoto)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-accent hover:text-accent-dark transition-colors cursor-pointer"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              {t("spotPhotos.addPhoto")}
+            </button>
+          ) : null}
+        </div>
+
+        {/* Upload form */}
+        {showAddPhoto ? (
+          <div className="px-4 sm:px-0 mb-6">
+            <div className="border border-border rounded-md bg-bg-secondary p-4 space-y-3">
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                onChange={handlePhotoUpload}
+                disabled={isUploading}
+                className="block w-full text-sm text-text-secondary
+                  file:mr-3 file:py-2 file:px-4
+                  file:rounded file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-accent file:text-white
+                  file:cursor-pointer
+                  hover:file:bg-accent-dark
+                  disabled:opacity-50"
+              />
+              <input
+                type="text"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder={t("spotPhotos.captionPlaceholder")}
+                maxLength={500}
+                className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              {isUploading ? (
+                <p className="text-sm text-text-tertiary flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {t("spotPhotos.uploading")}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Upload message */}
+        {uploadMessage ? (
+          <p className={`px-4 sm:px-0 mb-4 text-sm ${
+            uploadMessage.type === "success" ? "text-success" : "text-error"
+          }`}>
+            {uploadMessage.text}
+          </p>
+        ) : null}
+
+        {/* Photos grid */}
+        {photos.length > 0 ? (
+          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+            {photos.map((photo) => (
+              <div
+                key={photo.id}
+                className="aspect-square overflow-hidden bg-bg-secondary group relative"
+              >
+                <img
+                  src={photo.photoUrl}
+                  alt={photo.caption ?? ""}
+                  className="h-full w-full object-cover"
+                />
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2">
+                  <p className="text-white text-xs font-semibold">
+                    {photo.user.username}
+                  </p>
+                  {photo.caption ? (
+                    <p className="text-white/80 text-xs mt-1 text-center line-clamp-2">
+                      {photo.caption}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !photosLoading ? (
+          <p className="px-4 sm:px-0 py-8 text-center text-sm text-text-tertiary">
+            {t("spotPhotos.noPhotos")}
+          </p>
+        ) : null}
+
+        {/* Loading */}
+        {photosLoading ? (
+          <div className="flex justify-center py-8">
+            <svg className="h-6 w-6 animate-spin text-text-tertiary" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+        ) : null}
+
+        {/* Load more */}
+        {photosCursor ? (
+          <div className="flex justify-center py-6">
+            <Button
+              variant="secondary"
+              onClick={() => loadPhotos(photosCursor)}
+              loading={photosLoading}
+            >
+              {t("common.next")}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
