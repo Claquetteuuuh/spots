@@ -17,7 +17,7 @@
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "@playwright/mcp": "^0.0.79",
+    "@playwright/mcp": "^0.0.80",
     "turbo": "^2.5.0"
   },
   "pnpm": {
