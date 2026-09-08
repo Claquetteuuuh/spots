@@ -22,7 +22,7 @@
     "@trs/shared": "workspace:*",
     "axios": "^1.20.0",
     "expo": "~57.0.16",
-    "expo-auth-session": "^57.0.9",
+    "expo-auth-session": "^57.0.11",
     "expo-camera": "~57.0.4",
     "expo-crypto": "^57.0.2",
     "expo-image-picker": "~57.0.13",
