@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Bearer SAST scan
-        uses: bearer/bearer-action@3660658c6ebbeb82e1dc9e5e3284da4e5eab0512 # v2.5.0
+        uses: bearer/bearer-action@828eeb928ce2f4a7ca5ed57fb8b59508cb8c79bc # v2
         id: bearer
         with:
           severity: critical,high

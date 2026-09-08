@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -43,7 +44,9 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   // Hydrate from storage after mount
   useEffect(() => {
-    setLocaleState(getStoredLocale());
+    startTransition(() => {
+      setLocaleState(getStoredLocale());
+    });
   }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {

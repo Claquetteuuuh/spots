@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
 
       - name: Install zizmor
-        run: pipx install zizmor
+        run: pipx install zizmor==1.6.0
 
       - name: Audit GitHub Actions workflows
         run: zizmor --format sarif . > zizmor-results.sarif

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 
@@ -54,7 +54,7 @@ export function GoogleSignInButton({ onSuccess }: GoogleSignInButtonProps) {
 
     // Already loaded
     if (window.google?.accounts) {
-      setGsiLoaded(true);
+      startTransition(() => setGsiLoaded(true));
       return;
     }
 
@@ -62,7 +62,7 @@ export function GoogleSignInButton({ onSuccess }: GoogleSignInButtonProps) {
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
-    script.onload = () => setGsiLoaded(true);
+    script.onload = () => startTransition(() => setGsiLoaded(true));
     document.head.appendChild(script);
   }, []);
 

@@ -23,7 +23,7 @@ describe("extractGoogleIdToken", () => {
       params: {},
       error: null,
       errorCode: null,
-    } as AuthSessionResult;
+    } as unknown as AuthSessionResult;
     expect(extractGoogleIdToken(response)).toBe("google-id-token-123");
   });
 
@@ -32,12 +32,12 @@ describe("extractGoogleIdToken", () => {
   });
 
   it("returns null on cancel", () => {
-    const response = { type: "cancel" } as AuthSessionResult;
+    const response = { type: "cancel" } as unknown as AuthSessionResult;
     expect(extractGoogleIdToken(response)).toBeNull();
   });
 
   it("returns null on dismiss", () => {
-    const response = { type: "dismiss" } as AuthSessionResult;
+    const response = { type: "dismiss" } as unknown as AuthSessionResult;
     expect(extractGoogleIdToken(response)).toBeNull();
   });
 
@@ -53,7 +53,7 @@ describe("extractGoogleIdToken", () => {
       params: {},
       error: null,
       errorCode: null,
-    } as AuthSessionResult;
+    } as unknown as AuthSessionResult;
     expect(extractGoogleIdToken(response)).toBeNull();
   });
 });

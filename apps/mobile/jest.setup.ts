@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-
 // ─── expo-secure-store ──────────────────────────────────────────────
 const secureStoreData: Record<string, string> = {};
 jest.mock("expo-secure-store", () => ({

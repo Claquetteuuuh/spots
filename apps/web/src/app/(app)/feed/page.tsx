@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot } from "@/lib/api-client";
@@ -35,7 +35,9 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    loadSpots();
+    startTransition(() => {
+      loadSpots();
+    });
   }, [loadSpots]);
 
   return (

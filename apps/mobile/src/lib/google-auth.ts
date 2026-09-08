@@ -44,12 +44,12 @@ export const isGoogleAuthAvailable = hasRequiredClientIds();
  * but `request` will be null — and `isGoogleAuthAvailable` prevents the
  * user from ever triggering the flow.
  */
-function buildAuthConfig(): Google.GoogleAuthRequestConfig {
+function buildAuthConfig() {
   return {
     webClientId: WEB_CLIENT_ID || "NOT_CONFIGURED",
     iosClientId: IOS_CLIENT_ID || "NOT_CONFIGURED",
     androidClientId: ANDROID_CLIENT_ID || "NOT_CONFIGURED",
-  };
+  } satisfies Partial<Google.GoogleAuthRequestConfig>;
 }
 
 /**

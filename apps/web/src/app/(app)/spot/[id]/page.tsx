@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { startTransition, use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -40,7 +40,9 @@ export default function SpotDetailPage({
   }, [id]);
 
   useEffect(() => {
-    loadSpot();
+    startTransition(() => {
+      loadSpot();
+    });
   }, [loadSpot]);
 
   async function handleDelete() {

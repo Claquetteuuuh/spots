@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient, getToken } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_AVATAR_SIZE_BYTES } from "@trs/shared/constants";
@@ -33,15 +33,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      setName(user.name ?? "");
-      setUsername(user.username ?? "");
-      setBio(user.bio ?? "");
-      setAvatarPreview(user.avatarUrl);
+      startTransition(() => {
+        setName(user.name ?? "");
+        setUsername(user.username ?? "");
+        setBio(user.bio ?? "");
+        setAvatarPreview(user.avatarUrl);
+      });
     }
   }, [user]);
 
   useEffect(() => {
-    setThemeMode(getTheme());
+    startTransition(() => {
+      setThemeMode(getTheme());
+    });
   }, []);
 
   function handleThemeChange(mode: ThemeMode) {

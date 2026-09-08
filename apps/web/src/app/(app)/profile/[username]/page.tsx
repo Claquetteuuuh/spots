@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { startTransition, use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
@@ -42,7 +42,9 @@ export default function ProfilePage({
   }, [username]);
 
   useEffect(() => {
-    loadProfile();
+    startTransition(() => {
+      loadProfile();
+    });
   }, [loadProfile]);
 
   async function handleFollowToggle() {
