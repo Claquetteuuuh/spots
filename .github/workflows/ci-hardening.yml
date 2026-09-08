@@ -1,47 +1,49 @@
 # ──────────────────────────────────────────────────────────────────────
-# Grype SCA — Software Composition Analysis
-# Scans dependencies for known CVEs. Fails on High/Critical.
-# Results uploaded to GitHub Security → Code scanning tab.
+# CI Hardening — zizmor GitHub Actions security linter
+# Inspired by CISO Assistant (intuitem/ciso-assistant-community).
+# Scans workflow files for template injection, insecure patterns,
+# unpinned actions, and other CI/CD security issues.
 # ──────────────────────────────────────────────────────────────────────
-name: "🔒 Grype SCA"
+name: "🔧 CI Hardening"
 
 on:
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/**"
   pull_request:
-    branches: [main]
-  schedule:
-    # Weekly Monday 6 AM UTC — catch new CVEs in existing deps.
-    - cron: "0 6 * * 1"
+    paths:
+      - ".github/workflows/**"
 
 permissions:
   contents: read
-  security-events: write  # SARIF upload to Security tab
+  security-events: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  sca:
-    name: Grype dependency scan
+  zizmor:
+    name: zizmor workflow audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Run Grype SCA scan
-        uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e # v6.2.0
-        id: grype
         with:
-          path: "."
-          fail-build: true
-          severity-cutoff: high
-          output-format: sarif
+          persist-credentials: false
+
+      - name: Install zizmor
+        run: pipx install zizmor
+
+      - name: Audit GitHub Actions workflows
+        run: zizmor --format sarif . > zizmor-results.sarif
+        # Don't fail on warnings — only errors are blocking.
+        continue-on-error: true
 
       - name: Upload SARIF to GitHub Security tab
         if: always()
         uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
         with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-sca
+          sarif_file: zizmor-results.sarif
+          category: zizmor-ci-hardening

@@ -1,5 +1,5 @@
 repos:
-  # Basic checks
+  # ── Basic hygiene ───────────────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -15,30 +15,47 @@ repos:
       - id: check-case-conflict
       - id: mixed-line-ending
         args: ['--fix=lf']
+      - id: check-symlinks
+      - id: check-executables-have-shebangs
+      - id: no-commit-to-branch
+        args: ['--branch', 'main']
 
-  # Secrets detection
+  # ── Secrets detection ──────────────────────────────────────────────
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
     hooks:
       - id: gitleaks
 
-  # YAML linting
+  # ── YAML linting ───────────────────────────────────────────────────
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
     hooks:
       - id: yamllint
         args: ['-d', 'relaxed']
 
-  # Markdown linting
+  # ── Markdown linting ───────────────────────────────────────────────
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.48.0
     hooks:
       - id: markdownlint
         args: ['--fix']
 
-  # Test suite gate
+  # ── GitHub Actions linting (inspired by CISO Assistant) ────────────
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+
+  # ── Local gates ────────────────────────────────────────────────────
   - repo: local
     hooks:
+      - id: typecheck
+        name: typecheck
+        language: system
+        entry: pnpm typecheck
+        always_run: true
+        pass_filenames: false
+
       - id: test-suite
         name: test-suite
         language: system
@@ -46,9 +63,10 @@ repos:
         always_run: true
         pass_filenames: false
 
-      - id: typecheck
-        name: typecheck
+      - id: build
+        name: build
         language: system
-        entry: pnpm typecheck
+        entry: pnpm build
         always_run: true
         pass_filenames: false
+        stages: [pre-push]

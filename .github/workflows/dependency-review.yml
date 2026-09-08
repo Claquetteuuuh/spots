@@ -1,0 +1,30 @@
+# ──────────────────────────────────────────────────────────────────────
+# Dependency Review — PR gate for new vulnerabilities
+# Blocks PRs that introduce dependencies with known High/Critical CVEs.
+# Only runs on pull requests (compares base → head).
+# ──────────────────────────────────────────────────────────────────────
+name: "📦 Dependency Review"
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write  # Required for inline comments
+
+jobs:
+  review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
+        with:
+          fail-on-severity: high
+          # Deny copyleft licenses that would force open-sourcing.
+          deny-licenses: AGPL-3.0-only, GPL-3.0-only, GPL-2.0-only
+          comment-summary-in-pr: always

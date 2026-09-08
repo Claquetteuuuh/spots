@@ -1,23 +1,46 @@
-name: Bearer (SAST + PII)
+# ──────────────────────────────────────────────────────────────────────
+# Bearer SAST — Static Application Security Testing + PII detection
+# Scans source code for security issues. Fails on Critical/High.
+# Results uploaded to GitHub Security → Code scanning tab.
+# ──────────────────────────────────────────────────────────────────────
+name: "🛡️ Bearer SAST"
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Weekly Monday 6:30 AM UTC — catch new rules.
+    - cron: "30 6 * * 1"
 
 permissions:
   contents: read
+  security-events: write  # SARIF upload to Security tab
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  bearer:
+  sast:
     name: Bearer scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Bearer scan
-        uses: bearer/bearer-action@v2
+      - name: Run Bearer SAST scan
+        uses: bearer/bearer-action@3660658c6ebbeb82e1dc9e5e3284da4e5eab0512 # v2.5.0
+        id: bearer
         with:
           severity: critical,high
+          format: sarif
+          output: bearer-results.sarif
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
+        with:
+          sarif_file: bearer-results.sarif
+          category: bearer-sast

@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .expo node_modules",
-    "test": "jest --forceExit"
+    "test": "jest --forceExit",
+    "test:ci": "jest --forceExit --ci --coverage"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

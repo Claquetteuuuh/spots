@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # ── pnpm (root monorepo) ────────────────────────────────────────────
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -9,11 +10,18 @@ updates:
     labels:
       - dependencies
     groups:
+      # Group minor+patch to avoid PR spam.
       minor-and-patch:
         update-types:
           - minor
           - patch
+    # Ignore Expo-managed packages — they must stay in sync with the SDK.
+    ignore:
+      - dependency-name: "expo-*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
 
+  # ── Web app ─────────────────────────────────────────────────────────
   - package-ecosystem: npm
     directory: /apps/web
     schedule:
@@ -22,7 +30,13 @@ updates:
     labels:
       - dependencies
       - web
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
 
+  # ── Mobile app ──────────────────────────────────────────────────────
   - package-ecosystem: npm
     directory: /apps/mobile
     schedule:
@@ -31,10 +45,26 @@ updates:
     labels:
       - dependencies
       - mobile
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "expo-*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
 
+  # ── GitHub Actions ──────────────────────────────────────────────────
+  # Auto-update action SHAs for security patches.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     labels:
       - dependencies
+      - ci
+    groups:
+      actions:
+        patterns:
+          - "*"
