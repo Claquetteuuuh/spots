@@ -25,7 +25,7 @@
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.2",
     "leaflet": "^1.9.4",
-    "next": "16.3.3",
+    "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "resend": "^6.24.0",
