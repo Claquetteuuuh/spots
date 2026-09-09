@@ -42,6 +42,8 @@ export function OtherProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("spots");
+  const [followModalVisible, setFollowModalVisible] = useState(false);
+  const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
 
   const loadProfile = useCallback(async () => {
     try {
@@ -138,9 +140,6 @@ export function OtherProfileScreen() {
     followLabel = t("notifications.requested");
     followVariant = "secondary";
   }
-
-  const [followModalVisible, setFollowModalVisible] = useState(false);
-  const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
 
   const openFollowList = (tab: "followers" | "following") => {
     setFollowModalTab(tab);
