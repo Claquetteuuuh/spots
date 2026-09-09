@@ -3,13 +3,40 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { ApiError } from "./api-utils";
+
+/** Every variable object storage needs before it can be used at all. */
+const REQUIRED_ENV = [
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET_NAME",
+  "R2_PUBLIC_URL",
+] as const;
+
+/**
+ * Fail with something a person can act on.
+ *
+ * Previously the first missing variable threw a bare Error, which the API
+ * error handler turned into "Internal server error" — so an unconfigured
+ * deployment looked exactly like a bug, and photo upload (and therefore
+ * creating a spot at all) failed with no clue why.
+ */
+function assertConfigured(): void {
+  const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new ApiError(
+      `Photo storage is not configured. Missing environment ${
+        missing.length === 1 ? "variable" : "variables"
+      }: ${missing.join(", ")}. See apps/web/.env.example.`,
+      503,
+    );
+  }
+}
 
 function getEnvOrThrow(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value;
+  assertConfigured();
+  return process.env[key] as string;
 }
 
 let _client: S3Client | null = null;

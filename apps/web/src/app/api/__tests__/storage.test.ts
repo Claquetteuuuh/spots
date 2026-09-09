@@ -57,7 +57,7 @@ describe("storage", () => {
 
     await expect(
       uploadFile("key", Buffer.from("data"), "image/jpeg")
-    ).rejects.toThrow("Missing required environment variable: R2_ACCOUNT_ID");
+    ).rejects.toThrow(/not configured.*R2_ACCOUNT_ID/);
   });
 
   it("throws when R2_PUBLIC_URL is missing", async () => {
@@ -65,7 +65,43 @@ describe("storage", () => {
     const { getFileUrl } = await import("@/lib/storage");
 
     expect(() => getFileUrl("key")).toThrow(
-      "Missing required environment variable: R2_PUBLIC_URL"
+      /not configured.*R2_PUBLIC_URL/
     );
+  });
+
+  describe("when object storage is not configured", () => {
+    it("names every missing variable and answers 503, not 500", async () => {
+      for (const key of [
+        "R2_ACCOUNT_ID",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET_NAME",
+        "R2_PUBLIC_URL",
+      ]) {
+        delete process.env[key];
+      }
+
+      const { uploadFile } = await import("@/lib/storage");
+      const { ApiError } = await import("@/lib/api-utils");
+
+      await expect(
+        uploadFile("spots/user1/photo.jpg", Buffer.from("x"), "image/jpeg"),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as InstanceType<typeof ApiError>;
+        expect(apiError.status).toBe(503);
+        // Listing all of them at once beats fixing one variable per attempt.
+        expect(apiError.message).toContain("R2_ACCOUNT_ID");
+        expect(apiError.message).toContain("R2_PUBLIC_URL");
+        return true;
+      });
+    });
+
+    it("reports only the variable that is actually missing", async () => {
+      delete process.env.R2_BUCKET_NAME;
+
+      const { getFileUrl } = await import("@/lib/storage");
+      expect(() => getFileUrl("a/b.jpg")).toThrowError(/R2_BUCKET_NAME/);
+    });
   });
 });

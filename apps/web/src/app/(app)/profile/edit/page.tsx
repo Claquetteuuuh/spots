@@ -8,6 +8,7 @@ import { ACCEPTED_IMAGE_TYPES, MAX_AVATAR_SIZE_BYTES } from "@trs/shared/constan
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
 import { PAGE_COLUMN, PageHeader } from "@/components/page";
+import { CharacterCount } from "@/components/ui/limit-hint";
 
 export default function EditProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -187,7 +188,7 @@ export default function EditProfilePage() {
             maxLength={500}
             className="w-full rounded border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg transition-colors"
           />
-          <p className="text-xs text-text-tertiary text-right">{bio.length}/500</p>
+          <CharacterCount value={bio} max={500} />
         </div>
 
         {message ? (

@@ -21,6 +21,9 @@ export const en = {
     free: "Free",
     paid: "Paid",
     profileUpdated: "Profile updated",
+    charactersLeft: "{{count}} characters left",
+    selectionsLeft: "{{count}} more can be selected",
+    limitReached: "Limit reached",
     required: "required",
   },
   auth: {

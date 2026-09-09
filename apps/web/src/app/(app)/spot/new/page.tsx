@@ -15,6 +15,7 @@ import {
   MAX_PHOTO_SIZE_MB,
 } from "@trs/shared/constants";
 import { PAGE_WIDE } from "@/components/page";
+import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
 
 const LocationPicker = dynamic(() => import("@/components/location-picker"), {
   ssr: false,
@@ -43,6 +44,9 @@ const SUGGESTED_COLORS = [
 ];
 
 const MAX_PHOTOS = 10;
+const MAX_COMPOSITIONS = 5;
+const MAX_COLORS = 10;
+const MAX_TAGS = 10;
 
 interface PhotoItem {
   file: File;
@@ -357,7 +361,7 @@ function AddSpotForm() {
     setSelectedCompositions((prev) =>
       prev.includes(comp)
         ? prev.filter((c) => c !== comp)
-        : prev.length < 5
+        : prev.length < MAX_COMPOSITIONS
           ? [...prev, comp]
           : prev,
     );
@@ -369,7 +373,7 @@ function AddSpotForm() {
     setSelectedColors((prev) =>
       prev.includes(color)
         ? prev.filter((c) => c !== color)
-        : prev.length < 10
+        : prev.length < MAX_COLORS
           ? [...prev, color]
           : prev,
     );
@@ -411,7 +415,7 @@ function AddSpotForm() {
 
   function addColorFromInput() {
     const parsed = colorInputPreview;
-    if (!parsed || selectedColors.includes(parsed) || selectedColors.length >= 10) return;
+    if (!parsed || selectedColors.includes(parsed) || selectedColors.length >= MAX_COLORS) return;
     setSelectedColors((prev) => [...prev, parsed]);
     setColorInput("");
     setColorInputPreview(null);
@@ -426,7 +430,7 @@ function AddSpotForm() {
 
   function addColorIfNew(hex: string) {
     const upper = hex.toUpperCase();
-    if (!selectedColors.includes(upper) && selectedColors.length < 10) {
+    if (!selectedColors.includes(upper) && selectedColors.length < MAX_COLORS) {
       setSelectedColors((prev) => [...prev, upper]);
     }
   }
@@ -497,7 +501,7 @@ function AddSpotForm() {
 
   function addTag() {
     const tag = tagInput.trim();
-    if (!tag || tags.includes(tag) || tags.length >= 10) return;
+    if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) return;
     setTags((prev) => [...prev, tag]);
     setTagInput("");
   }
@@ -983,9 +987,7 @@ function AddSpotForm() {
                 maxLength={2000}
                 className="w-full rounded-2xl border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
               />
-              <p className="text-xs text-text-tertiary">
-                {description.length}/2000
-              </p>
+              <CharacterCount value={description} max={2000} />
             </div>
 
             {/* Compositions */}
@@ -993,9 +995,11 @@ function AddSpotForm() {
               <label className="text-sm font-medium text-text">
                 {t("spots.composition")}
               </label>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                Select up to 5
-              </p>
+              <SelectionCount
+                count={selectedCompositions.length}
+                max={MAX_COMPOSITIONS}
+                className="mt-0.5"
+              />
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {COMPOSITION_TYPES.map((comp) => {
                   const selected = selectedCompositions.includes(comp);
@@ -1038,9 +1042,11 @@ function AddSpotForm() {
               <label className="text-sm font-medium text-text">
                 {t("spots.colors")}
               </label>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                Select up to 10
-              </p>
+              <SelectionCount
+                count={selectedColors.length}
+                max={MAX_COLORS}
+                className="mt-0.5"
+              />
 
               {/* Preset swatches */}
               <div className="mt-2 flex flex-wrap gap-2">
@@ -1100,7 +1106,7 @@ function AddSpotForm() {
                 <button
                   type="button"
                   onClick={() => colorPickerRef.current?.click()}
-                  disabled={selectedColors.length >= 10}
+                  disabled={selectedColors.length >= MAX_COLORS}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1114,7 +1120,7 @@ function AddSpotForm() {
                   <button
                     type="button"
                     onClick={handleEyeDropper}
-                    disabled={selectedColors.length >= 10}
+                    disabled={selectedColors.length >= MAX_COLORS}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1129,7 +1135,7 @@ function AddSpotForm() {
                   <button
                     type="button"
                     onClick={openPhotoEyedropper}
-                    disabled={selectedColors.length >= 10}
+                    disabled={selectedColors.length >= MAX_COLORS}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1212,7 +1218,7 @@ function AddSpotForm() {
                 <button
                   type="button"
                   onClick={addColorFromInput}
-                  disabled={!colorInputPreview || selectedColors.length >= 10}
+                  disabled={!colorInputPreview || selectedColors.length >= MAX_COLORS}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {t("spots.addColor")}
@@ -1244,7 +1250,7 @@ function AddSpotForm() {
                     </button>
                   </span>
                 ))}
-                {tags.length < 10 ? (
+                {tags.length < MAX_TAGS ? (
                   <input
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}

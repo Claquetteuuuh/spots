@@ -21,6 +21,9 @@ export const fr = {
     free: "Gratuit",
     paid: "Payant",
     profileUpdated: "Profil mis à jour",
+    charactersLeft: "{{count}} caractères restants",
+    selectionsLeft: "Encore {{count}} au maximum",
+    limitReached: "Limite atteinte",
     required: "obligatoire",
   },
   auth: {
