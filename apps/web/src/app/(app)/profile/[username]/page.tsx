@@ -10,6 +10,7 @@ import { PullToRefresh } from "@/components/pull-to-refresh";
 import { ProfileSkeleton, SpotGridSkeleton } from "@/components/ui/skeleton";
 import { FollowListModal } from "@/components/follow-list-modal";
 import { useT } from "@/lib/use-t";
+import { PAGE_WIDE } from "@/components/page";
 
 type FollowStatus = "ACCEPTED" | "PENDING" | null;
 type ProfileTab = "spots" | "map";
@@ -122,7 +123,7 @@ export default function ProfilePage({
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className={`${PAGE_WIDE} py-8`}>
         <ProfileSkeleton />
         <div className="mt-10">
           <SpotGridSkeleton />
@@ -161,7 +162,7 @@ export default function ProfilePage({
 
   return (
     <PullToRefresh onRefresh={loadProfile}>
-    <div className="mx-auto max-w-4xl px-4 py-6">
+    <div className={`${PAGE_WIDE} py-6`}>
       {/* Profile header — Instagram style */}
       <div className="flex items-start gap-8 sm:gap-12">
         {/* Avatar */}

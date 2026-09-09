@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { User } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
+import { PAGE_COLUMN } from "@/components/page";
 
 export default function SearchPage() {
   const t = useT();
@@ -34,7 +35,7 @@ export default function SearchPage() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className={`${PAGE_COLUMN} py-6`}>
       {/* Pill-shaped search bar */}
       <form onSubmit={handleSearch}>
         <div className="relative">

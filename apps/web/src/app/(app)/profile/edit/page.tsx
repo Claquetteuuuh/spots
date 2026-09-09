@@ -7,6 +7,7 @@ import { apiClient, getToken } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_AVATAR_SIZE_BYTES } from "@trs/shared/constants";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
+import { PAGE_COLUMN, PageHeader } from "@/components/page";
 
 export default function EditProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -120,20 +121,8 @@ export default function EditProfilePage() {
     : "?";
 
   return (
-    <div className="mx-auto max-w-lg">
-      {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-bg px-4 h-12">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="p-1 -ml-1 cursor-pointer text-text"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-        </button>
-        <h1 className="text-base font-semibold text-text">{t("users.editProfile")}</h1>
-      </div>
+    <div className={PAGE_COLUMN}>
+      <PageHeader title={t("users.editProfile")} />
 
       <form onSubmit={handleSubmit} className="px-4 py-5 space-y-4">
         {/* Avatar at top */}

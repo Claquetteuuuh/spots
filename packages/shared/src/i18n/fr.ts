@@ -81,6 +81,7 @@ export const fr = {
       saveFailed: "Impossible d'enregistrer le spot",
       deleteFailed: "Impossible de supprimer le spot",
     },
+    discardConfirm: "Quitter sans enregistrer ce spot ?",
     notFound: "Spot introuvable",
     untitled: "Spot sans titre",
     metaDescription: "Un spot photo sur spots",

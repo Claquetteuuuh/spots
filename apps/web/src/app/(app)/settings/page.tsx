@@ -7,6 +7,7 @@ import { apiClient, getToken } from "@/lib/api-client";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/locale-context";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@/lib/locale";
+import { PAGE_COLUMN, PageHeader } from "@/components/page";
 import { useT } from "@/lib/use-t";
 import { getTheme, setTheme, type ThemeMode } from "@/lib/theme";
 
@@ -16,14 +17,6 @@ function ChevronRight({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-    </svg>
-  );
-}
-
-function BackArrow() {
-  return (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
     </svg>
   );
 }
@@ -47,7 +40,7 @@ function SettingsRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer
+      className={`-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer
         ${danger ? "text-error" : "text-text"}
         hover:bg-bg-secondary active:bg-bg-tertiary`}
     >
@@ -71,31 +64,10 @@ function SettingsRow({
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="px-4 pt-5 pb-1.5">
+    <div className="pt-6 pb-1.5">
       <p className="text-sm font-semibold text-text-secondary">
         {title}
       </p>
-    </div>
-  );
-}
-
-function PanelHeader({
-  title,
-  onBack,
-}: {
-  title: string;
-  onBack: () => void;
-}) {
-  return (
-    <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-bg px-4 h-12">
-      <button
-        type="button"
-        onClick={onBack}
-        className="p-1 -ml-1 cursor-pointer text-text"
-      >
-        <BackArrow />
-      </button>
-      <h1 className="text-base font-semibold text-text">{title}</h1>
     </div>
   );
 }
@@ -266,8 +238,8 @@ export default function SettingsPage() {
     const isOAuthOnly = user?.provider !== "EMAIL";
 
     return (
-      <div className="mx-auto max-w-lg">
-        <PanelHeader title={t("settings.accountInfo")} onBack={goBackToMain} />
+      <div className={PAGE_COLUMN}>
+        <PageHeader title={t("settings.accountInfo")} onBack={goBackToMain} />
 
         {/* Email + Username form */}
         <form onSubmit={handleAccountSubmit} className="px-4 py-5 space-y-4">
@@ -382,15 +354,15 @@ export default function SettingsPage() {
     ];
 
     return (
-      <div className="mx-auto max-w-lg">
-        <PanelHeader title={t("settings.theme")} onBack={goBackToMain} />
+      <div className={PAGE_COLUMN}>
+        <PageHeader title={t("settings.theme")} onBack={goBackToMain} />
         <div className="py-2">
           {options.map(({ key, label, icon }) => (
             <button
               key={key}
               type="button"
               onClick={() => handleThemeChange(key)}
-              className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
+              className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
             >
               <span className="text-text-secondary">{icon}</span>
               <span className="flex-1 text-sm text-text">{label}</span>
@@ -415,8 +387,8 @@ export default function SettingsPage() {
   /* ─────────────────────────────────────────────────────────────── */
   if (panel === "language") {
     return (
-      <div className="mx-auto max-w-lg">
-        <PanelHeader title={t("settings.language")} onBack={goBackToMain} />
+      <div className={PAGE_COLUMN}>
+        <PageHeader title={t("settings.language")} onBack={goBackToMain} />
         <div className="py-2">
           {SUPPORTED_LOCALES.map((key) => (
             <button
@@ -424,7 +396,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => setLocale(key)}
               aria-pressed={locale === key}
-              className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
+              className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
             >
               <span className="w-8 shrink-0 rounded-full bg-bg-secondary py-1 text-center text-[11px] font-semibold uppercase text-text-secondary">
                 {key}
@@ -460,18 +432,8 @@ export default function SettingsPage() {
   const langLabel = LOCALE_LABELS[locale];
 
   return (
-    <div className="mx-auto max-w-lg">
-      {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-bg px-4 h-12">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="p-1 -ml-1 cursor-pointer text-text"
-        >
-          <BackArrow />
-        </button>
-        <h1 className="text-base font-semibold text-text">{t("settings.title")}</h1>
-      </div>
+    <div className={PAGE_COLUMN}>
+      <PageHeader title={t("settings.title")} />
 
       {/* Account section */}
       <SectionHeader title={t("settings.account")} />
@@ -494,7 +456,7 @@ export default function SettingsPage() {
         type="button"
         onClick={handleTogglePrivacy}
         disabled={isSavingPrivacy}
-        className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50"
+        className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50"
       >
         <span className="shrink-0 text-text-secondary">
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

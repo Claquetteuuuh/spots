@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { ForwardGeocodeResult } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,20 @@ import {
   MAX_PHOTO_SIZE_BYTES,
   MAX_PHOTO_SIZE_MB,
 } from "@trs/shared/constants";
+import { PAGE_WIDE } from "@/components/page";
 
 const LocationPicker = dynamic(() => import("@/components/location-picker"), {
   ssr: false,
 });
 
-type Step = "photo" | "location" | "details";
+const STEPS = ["photo", "location", "details"] as const;
+type Step = (typeof STEPS)[number];
+
+function parseStep(value: string | null): Step {
+  return (STEPS as readonly string[]).includes(value ?? "")
+    ? (value as Step)
+    : "photo";
+}
 
 const SUGGESTED_COLORS = [
   "#C44536",
@@ -41,13 +49,28 @@ interface PhotoItem {
   preview: string;
 }
 
-export default function AddSpotPage() {
+function AddSpotForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Step state
-  const [step, setStep] = useState<Step>("photo");
+  // The step lives in the URL, so the browser's back button (and the phone's
+  // back gesture) walks back through the form instead of leaving it and
+  // throwing away everything already filled in. The page component stays
+  // mounted across these navigations, so the answers survive.
+  const step = parseStep(searchParams.get("step"));
+
+  // Every step reached so far stays reachable, so you can jump straight back
+  // to where you were rather than clicking Next repeatedly.
+  const [furthestStep, setFurthestStep] = useState(0);
+
+  const goToStep = useCallback(
+    (next: Step) => {
+      router.push(`/spot/new?step=${next}`, { scroll: false });
+    },
+    [router],
+  );
 
   // Photos (multi)
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -596,6 +619,20 @@ export default function AddSpotPage() {
 
   const currentIndex = steps.findIndex((s) => s.key === step);
 
+  const hasWork =
+    photos.length > 0 || latitude !== null || title.trim().length > 0;
+
+  useEffect(() => {
+    if (!hasWork) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasWork]);
+
+  useEffect(() => {
+    setFurthestStep((furthest) => Math.max(furthest, currentIndex));
+  }, [currentIndex]);
+
   function canAdvance(): boolean {
     if (step === "photo") return photos.length > 0;
     if (step === "location") return latitude !== null && longitude !== null;
@@ -603,7 +640,7 @@ export default function AddSpotPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className={`${PAGE_WIDE} py-8`}>
       {/* Header */}
       <h1 className="text-2xl font-semibold tracking-tight text-text">
         {t("spots.addSpot")}
@@ -618,16 +655,15 @@ export default function AddSpotPage() {
             ) : null}
             <button
               type="button"
-              onClick={() => {
-                // Only allow going back
-                if (i < currentIndex) setStep(s.key);
-              }}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-sm rounded-full transition-colors cursor-pointer ${
+              onClick={() => goToStep(s.key)}
+              disabled={i > furthestStep}
+              aria-current={step === s.key ? "step" : undefined}
+              className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm transition-colors ${
                 step === s.key
                   ? "bg-accent text-on-accent"
-                  : i < currentIndex
-                    ? "text-accent hover:bg-bg-secondary"
-                    : "text-text-tertiary"
+                  : i <= furthestStep
+                    ? "cursor-pointer text-accent hover:bg-bg-secondary"
+                    : "cursor-not-allowed text-text-tertiary"
               }`}
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-full text-xs border border-current">
@@ -1283,12 +1319,18 @@ export default function AddSpotPage() {
           {currentIndex > 0 ? (
             <Button
               variant="ghost"
-              onClick={() => setStep(steps[currentIndex - 1].key)}
+              onClick={() => goToStep(steps[currentIndex - 1].key)}
             >
               {t("common.back")}
             </Button>
           ) : (
-            <Button variant="ghost" onClick={() => router.push("/map")}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (hasWork && !window.confirm(t("spots.discardConfirm"))) return;
+                router.push("/map");
+              }}
+            >
               {t("common.cancel")}
             </Button>
           )}
@@ -1297,7 +1339,7 @@ export default function AddSpotPage() {
         <div>
           {currentIndex < steps.length - 1 ? (
             <Button
-              onClick={() => setStep(steps[currentIndex + 1].key)}
+              onClick={() => goToStep(steps[currentIndex + 1].key)}
               disabled={!canAdvance()}
             >
               {t("common.next")}
@@ -1314,5 +1356,17 @@ export default function AddSpotPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * `useSearchParams` needs a Suspense boundary; the step lives in the query
+ * string so the browser's back button walks the form instead of leaving it.
+ */
+export default function AddSpotPage() {
+  return (
+    <Suspense>
+      <AddSpotForm />
+    </Suspense>
   );
 }

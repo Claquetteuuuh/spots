@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/use-t";
+import { PAGE_WIDE } from "@/components/page";
 
 const MiniMap = dynamic(() => import("@/components/mini-map"), { ssr: false });
 
@@ -250,7 +251,7 @@ export default function SpotDetailPage({
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8">
+      <div className={`${PAGE_WIDE} py-8`}>
         <Skeleton className="aspect-[16/10] w-full" />
         <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
@@ -287,7 +288,7 @@ export default function SpotDetailPage({
       : [{ id: "cover", photoUrl: spot.photoUrl, photoKey: "", order: 0 }];
 
   return (
-    <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
+    <div className={`${PAGE_WIDE} px-0 py-0 sm:px-4 sm:py-6`}>
       {/* Instagram-style post layout */}
       <div className="sm:border sm:border-border sm:rounded-2xl overflow-hidden bg-bg">
         {/* User header */}

@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import type { FollowRequest } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
 import { PullToRefresh } from "@/components/pull-to-refresh";
+import { PAGE_COLUMN, PageHeader } from "@/components/page";
 
 export default function NotificationsPage() {
   const t = useT();
@@ -50,11 +51,8 @@ export default function NotificationsPage() {
 
   return (
     <PullToRefresh onRefresh={loadRequests}>
-      <div className="mx-auto max-w-lg">
-        {/* Header */}
-        <div className="sticky top-0 z-10 border-b border-border bg-bg px-4 h-12 flex items-center">
-          <h1 className="text-base font-semibold text-text">{t("notifications.title")}</h1>
-        </div>
+      <div className={PAGE_COLUMN}>
+        <PageHeader title={t("notifications.title")} />
 
         {/* Follow requests section */}
         {requests.length > 0 ? (

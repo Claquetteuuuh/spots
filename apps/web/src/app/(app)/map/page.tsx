@@ -7,6 +7,7 @@ import type { Spot } from "@/lib/api-client";
 import type { MapBounds } from "@/components/spot-map";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/use-t";
+import Link from "next/link";
 
 // react-leaflet must be loaded without SSR
 const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
@@ -110,6 +111,24 @@ export default function MapPage() {
       {/* Map — isolate z-index so Leaflet internals don't overlap the bottom nav */}
       <div className="flex-1 relative z-0">
         <SpotMap spots={spots} onBoundsChange={handleBoundsChange} />
+
+        {/* Adding a spot is the whole point of the map, so the action lives on
+            it. Clear of the mobile tab bar, and of Leaflet's own controls. */}
+        <Link
+          href="/spot/new"
+          className="absolute bottom-20 right-4 z-[500] inline-flex items-center gap-2 rounded-full bg-accent py-3.5 pl-4 pr-5 text-sm font-semibold text-on-accent shadow-float transition-colors hover:bg-accent-dark md:bottom-10"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          {t("spots.addSpot")}
+        </Link>
       </div>
     </div>
   );

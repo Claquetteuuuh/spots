@@ -8,6 +8,7 @@ import { useT } from "@/lib/use-t";
 import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SpotCardSkeleton } from "@/components/ui/skeleton";
+import { PAGE_WIDE } from "@/components/page";
 
 export default function ExplorePage() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -47,7 +48,7 @@ export default function ExplorePage() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
+    <div className={`${PAGE_WIDE} px-0 py-0 sm:px-4 sm:py-6`}>
       {/* Loading skeletons */}
       {isLoading && spots.length === 0 ? (
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">

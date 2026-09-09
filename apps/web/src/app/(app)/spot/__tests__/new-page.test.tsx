@@ -4,12 +4,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import AddSpotPage from "../new/page";
 
-// Mock next/navigation
+// Mock next/navigation. The step lives in the query string, so the component
+// reads it back through useSearchParams.
+const searchParams = new URLSearchParams();
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
     back: vi.fn(),
   }),
+  useSearchParams: () => searchParams,
 }));
 
 // Mock next/dynamic to render children directly

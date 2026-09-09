@@ -73,7 +73,7 @@ export function Header() {
     <>
       {/* ── Top bar ────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur-md">
-        <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <nav className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-4">
           {/* Logo */}
           <Link
             href={isAuthenticated ? "/map" : "/"}

@@ -8,6 +8,7 @@ import { useT } from "@/lib/use-t";
 import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SpotCardSkeleton } from "@/components/ui/skeleton";
+import { PAGE_COLUMN } from "@/components/page";
 
 // ─── Feed Image Carousel ────────────────────────────────────────────
 
@@ -227,7 +228,7 @@ export default function FeedPage() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="mx-auto max-w-lg px-0 sm:px-4 py-0 sm:py-4">
+    <div className={`${PAGE_COLUMN} px-0 py-0 sm:px-4 sm:py-6`}>
       {/* Loading skeletons */}
       {isLoading && spots.length === 0 ? (
         <div className="space-y-0 sm:space-y-4">

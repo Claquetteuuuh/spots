@@ -81,6 +81,7 @@ export const en = {
       saveFailed: "Unable to save spot",
       deleteFailed: "Unable to delete spot",
     },
+    discardConfirm: "Leave without saving this spot?",
     notFound: "Spot not found",
     untitled: "Untitled spot",
     metaDescription: "A photography spot on spots",
