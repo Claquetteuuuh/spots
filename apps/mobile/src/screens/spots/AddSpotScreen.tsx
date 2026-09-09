@@ -618,6 +618,7 @@ export function AddSpotScreen() {
         <ScrollView
           contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {step === 0 ? (
             <View style={{ gap: theme.spacing.md }}>

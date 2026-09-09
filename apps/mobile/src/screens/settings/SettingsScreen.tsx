@@ -119,7 +119,11 @@ export function SettingsScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: 64 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: 64 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         {/* Account info */}
         <Section title={t("settings.accountInfo")} theme={theme}>
           <Field label={t("settings.emailLabel")} theme={theme}>

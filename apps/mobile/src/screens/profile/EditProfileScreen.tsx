@@ -54,6 +54,7 @@ export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProf
         <ScrollView
           contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <Input
             label={t("auth.name")}

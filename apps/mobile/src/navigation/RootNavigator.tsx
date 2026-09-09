@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Keyboard, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
@@ -99,12 +99,14 @@ function MainTabs() {
   }, []);
 
   const handleTabPress = useCallback((index: number) => {
+    Keyboard.dismiss();
     setActiveIndex(index);
     pagerRef.current?.setPage(index);
   }, []);
 
   const handlePageSelected = useCallback(
     (e: { nativeEvent: { position: number } }) => {
+      Keyboard.dismiss();
       setActiveIndex(e.nativeEvent.position);
     },
     [],

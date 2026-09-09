@@ -89,6 +89,7 @@ export function RegisterScreen({ navigation }: AuthStackScreenProps<"Register">)
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: theme.spacing.xxl, paddingTop: theme.spacing.xxxl }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={{ alignItems: "center", marginBottom: theme.spacing.xxl }}>
             <Text

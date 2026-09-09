@@ -67,6 +67,7 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
         <ScrollView
           contentContainerStyle={[styles.content, { paddingHorizontal: theme.spacing.xxl }]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={{ alignItems: "center", marginBottom: theme.spacing.xxxl }}>
             <Text

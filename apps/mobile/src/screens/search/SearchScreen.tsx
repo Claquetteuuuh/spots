@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -96,6 +96,8 @@ export function SearchScreen() {
           placeholder={t("users.searchPlaceholder")}
           placeholderTextColor={theme.colors.textTertiary}
           autoCapitalize="none"
+          returnKeyType="search"
+          onSubmitEditing={Keyboard.dismiss}
           style={[
             styles.searchInput,
             {
@@ -116,6 +118,8 @@ export function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingHorizontal: theme.spacing.lg }}
           renderItem={({ item }) => (
             <View
