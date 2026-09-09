@@ -145,7 +145,7 @@ export function FollowListModal({
           }}
         >
           <motion.div
-            className="relative w-full max-w-md max-h-[70vh] bg-bg border border-border rounded-md flex flex-col overflow-hidden mx-4 sm:mx-0"
+            className="relative w-full max-w-md max-h-[70vh] bg-bg border border-border rounded-2xl flex flex-col overflow-hidden mx-4 sm:mx-0"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -246,7 +246,7 @@ export function FollowListModal({
                                     className="h-11 w-11 rounded-full object-cover shrink-0"
                                   />
                                 ) : (
-                                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white text-sm font-semibold shrink-0">
+                                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent text-sm font-semibold shrink-0">
                                     {user.name?.charAt(0)?.toUpperCase() ?? "?"}
                                   </div>
                                 )}

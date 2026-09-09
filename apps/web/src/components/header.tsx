@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
@@ -71,14 +72,14 @@ export function Header() {
   return (
     <>
       {/* ── Top bar ────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-border bg-bg/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur-md">
         <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           {/* Logo */}
           <Link
             href={isAuthenticated ? "/map" : "/"}
-            className="text-lg font-semibold tracking-tight text-text"
+            className="rounded-full text-accent"
           >
-            The Right Spot
+            <Wordmark className="text-xl" />
           </Link>
 
           {/* Desktop nav icons (authenticated) */}
@@ -87,8 +88,10 @@ export function Header() {
               {/* Map */}
               <Link
                 href="/map"
-                className={`p-2.5 rounded-md transition-colors ${
-                  isActive("/map") ? "text-text" : "text-text-secondary hover:text-text"
+                className={`rounded-full p-2.5 transition-colors ${
+                  isActive("/map")
+                    ? "bg-accent-tint text-accent"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text"
                 }`}
                 title={t("spots.map")}
               >
@@ -101,8 +104,10 @@ export function Header() {
               {/* Explore */}
               <Link
                 href="/explore"
-                className={`p-2.5 rounded-md transition-colors ${
-                  isActive("/explore") ? "text-text" : "text-text-secondary hover:text-text"
+                className={`rounded-full p-2.5 transition-colors ${
+                  isActive("/explore")
+                    ? "bg-accent-tint text-accent"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text"
                 }`}
                 title={t("map.allSpots")}
               >
@@ -114,8 +119,10 @@ export function Header() {
               {/* Add */}
               <Link
                 href="/spot/new"
-                className={`p-2.5 rounded-md transition-colors ${
-                  isActive("/spot/new") ? "text-text" : "text-text-secondary hover:text-text"
+                className={`rounded-full p-2.5 transition-colors ${
+                  isActive("/spot/new")
+                    ? "bg-accent-tint text-accent"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text"
                 }`}
                 title={t("spots.addSpot")}
               >
@@ -127,8 +134,10 @@ export function Header() {
               {/* Search */}
               <Link
                 href="/search"
-                className={`p-2.5 rounded-md transition-colors ${
-                  isActive("/search") ? "text-text" : "text-text-secondary hover:text-text"
+                className={`rounded-full p-2.5 transition-colors ${
+                  isActive("/search")
+                    ? "bg-accent-tint text-accent"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text"
                 }`}
                 title={t("common.search")}
               >
@@ -140,8 +149,10 @@ export function Header() {
               {/* Notifications bell */}
               <Link
                 href="/notifications"
-                className={`relative p-2.5 rounded-md transition-colors ${
-                  isActive("/notifications") ? "text-text" : "text-text-secondary hover:text-text"
+                className={`relative rounded-full p-2.5 transition-colors ${
+                  isActive("/notifications")
+                    ? "bg-accent-tint text-accent"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text"
                 }`}
                 title={t("notifications.title")}
               >
@@ -161,8 +172,8 @@ export function Header() {
                   onClick={() => setMenuOpen((o) => !o)}
                   className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-all cursor-pointer ring-2 ${
                     isActive(`/profile/${user?.username}`)
-                      ? "ring-text"
-                      : "ring-transparent hover:ring-text-tertiary"
+                      ? "ring-accent"
+                      : "ring-transparent hover:ring-border-dark"
                   }`}
                 >
                   {user?.avatarUrl ? (
@@ -179,8 +190,8 @@ export function Header() {
                 </button>
 
                 {menuOpen ? (
-                  <div className="absolute right-0 top-10 z-50 w-56 border border-border bg-bg rounded-md py-1 shadow-sm">
-                    <div className="px-4 py-3 border-b border-border">
+                  <div className="absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-2xl bg-bg py-1.5 shadow-float">
+                    <div className="border-b border-border px-4 py-3">
                       <p className="text-sm font-semibold text-text truncate">
                         {user?.name}
                       </p>
@@ -227,13 +238,13 @@ export function Header() {
             <div className="flex items-center gap-3">
               <Link
                 href="/login"
-                className="text-sm font-semibold text-accent hover:text-accent-dark transition-colors"
+                className="rounded-full px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg-secondary"
               >
                 {t("auth.login")}
               </Link>
               <Link
                 href="/register"
-                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark transition-colors"
+                className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark"
               >
                 {t("auth.register")}
               </Link>
@@ -244,13 +255,13 @@ export function Header() {
 
       {/* ── Mobile bottom tab bar (authenticated only) ─────────────── */}
       {isAuthenticated && user ? (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/95 backdrop-blur-sm">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/90 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-around h-14">
             {/* Map */}
             <Link
               href="/map"
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive("/map") ? "text-text" : "text-text-tertiary"
+isActive("/map") ? "text-accent" : "text-text-tertiary"
               }`}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/map") ? 2 : 1.5}>
@@ -263,7 +274,7 @@ export function Header() {
             <Link
               href="/search"
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive("/search") ? "text-text" : "text-text-tertiary"
+isActive("/search") ? "text-accent" : "text-text-tertiary"
               }`}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/search") ? 2 : 1.5}>
@@ -275,7 +286,7 @@ export function Header() {
             <Link
               href="/spot/new"
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive("/spot/new") ? "text-text" : "text-text-tertiary"
+isActive("/spot/new") ? "text-accent" : "text-text-tertiary"
               }`}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/spot/new") ? 2 : 1.5}>
@@ -287,7 +298,7 @@ export function Header() {
             <Link
               href="/notifications"
               className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive("/notifications") ? "text-text" : "text-text-tertiary"
+isActive("/notifications") ? "text-accent" : "text-text-tertiary"
               }`}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/notifications") ? 2 : 1.5}>
@@ -304,7 +315,7 @@ export function Header() {
             <Link
               href={`/profile/${user.username}`}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                pathname?.startsWith("/profile") ? "text-text" : "text-text-tertiary"
+pathname?.startsWith("/profile") ? "text-accent" : "text-text-tertiary"
               }`}
             >
               {user.avatarUrl ? (
@@ -312,7 +323,7 @@ export function Header() {
                   src={user.avatarUrl}
                   alt=""
                   className={`h-6 w-6 rounded-full object-cover ring-1 ${
-                    pathname?.startsWith("/profile") ? "ring-text" : "ring-transparent"
+                    pathname?.startsWith("/profile") ? "ring-accent" : "ring-transparent"
                   }`}
                 />
               ) : (

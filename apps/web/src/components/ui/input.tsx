@@ -7,6 +7,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
 }
 
+/**
+ * Fields are filled rather than outlined: a tinted surface reads as "you can
+ * type here" without adding a rule to every row. The border only appears on
+ * focus and on error, where it is carrying information.
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   function Input({ label, error, hint, id, className = "", ...props }, ref) {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
@@ -14,36 +19,34 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label ? (
-          <label
-            htmlFor={inputId}
-            className="text-sm font-medium text-text"
-          >
+          <label htmlFor={inputId} className="text-sm font-medium text-text">
             {label}
           </label>
         ) : null}
         <input
           ref={ref}
           id={inputId}
+          aria-invalid={error ? true : undefined}
           className={`
-            w-full rounded-md border px-3 py-2.5 text-sm
+            w-full rounded-xl border-2 px-4 py-3 text-[0.9375rem]
             text-text bg-bg-secondary
             placeholder:text-text-tertiary
-            focus:outline-none focus:ring-1 focus:bg-bg
             transition-colors duration-150
+            focus:bg-bg focus:outline-none
             ${
               error
-                ? "border-error focus:ring-error"
-                : "border-border focus:ring-accent focus:border-accent"
+                ? "border-error"
+                : "border-transparent focus:border-accent"
             }
-            disabled:opacity-50 disabled:cursor-not-allowed
+            disabled:cursor-not-allowed disabled:opacity-50
             ${className}
           `}
           {...props}
         />
         {error ? (
-          <p className="text-xs text-error">{error}</p>
+          <p className="text-sm text-error">{error}</p>
         ) : hint ? (
-          <p className="text-xs text-text-tertiary">{hint}</p>
+          <p className="text-sm text-text-tertiary">{hint}</p>
         ) : null}
       </div>
     );

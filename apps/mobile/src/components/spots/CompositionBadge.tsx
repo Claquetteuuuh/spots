@@ -10,9 +10,8 @@ export interface CompositionBadgeProps {
 }
 
 /**
- * Small tag showing a composition type. Deliberately square-cornered
- * (radius.sm) rather than a true rounded pill, to stay consistent with
- * the app's sharp-corner design language.
+ * Small tag showing a composition type. A pill, like every other chip in the
+ * app — the roundness comes from the wordmark.
  */
 export function CompositionBadge({ type, size = "md" }: CompositionBadgeProps) {
   const { t } = useTranslation();
@@ -26,7 +25,7 @@ export function CompositionBadge({ type, size = "md" }: CompositionBadgeProps) {
         {
           borderColor: theme.colors.borderDark,
           borderWidth: theme.borderWidth.hairline,
-          borderRadius: theme.radius.sm,
+          borderRadius: theme.radius.full,
           paddingVertical: size === "sm" ? 2 : theme.spacing.xs,
           paddingHorizontal: size === "sm" ? theme.spacing.xs : theme.spacing.sm,
           backgroundColor: theme.colors.bgSecondary,

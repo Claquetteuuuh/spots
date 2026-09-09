@@ -13,6 +13,7 @@ import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useGoogleAuth, extractGoogleIdToken, isGoogleAuthAvailable } from "../../lib/google-auth";
 import { Button } from "../../components/ui/Button";
+import { Wordmark } from "../../components/Wordmark";
 import { Input } from "../../components/ui/Input";
 import type { AuthStackScreenProps } from "../../navigation/types";
 
@@ -70,16 +71,7 @@ export function LoginScreen({ navigation }: AuthStackScreenProps<"Login">) {
           keyboardDismissMode="on-drag"
         >
           <View style={{ alignItems: "center", marginBottom: theme.spacing.xxxl }}>
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: theme.typography.size.xxl,
-                fontWeight: theme.typography.weight.bold,
-                letterSpacing: -0.5,
-              }}
-            >
-              The Right Spot
-            </Text>
+            <Wordmark size={40} />
             <Text
               style={{
                 color: theme.colors.textSecondary,

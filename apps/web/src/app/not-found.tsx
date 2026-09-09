@@ -16,7 +16,7 @@ export default async function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-8 inline-flex items-center px-5 py-2.5 rounded-sm bg-accent text-white text-sm font-medium hover:bg-accent-dark transition-colors"
+        className="mt-8 inline-flex items-center px-5 py-2.5 rounded-lg bg-accent text-on-accent text-sm font-medium hover:bg-accent-dark transition-colors"
       >
         {t("errors.goHome")}
       </Link>

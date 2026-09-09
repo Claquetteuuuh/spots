@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   FALLBACK_LOCALE,
   LOCALE_COOKIE_MAX_AGE,
@@ -72,6 +73,7 @@ export function LocaleProvider({
   initialLocale?: Locale;
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const router = useRouter();
 
   // Reconcile with client-side storage after mount. This only differs from
   // `initialLocale` when no cookie was sent yet (first visit, browser default).
@@ -83,11 +85,18 @@ export function LocaleProvider({
     persistLocale(detected);
   }, [initialLocale]);
 
-  const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
-    persistLocale(newLocale);
-    document.documentElement.lang = newLocale;
-  }, []);
+  const setLocale = useCallback(
+    (newLocale: Locale) => {
+      setLocaleState(newLocale);
+      persistLocale(newLocale);
+      document.documentElement.lang = newLocale;
+      // Client components re-render from context, but server components were
+      // rendered from the cookie. Refetch the server tree so pages like the
+      // landing switch language without a manual reload.
+      router.refresh();
+    },
+    [router],
+  );
 
   useEffect(() => {
     document.documentElement.lang = locale;

@@ -1,4 +1,4 @@
-# CLAUDE.md — The Right Spot
+# CLAUDE.md — spots (repo: the-right-spot)
 
 ## Project Overview
 
@@ -104,34 +104,54 @@ This is not a suggestion — it is a hard gate.
 
 ## Design Rules (CRITICAL)
 
-Minimalist, earthy, photography-focused. The photos ARE the design.
+The product is called **spots** in the interface. Folder, package and bundle
+names still say `the-right-spot` — do not rename them.
+
+Blue and white, one brand hue, photography-focused. The photos ARE the design.
+
+**Identity**:
+
+- Wordmark: "spots" set in Fredoka, with the `o` replaced by a filled circle —
+  a spot on a map, dropped into the name. Use the `Wordmark` component
+  (`components/wordmark.tsx` on web, `components/Wordmark.tsx` on mobile);
+  never re-typeset it by hand.
+- The filled dot is the recurring structural device: map markers, active
+  states, the steps of a sequence. It is not decoration — if a dot appears,
+  it should be standing for a place or a state.
 
 **DO**:
 
-- Warm white backgrounds (#FAFAF8)
-- Sand/sienna accents (#8B7355, #D4A574)
-- Sage green for success/nature (#7D8C6E)
-- Stone gray for secondary text (#6B6960)
-- Sharp corners (2-4px border-radius max)
-- Subtle 1px borders
-- System fonts
-- Generous whitespace
-- Let photos breathe
+- White canvas (#FFFFFF), cool near-whites for grouping (#F3F6FC, #E5ECF8)
+- One brand blue, taken from the wordmark (#4574C4); dark navy (#0D1420) in
+  dark mode, never pure black
+- Blue-black text (#16203A) rather than neutral grey
+- Green and red only for success and failure — there is no second accent
+- Round corners: pills for anything pressable, 16px on photography
+- Fredoka for the wordmark and display headings; Figtree (web) / the system
+  face (mobile) for anything you actually read
+- Grouping through spacing and tinted surfaces, not through borders on
+  everything
+- Generous whitespace; let photos breathe
 
 **DO NOT** (LLM-style design anti-patterns):
 
+- Warm cream backgrounds or terracotta accents
 - Purple/black gradients
 - Colored bands at top
 - 3-card feature grids
 - Bento grids
-- Over-rounded corners (12px+)
-- Drop shadows everywhere
+- Drop shadows everywhere (shadows are for things that genuinely float)
 - Blurry orbs in background
 - Sparkling stars
 - Space Grotesk font
-- Emojis in titles or as icons
+- Tracked-out ALL-CAPS eyebrow labels above headings
+- Emojis in titles or as icons (including flag emoji for languages)
 - Neon colors
 - Rainbow anything
+
+Colour tokens live in `@trs/shared/constants` (`COLORS`, `RADIUS`), which the
+mobile theme reads directly, and are mirrored in `apps/web/src/app/globals.css`
+for Tailwind. Change both together.
 
 ## Code Conventions
 

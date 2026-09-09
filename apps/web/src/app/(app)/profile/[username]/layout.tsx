@@ -23,7 +23,7 @@ export async function generateMetadata({
   }
 
   const title = `@${user.username}`;
-  const description = user.bio ?? `${user.name} — Photographer on The Right Spot`;
+  const description = user.bio ?? `${user.name} — Photographer on spots`;
 
   return {
     title,

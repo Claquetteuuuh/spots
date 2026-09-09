@@ -173,7 +173,7 @@ export default function ProfilePage({
               className="h-20 w-20 sm:h-36 sm:w-36 rounded-full object-cover border border-border"
             />
           ) : (
-            <div className="flex h-20 w-20 sm:h-36 sm:w-36 items-center justify-center rounded-full bg-accent text-white text-2xl sm:text-4xl font-semibold">
+            <div className="flex h-20 w-20 sm:h-36 sm:w-36 items-center justify-center rounded-full bg-accent-tint text-accent-dark text-2xl sm:text-4xl font-semibold">
               {profile.name?.charAt(0)?.toUpperCase() ?? "?"}
             </div>
           )}
@@ -313,9 +313,9 @@ export default function ProfilePage({
             <button
               type="button"
               onClick={() => setActiveTab("spots")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors border-b-[1.5px] ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold cursor-pointer transition-colors border-b-2 ${
                 activeTab === "spots"
-                  ? "text-text border-text"
+                  ? "text-accent border-accent"
                   : "text-text-tertiary border-transparent hover:text-text-secondary"
               }`}
             >
@@ -327,9 +327,9 @@ export default function ProfilePage({
             <button
               type="button"
               onClick={() => setActiveTab("map")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors border-b-[1.5px] ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold cursor-pointer transition-colors border-b-2 ${
                 activeTab === "map"
-                  ? "text-text border-text"
+                  ? "text-accent border-accent"
                   : "text-text-tertiary border-transparent hover:text-text-secondary"
               }`}
             >
@@ -348,12 +348,12 @@ export default function ProfilePage({
                   {t("spots.noSpots")}
                 </p>
               ) : (
-                <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   {spots.map((spot) => (
                     <Link
                       key={spot.id}
                       href={`/spot/${spot.id}`}
-                      className="aspect-square overflow-hidden bg-bg-secondary group"
+                      className="group aspect-square overflow-hidden rounded-xl bg-bg-secondary"
                     >
                       <img
                         src={spot.photoUrl}

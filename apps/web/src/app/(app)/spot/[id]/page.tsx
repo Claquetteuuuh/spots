@@ -84,7 +84,7 @@ function ImageCarousel({
           e.stopPropagation();
           setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
         }}
-        className="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+        className="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -99,7 +99,7 @@ function ImageCarousel({
           e.stopPropagation();
           setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
         }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -107,7 +107,7 @@ function ImageCarousel({
       </button>
 
       {/* Counter badge */}
-      <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-medium bg-bg/60 backdrop-blur-sm text-text rounded-sm border border-border/40">
+      <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-medium bg-bg/60 backdrop-blur-sm text-text rounded-lg border border-border/40">
         {currentIndex + 1}/{images.length}
       </span>
 
@@ -289,7 +289,7 @@ export default function SpotDetailPage({
   return (
     <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
       {/* Instagram-style post layout */}
-      <div className="sm:border sm:border-border sm:rounded-md overflow-hidden bg-bg">
+      <div className="sm:border sm:border-border sm:rounded-2xl overflow-hidden bg-bg">
         {/* User header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           {spot.user ? (
@@ -304,7 +304,7 @@ export default function SpotDetailPage({
                   className="h-8 w-8 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white text-xs font-semibold">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent text-xs font-semibold">
                   {spot.user.name?.charAt(0)?.toUpperCase() ?? "?"}
                 </div>
               )}
@@ -366,13 +366,13 @@ export default function SpotDetailPage({
               {spot.compositions.map((c) => (
                 <span
                   key={c}
-                  className="inline-block px-2.5 py-1 text-xs bg-sage/10 text-sage border border-sage/20 rounded-sm"
+                  className="inline-block rounded-full bg-accent-tint px-3 py-1 text-xs font-medium text-accent-dark"
                 >
                   {t(`compositions.${c}`)}
                 </span>
               ))}
               {spot.customComposition ? (
-                <span className="inline-block px-2.5 py-1 text-xs bg-bg-secondary text-text-secondary border border-border rounded-sm italic">
+                <span className="inline-block px-2.5 py-1 text-xs bg-bg-secondary text-text-secondary border border-border rounded-lg italic">
                   {spot.customComposition}
                 </span>
               ) : null}
@@ -385,7 +385,7 @@ export default function SpotDetailPage({
               {spot.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-block px-2.5 py-1 text-xs bg-bg-secondary text-text-secondary border border-border rounded-sm"
+                  className="inline-block px-2.5 py-1 text-xs bg-bg-secondary text-text-secondary border border-border rounded-lg"
                 >
                   {tag}
                 </span>
@@ -409,10 +409,10 @@ export default function SpotDetailPage({
 
           {/* Visibility */}
           <div className="flex items-center gap-2 text-sm">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-medium ${
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
               spot.visibility === "PRIVATE"
-                ? "bg-accent/10 text-accent border border-accent/20"
-                : "bg-sage/10 text-sage border border-sage/20"
+                ? "bg-bg-secondary text-text-secondary"
+                : "bg-accent-tint text-accent-dark"
             }`}>
               {spot.visibility === "PRIVATE" ? (
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -509,7 +509,7 @@ export default function SpotDetailPage({
         {/* Upload form */}
         {showAddPhoto ? (
           <div className="px-4 sm:px-0 mb-6">
-            <div className="border border-border rounded-md bg-bg-secondary p-4 space-y-3">
+            <div className="border border-border rounded-2xl bg-bg-secondary p-4 space-y-3">
               <input
                 ref={photoInputRef}
                 type="file"
@@ -520,7 +520,7 @@ export default function SpotDetailPage({
                   file:mr-3 file:py-2 file:px-4
                   file:rounded file:border-0
                   file:text-sm file:font-semibold
-                  file:bg-accent file:text-white
+                  file:bg-accent file:text-on-accent
                   file:cursor-pointer
                   hover:file:bg-accent-dark
                   disabled:opacity-50"
@@ -557,11 +557,11 @@ export default function SpotDetailPage({
 
         {/* Photos grid */}
         {photos.length > 0 ? (
-          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {photos.map((photo) => (
               <div
                 key={photo.id}
-                className="aspect-square overflow-hidden bg-bg-secondary group relative"
+                className="group relative aspect-square overflow-hidden rounded-xl bg-bg-secondary"
               >
                 <img
                   src={photo.photoUrl}

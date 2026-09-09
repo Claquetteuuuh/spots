@@ -24,7 +24,7 @@ export function Card({ children, style, padded = true }: CardProps) {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.border,
           borderWidth: theme.borderWidth.hairline,
-          borderRadius: theme.radius.md,
+          borderRadius: theme.radius.lg,
           padding: padded ? theme.spacing.lg : 0,
         },
         style,

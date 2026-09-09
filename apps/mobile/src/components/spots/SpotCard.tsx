@@ -35,7 +35,7 @@ export function SpotCard({ spot, onPress }: SpotCardProps) {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.border,
           borderWidth: theme.borderWidth.hairline,
-          borderRadius: theme.radius.md,
+          borderRadius: theme.radius.lg,
           opacity: pressed ? 0.9 : 1,
         },
       ]}
@@ -89,7 +89,7 @@ export function SpotCard({ spot, onPress }: SpotCardProps) {
 
           <Text
             style={{
-              color: spot.isFree ? theme.colors.sage : theme.colors.accent,
+              color: spot.isFree ? theme.colors.success : theme.colors.textSecondary,
               fontSize: theme.typography.size.xs,
               fontWeight: theme.typography.weight.medium,
               textTransform: "uppercase",

@@ -1,7 +1,7 @@
 export const en = {
   app: {
-    name: "The Right Spot",
-    description: "Discover and share photography spots",
+    name: "spots",
+    description: "The places your best photographs come from.",
   },
   common: {
     loading: "Loading...",
@@ -206,20 +206,22 @@ export const en = {
     publicAccountShort: "Anyone can follow you and see your spots",
   },
   landing: {
-    heroTitle: "Find the right spot.",
-    heroHighlight: "Share the view.",
+    tagline: "The places your best photographs come from.",
     heroDescription:
-      "A photography companion for discovering and sharing the most beautiful locations. Pin your spots, explore through other photographers' eyes.",
+      "Pin a location, note the light and the composition, and come back at the right hour. Follow other photographers and their spots land on your map too.",
+    getStarted: "Start your map",
+    journeyHeadline:
+      "From somewhere you happened to walk past to a point on your map.",
     stepPhotograph: "Photograph",
     stepPhotographDesc:
-      "Capture the spot with your camera and upload it in seconds.",
+      "You find a place that deserves more than a memory. Shoot it.",
     stepPin: "Pin",
     stepPinDesc:
-      "Tag your spot on the map with location, composition, and colors.",
-    stepDiscover: "Discover",
+      "Drop the point on the map, with its composition, colours and time of day.",
+    stepDiscover: "Come back",
     stepDiscoverDesc:
-      "Follow photographers and explore their spots on your map.",
-    footer: "The Right Spot — Photography spot discovery",
+      "Your map remembers the spot, and so do the photographers you follow.",
+    footer: "A scouting map for photographers",
   },
   notifications: {
     title: "Notifications",

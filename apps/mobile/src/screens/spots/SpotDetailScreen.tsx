@@ -264,11 +264,11 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             <Ionicons
               name={spot.visibility === "PRIVATE" ? "lock-closed-outline" : "people-outline"}
               size={14}
-              color={spot.visibility === "PRIVATE" ? theme.colors.accent : theme.colors.sage}
+              color={spot.visibility === "PRIVATE" ? theme.colors.textSecondary : theme.colors.accent}
             />
             <Text
               style={{
-                color: spot.visibility === "PRIVATE" ? theme.colors.accent : theme.colors.sage,
+                color: spot.visibility === "PRIVATE" ? theme.colors.textSecondary : theme.colors.accent,
                 fontSize: theme.typography.size.sm,
                 fontWeight: theme.typography.weight.medium,
                 textTransform: "uppercase",

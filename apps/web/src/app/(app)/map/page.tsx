@@ -78,7 +78,7 @@ export default function MapPage() {
     <div className="flex flex-1 flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3.5rem)] -mb-16 md:mb-0 overflow-hidden">
       {/* Filter bar — pill-shaped segmented control */}
       <div className="flex items-center justify-between px-4 py-2 bg-bg relative z-10">
-        <div className="flex items-center gap-1 rounded-md bg-bg-secondary p-0.5">
+        <div className="flex items-center gap-1 rounded-full bg-bg-secondary p-1">
           {(
             [
               { key: "mine", label: t("map.mySpots") },
@@ -89,7 +89,7 @@ export default function MapPage() {
               key={key}
               type="button"
               onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+              className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors cursor-pointer ${
                 filter === key
                   ? "bg-bg text-text shadow-sm"
                   : "text-text-secondary hover:text-text"

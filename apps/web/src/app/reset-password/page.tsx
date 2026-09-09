@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
+import { Wordmark } from "@/components/wordmark";
 import { apiClient } from "@/lib/api-client";
 
 function ResetPasswordForm() {
@@ -89,11 +90,8 @@ function ResetPasswordForm() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight text-text"
-        >
-          The Right Spot
+        <Link href="/" className="inline-block rounded-full text-accent">
+          <Wordmark className="text-2xl" />
         </Link>
 
         <h1 className="mt-10 text-2xl font-semibold tracking-tight text-text">

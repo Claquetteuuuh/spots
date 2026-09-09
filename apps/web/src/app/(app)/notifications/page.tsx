@@ -78,7 +78,7 @@ export default function NotificationsPage() {
                       className="h-11 w-11 rounded-full object-cover border border-border"
                     />
                   ) : (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white text-sm font-semibold">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent text-sm font-semibold">
                       {req.follower.name?.charAt(0)?.toUpperCase() ?? "?"}
                     </div>
                   )}
@@ -99,14 +99,14 @@ export default function NotificationsPage() {
                   <button
                     type="button"
                     onClick={() => handleAccept(req.id)}
-                    className="rounded bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent-dark transition-colors cursor-pointer"
+                    className="cursor-pointer rounded-full bg-accent px-4 py-2 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-dark"
                   >
                     {t("notifications.accept")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleReject(req.id)}
-                    className="rounded bg-bg-secondary px-4 py-1.5 text-xs font-semibold text-text border border-border hover:bg-bg-tertiary transition-colors cursor-pointer"
+                    className="cursor-pointer rounded-full bg-bg-secondary px-4 py-2 text-xs font-semibold text-text border border-border hover:bg-bg-tertiary transition-colors cursor-pointer"
                   >
                     {t("notifications.reject")}
                   </button>

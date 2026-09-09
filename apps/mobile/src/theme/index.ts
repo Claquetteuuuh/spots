@@ -4,12 +4,12 @@ import * as SecureStore from "expo-secure-store";
 import { COLORS } from "@trs/shared/constants";
 
 /**
- * Design tokens for The Right Spot.
+ * Design tokens for spots.
  *
- * Deliberately restrained: warm neutrals, a single sand/sienna accent,
- * sage green reserved for success/confirmation states, sharp corners,
- * and borders instead of shadows. Photos are the visual focus — the
- * chrome around them should stay quiet.
+ * Blue and white, one brand hue and nothing else. Neutrals are cooled
+ * toward that blue so surfaces read as daylight; green and red appear only
+ * for success and failure. Corners are round, following the wordmark.
+ * Photographs are the content — the chrome around them stays quiet.
  */
 
 // ─── Theme mode ─────────────────────────────────────────────────────
@@ -32,11 +32,8 @@ export interface ThemeColors {
   accent: string;
   accentLight: string;
   accentDark: string;
+  accentTint: string;
   onAccent: string;
-
-  sage: string;
-  sageLight: string;
-  sageDark: string;
 
   border: string;
   borderDark: string;
@@ -64,11 +61,8 @@ export const lightColors: ThemeColors = {
   accent: COLORS.accent,
   accentLight: COLORS.accentLight,
   accentDark: COLORS.accentDark,
-  onAccent: COLORS.bg,
-
-  sage: COLORS.sage,
-  sageLight: COLORS.sageLight,
-  sageDark: COLORS.sageDark,
+  accentTint: COLORS.accentTint,
+  onAccent: "#FFFFFF",
 
   border: COLORS.border,
   borderDark: COLORS.borderDark,
@@ -81,7 +75,7 @@ export const lightColors: ThemeColors = {
   warningLight: COLORS.warningLight,
 
   card: COLORS.bg,
-  overlay: "rgba(26, 26, 24, 0.55)",
+  overlay: "rgba(13, 20, 32, 0.55)",
 };
 
 export const darkColors: ThemeColors = {
@@ -93,24 +87,21 @@ export const darkColors: ThemeColors = {
   textSecondary: COLORS.dark.textSecondary,
   textTertiary: COLORS.dark.textTertiary,
 
-  accent: COLORS.accentLight,
-  accentLight: COLORS.accent,
-  accentDark: COLORS.accentDark,
+  accent: "#6E9BE6",
+  accentLight: "#9DBDF0",
+  accentDark: COLORS.accent,
+  accentTint: COLORS.dark.accentTint,
   onAccent: COLORS.dark.bg,
-
-  sage: COLORS.sageLight,
-  sageLight: COLORS.sage,
-  sageDark: COLORS.sageDark,
 
   border: COLORS.dark.border,
   borderDark: COLORS.dark.borderDark,
 
   error: COLORS.error,
-  errorLight: "#2A1B18",
+  errorLight: "#2C1A18",
   success: COLORS.success,
-  successLight: "#1B2418",
+  successLight: "#12261D",
   warning: COLORS.warning,
-  warningLight: "#2A2314",
+  warningLight: "#2A2214",
 
   card: COLORS.dark.bgSecondary,
   overlay: "rgba(0, 0, 0, 0.6)",
@@ -129,11 +120,13 @@ export const spacing = {
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────
-// System font only — no custom display faces. Hierarchy comes from
-// weight and letter-spacing, not from oversized type.
+// Fredoka is the brand's voice and is reserved for the wordmark and display
+// headings; everything you actually read stays on the platform system face,
+// which is the most legible option on a phone.
 
 export const typography = {
   fontFamily: undefined, // undefined => platform system font (San Francisco / Roboto)
+  display: "Fredoka-SemiBold",
   size: {
     xs: 12,
     sm: 13,
@@ -157,14 +150,15 @@ export const typography = {
 } as const;
 
 // ─── Radius ──────────────────────────────────────────────────────────
-// Sharp corners throughout. Nothing rounder than 4px, ever.
+// Round, following the wordmark: pills for anything pressable, generous
+// radii on photography, nothing sharp.
 
 export const radius = {
   none: 0,
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 20,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
   full: 9999, // pills, avatars
 } as const;
 

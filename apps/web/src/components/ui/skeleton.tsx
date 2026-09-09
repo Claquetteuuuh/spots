@@ -1,27 +1,19 @@
 /**
- * Skeleton placeholder for loading states.
- * Uses a subtle shimmer animation in the design-system palette.
+ * Loading placeholders. They mirror the radii of the real thing they stand in
+ * for, so nothing jumps shape when the content lands.
  */
 export function Skeleton({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-sm bg-bg-secondary ${className}`}
-    />
-  );
+  return <div className={`animate-pulse rounded-lg bg-bg-secondary ${className}`} />;
 }
 
 /** Card-shaped skeleton for spot cards in the feed. */
 export function SpotCardSkeleton() {
   return (
-    <div className="border border-border rounded-sm overflow-hidden">
-      <Skeleton className="aspect-[4/3] rounded-none" />
-      <div className="px-4 py-3 space-y-2">
+    <div>
+      <Skeleton className="aspect-[4/5] rounded-2xl" />
+      <div className="space-y-2 px-1 pt-3">
         <Skeleton className="h-4 w-2/3" />
         <Skeleton className="h-3 w-1/4" />
-        <div className="flex gap-1.5 pt-1">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-5 w-12" />
-        </div>
       </div>
     </div>
   );
@@ -30,9 +22,9 @@ export function SpotCardSkeleton() {
 /** Grid-cell skeleton for profile spot grids. */
 export function SpotGridSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="aspect-square" />
+        <Skeleton key={i} className="aspect-square rounded-xl" />
       ))}
     </div>
   );
@@ -42,7 +34,7 @@ export function SpotGridSkeleton({ count = 6 }: { count?: number }) {
 export function ProfileSkeleton() {
   return (
     <div className="flex items-start gap-6">
-      <Skeleton className="h-20 w-20 shrink-0" />
+      <Skeleton className="h-20 w-20 shrink-0 rounded-full" />
       <div className="flex-1 space-y-3">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-4 w-24" />

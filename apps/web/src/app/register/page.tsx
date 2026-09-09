@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
 import { GoogleSignInButton } from "@/components/google-sign-in";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { Wordmark } from "@/components/wordmark";
 
 interface FormState {
   name: string;
@@ -88,24 +90,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="border border-border rounded-md px-8 py-10 bg-bg">
-          {/* Logo */}
-          <div className="text-center mb-6">
-            <Link
-              href="/"
-              className="text-2xl font-semibold tracking-tight text-text"
-            >
-              The Right Spot
-            </Link>
-            <p className="mt-3 text-sm text-text-secondary leading-relaxed">
-              {t("landing.heroDescription")}
-            </p>
-          </div>
+        <div className="mb-9 text-center">
+          <Link href="/" className="inline-block rounded-full text-accent">
+            <Wordmark className="text-4xl" />
+          </Link>
+          <p className="mx-auto mt-4 max-w-[30ch] text-[0.9375rem] leading-relaxed text-text-secondary">
+            {t("landing.tagline")}
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3">
             <Input
               autoComplete="name"
               required
@@ -147,39 +143,33 @@ export default function RegisterPage() {
               <p className="text-sm text-error">{apiError}</p>
             ) : null}
 
-            <Button type="submit" fullWidth loading={isLoading}>
-              {t("auth.register")}
-            </Button>
-          </form>
+          <Button type="submit" size="lg" fullWidth loading={isLoading}>
+            {t("auth.register")}
+          </Button>
+        </form>
 
-          {/* Divider */}
-          <div className="mt-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase tracking-wide text-text-tertiary font-semibold">
-              {t("common.or")}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          {/* Google OAuth */}
-          <div className="mt-6">
-            <GoogleSignInButton onSuccess={handleGoogleLogin} />
-          </div>
+        <div className="mt-7 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-sm text-text-tertiary">{t("common.or")}</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
-        {/* Log in link */}
-        <div className="mt-3 border border-border rounded-md px-8 py-5 bg-bg text-center">
-          <p className="text-sm text-text-secondary">
-            {t("auth.hasAccount")}{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-accent hover:text-accent-dark"
-            >
-              {t("auth.login")}
-            </Link>
-          </p>
+        <div className="mt-7">
+          <GoogleSignInButton onSuccess={handleGoogleLogin} />
         </div>
+
+        <p className="mt-10 text-center text-sm text-text-secondary">
+          {t("auth.hasAccount")}{" "}
+          <Link
+            href="/login"
+            className="font-semibold text-accent hover:text-accent-dark"
+          >
+            {t("auth.login")}
+          </Link>
+        </p>
       </div>
+
+      <LocaleToggle className="mt-12" />
     </div>
   );
 }

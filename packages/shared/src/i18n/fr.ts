@@ -1,7 +1,7 @@
 export const fr = {
   app: {
-    name: "The Right Spot",
-    description: "Découvrez et partagez des spots photo",
+    name: "spots",
+    description: "Les endroits d'où viennent vos meilleures photos.",
   },
   common: {
     loading: "Chargement...",
@@ -206,20 +206,22 @@ export const fr = {
     publicAccountShort: "Tout le monde peut s'abonner et voir vos spots",
   },
   landing: {
-    heroTitle: "Trouvez le bon spot.",
-    heroHighlight: "Partagez la vue.",
+    tagline: "Les endroits d'où viennent vos meilleures photos.",
     heroDescription:
-      "Un compagnon photo pour découvrir et partager les plus beaux lieux. Épinglez vos spots, explorez à travers les yeux d'autres photographes.",
+      "Épinglez un lieu, notez la lumière et la composition, revenez à la bonne heure. Suivez d'autres photographes et leurs spots arrivent sur votre carte.",
+    getStarted: "Commencer ma carte",
+    journeyHeadline:
+      "D'un endroit croisé par hasard à un point sur votre carte.",
     stepPhotograph: "Photographier",
     stepPhotographDesc:
-      "Capturez le spot avec votre appareil et téléchargez-le en quelques secondes.",
+      "Vous tombez sur un lieu qui mérite mieux qu'un souvenir. Photographiez-le.",
     stepPin: "Épingler",
     stepPinDesc:
-      "Placez votre spot sur la carte avec localisation, composition et couleurs.",
-    stepDiscover: "Découvrir",
+      "Posez le point sur la carte, avec sa composition, ses couleurs et son heure.",
+    stepDiscover: "Revenir",
     stepDiscoverDesc:
-      "Suivez des photographes et explorez leurs spots sur votre carte.",
-    footer: "The Right Spot — Découverte de spots photo",
+      "Votre carte se souvient du spot, et les photographes que vous suivez aussi.",
+    footer: "La carte de repérage des photographes",
   },
   notifications: {
     title: "Notifications",

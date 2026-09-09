@@ -50,7 +50,7 @@ export default function ExplorePage() {
     <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
       {/* Loading skeletons */}
       {isLoading && spots.length === 0 ? (
-        <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="aspect-square bg-bg-secondary animate-pulse" />
           ))}
@@ -62,12 +62,12 @@ export default function ExplorePage() {
       ) : (
         <>
           {/* Instagram-style 3-column grid */}
-          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {spots.map((spot) => (
               <Link
                 key={spot.id}
                 href={`/spot/${spot.id}`}
-                className="aspect-square overflow-hidden bg-bg-secondary group relative"
+                className="group relative aspect-square overflow-hidden rounded-xl bg-bg-secondary"
               >
                 <img
                   src={spot.photoUrl}

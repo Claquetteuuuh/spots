@@ -80,7 +80,7 @@ export default function SearchPage() {
               <Link
                 key={user.id}
                 href={`/profile/${user.username}`}
-                className="flex items-center gap-3 px-2 py-3 hover:bg-bg-secondary transition-colors rounded-md -mx-2"
+                className="flex items-center gap-3 px-2 py-3 hover:bg-bg-secondary transition-colors rounded-2xl -mx-2"
               >
                 {user.avatarUrl ? (
                   <img
@@ -89,7 +89,7 @@ export default function SearchPage() {
                     className="h-11 w-11 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white text-sm font-semibold">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent text-sm font-semibold">
                     {user.name?.charAt(0)?.toUpperCase() ?? "?"}
                   </div>
                 )}

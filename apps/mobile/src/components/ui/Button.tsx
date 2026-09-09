@@ -74,7 +74,7 @@ export function Button({
           backgroundColor,
           borderColor,
           borderWidth: variant === "ghost" ? 0 : theme.borderWidth.hairline,
-          borderRadius: theme.radius.md,
+          borderRadius: theme.radius.full,
           paddingVertical: size === "lg" ? theme.spacing.lg : theme.spacing.md,
           paddingHorizontal: theme.spacing.xl,
           opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,

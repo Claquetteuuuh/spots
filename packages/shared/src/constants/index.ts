@@ -23,50 +23,70 @@ export type SpotVisibility = (typeof SPOT_VISIBILITIES)[number];
 
 // ─── Design Tokens ───────────────────────────────────────────────────
 
+/**
+ * Blue and white, one brand hue and nothing else.
+ *
+ * The blue is taken straight from the wordmark, so the logo's dot and a
+ * primary button are literally the same colour. Neutrals are cooled toward
+ * that blue rather than being pure grey — surfaces read as daylight, and
+ * photos (which are the actual content) never have to compete with a second
+ * accent. Green and red appear only for success and failure.
+ */
 export const COLORS = {
-  // Backgrounds
-  bg: "#FAFAF8",
-  bgSecondary: "#F2F0EB",
-  bgTertiary: "#E8E5DE",
+  // Backgrounds — white canvas, cool near-whites for grouping
+  bg: "#FFFFFF",
+  bgSecondary: "#F3F6FC",
+  bgTertiary: "#E5ECF8",
 
-  // Text
-  text: "#1A1A18",
-  textSecondary: "#6B6960",
-  textTertiary: "#9C978C",
+  // Text — blue-black rather than neutral grey, so type belongs to the palette
+  text: "#16203A",
+  textSecondary: "#5B6B8C",
+  textTertiary: "#8A99B5",
 
-  // Accent
-  accent: "#8B7355",
-  accentLight: "#B49A7A",
-  accentDark: "#6B5740",
+  // Brand
+  accent: "#4574C4",
+  accentLight: "#7BA3E8",
+  accentDark: "#33569A",
+  accentTint: "#E9F0FB",
 
-  // Sage
-  sage: "#7D8C6E",
-  sageLight: "#A3AE96",
-  sageDark: "#5B6850",
-
-  // Borders
-  border: "#E5E2DB",
-  borderDark: "#D1CCC2",
+  // Borders — barely there; grouping comes from spacing, not from rules
+  border: "#E2E8F4",
+  borderDark: "#C3D0E4",
 
   // Semantic
-  error: "#C44536",
-  errorLight: "#F8E8E5",
-  success: "#5B7553",
-  successLight: "#E8F0E5",
-  warning: "#D4A017",
-  warningLight: "#FBF4E0",
+  error: "#DC4B3E",
+  errorLight: "#FDECEA",
+  success: "#2E9E6B",
+  successLight: "#E6F6EE",
+  warning: "#E0A020",
+  warningLight: "#FDF4E3",
 
-  // Dark mode overrides
+  // Dark mode overrides — deep navy, never pure black, so the blue still sings
   dark: {
-    bg: "#141413",
-    bgSecondary: "#1E1E1C",
-    bgTertiary: "#2A2A27",
-    text: "#F2F0EB",
-    textSecondary: "#9C978C",
-    textTertiary: "#6B6960",
-    border: "#2A2A27",
-    borderDark: "#3A3A36",
+    bg: "#0D1420",
+    bgSecondary: "#151E2E",
+    bgTertiary: "#1E2A3D",
+    text: "#EDF2FA",
+    textSecondary: "#9BAAC6",
+    textTertiary: "#6C7C99",
+    border: "#223046",
+    borderDark: "#2F4059",
+    accentTint: "#1A2740",
   },
+} as const;
+
+/**
+ * Corner radii. The wordmark is a circle inside a rounded face, so the
+ * interface is round too: pills for anything pressable, generous radii on
+ * photography, and nothing sharp.
+ */
+export const RADIUS = {
+  none: 0,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 9999,
 } as const;
 
 // ─── API ─────────────────────────────────────────────────────────────

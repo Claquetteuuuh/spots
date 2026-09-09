@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "The Right Spot",
+    "name": "spots",
     "slug": "the-right-spot",
     "scheme": "therightspot",
     "version": "1.0.0",
@@ -15,15 +15,15 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "The Right Spot uses your camera to photograph the composition of a spot when you add it.",
-        "NSPhotoLibraryUsageDescription": "The Right Spot needs access to your photo library so you can pick an existing photo of a spot.",
-        "NSLocationWhenInUseUsageDescription": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken."
+        "NSCameraUsageDescription": "spots uses your camera to photograph the composition of a spot when you add it.",
+        "NSPhotoLibraryUsageDescription": "spots needs access to your photo library so you can pick an existing photo of a spot.",
+        "NSLocationWhenInUseUsageDescription": "spots uses your location to place spots on the map and to tag new spots with where they were taken.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "spots uses your location to place spots on the map and to tag new spots with where they were taken."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FAFAF8",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -51,19 +51,25 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "The Right Spot uses your camera to photograph the composition of a spot when you add it."
+          "cameraPermission": "spots uses your camera to photograph the composition of a spot when you add it."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "The Right Spot needs access to your photo library so you can pick an existing photo of a spot."
+          "photosPermission": "spots needs access to your photo library so you can pick an existing photo of a spot."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "The Right Spot uses your location to place spots on the map and to tag new spots with where they were taken."
+          "locationWhenInUsePermission": "spots uses your location to place spots on the map and to tag new spots with where they were taken."
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": ["./assets/fonts/Fredoka-SemiBold.ttf"]
         }
       ]
     ]

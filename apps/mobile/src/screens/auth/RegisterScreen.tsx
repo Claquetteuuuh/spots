@@ -13,6 +13,7 @@ import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useGoogleAuth, extractGoogleIdToken, isGoogleAuthAvailable } from "../../lib/google-auth";
 import { Button } from "../../components/ui/Button";
+import { Wordmark } from "../../components/Wordmark";
 import { Input } from "../../components/ui/Input";
 import type { AuthStackScreenProps } from "../../navigation/types";
 
@@ -92,12 +93,12 @@ export function RegisterScreen({ navigation }: AuthStackScreenProps<"Register">)
           keyboardDismissMode="on-drag"
         >
           <View style={{ alignItems: "center", marginBottom: theme.spacing.xxl }}>
+            <Wordmark size={36} />
             <Text
               style={{
-                color: theme.colors.text,
-                fontSize: theme.typography.size.xxl,
-                fontWeight: theme.typography.weight.bold,
-                letterSpacing: -0.5,
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+                marginTop: theme.spacing.sm,
               }}
             >
               {t("auth.register")}

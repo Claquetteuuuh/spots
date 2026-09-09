@@ -72,7 +72,7 @@ function SettingsRow({
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="px-4 pt-5 pb-1.5">
-      <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+      <p className="text-sm font-semibold text-text-secondary">
         {title}
       </p>
     </div>
@@ -294,7 +294,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={isSavingAccount}
-            className="w-full rounded bg-accent py-2.5 text-sm font-semibold text-white hover:bg-accent-dark transition-colors disabled:opacity-50 cursor-pointer"
+            className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
           >
             {isSavingAccount ? t("common.loading") : t("settings.saveChanges")}
           </button>
@@ -337,7 +337,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={isSavingPassword || !currentPassword || !newPassword || !confirmPassword}
-              className="w-full rounded bg-accent py-2.5 text-sm font-semibold text-white hover:bg-accent-dark transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
             >
               {isSavingPassword ? t("common.loading") : t("settings.changePassword")}
             </button>
@@ -426,7 +426,7 @@ export default function SettingsPage() {
               aria-pressed={locale === key}
               className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
             >
-              <span className="w-7 shrink-0 border border-border rounded-sm py-0.5 text-center text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+              <span className="w-8 shrink-0 rounded-full bg-bg-secondary py-1 text-center text-[11px] font-semibold uppercase text-text-secondary">
                 {key}
               </span>
               <span className="flex-1 text-sm text-text">
@@ -561,7 +561,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="px-4 py-6 text-center">
-        <p className="text-xs text-text-tertiary">The Right Spot v1.0.0</p>
+        <p className="text-sm text-text-tertiary">spots v1.0.0</p>
       </div>
     </div>
   );

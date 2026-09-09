@@ -1,25 +1,47 @@
 import Link from "next/link";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { Wordmark } from "@/components/wordmark";
 import { getTranslator } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/server-locale";
 
-const FEATURE_ICONS = [
-  // Camera
-  <svg key="camera" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-  </svg>,
-  // Pin
-  <svg key="pin" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-  </svg>,
-  // Discover
-  <svg key="discover" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-  </svg>,
+/**
+ * A constellation of spots behind the wordmark — the product's own subject
+ * matter as the hero, rather than a decorative gradient. Positions are fixed
+ * so the arrangement is part of the brand and not noise, and they are kept to
+ * the outer margins so nothing ever sits behind the reading column.
+ * Decorative, so it stays out of the accessibility tree.
+ */
+const PLOTTED = [
+  { left: "4%", top: "22%", size: 10, opacity: 0.5 },
+  { left: "11%", top: "62%", size: 18, opacity: 0.3 },
+  { left: "18%", top: "34%", size: 7, opacity: 0.45 },
+  { left: "8%", top: "84%", size: 13, opacity: 0.22 },
+  { left: "23%", top: "78%", size: 6, opacity: 0.35 },
+  { left: "77%", top: "26%", size: 8, opacity: 0.4 },
+  { left: "84%", top: "70%", size: 16, opacity: 0.26 },
+  { left: "91%", top: "38%", size: 6, opacity: 0.5 },
+  { left: "72%", top: "86%", size: 11, opacity: 0.24 },
+  { left: "95%", top: "80%", size: 8, opacity: 0.32 },
 ];
 
-const FEATURE_KEYS = [
+function PlottedField() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 hidden sm:block"
+    >
+      {PLOTTED.map(({ left, top, size, opacity }, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full bg-accent-light"
+          style={{ left, top, width: size, height: size, opacity }}
+        />
+      ))}
+    </div>
+  );
+}
+
+const JOURNEY = [
   { title: "landing.stepPhotograph", desc: "landing.stepPhotographDesc" },
   { title: "landing.stepPin", desc: "landing.stepPinDesc" },
   { title: "landing.stepDiscover", desc: "landing.stepDiscoverDesc" },
@@ -30,105 +52,96 @@ export default async function LandingPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <span className="text-lg font-semibold tracking-tight text-text">
-          The Right Spot
-        </span>
-        <nav className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-5 py-4 sm:px-8">
+        <Wordmark className="text-2xl text-accent" />
+        <nav className="flex items-center gap-2">
+          <LocaleToggle className="mr-1" />
           <Link
             href="/login"
-            className="text-sm font-semibold text-accent hover:text-accent-dark transition-colors"
+            className="whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg-secondary sm:px-4"
           >
             {t("auth.login")}
           </Link>
           <Link
             href="/register"
-            className="inline-flex items-center px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold hover:bg-accent-dark transition-colors"
+            className="whitespace-nowrap rounded-full bg-accent px-3.5 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark sm:px-4"
           >
             {t("auth.register")}
           </Link>
         </nav>
       </header>
 
-      {/* Hero */}
-      <section className="flex flex-1 flex-col items-center justify-center px-6 py-20">
-        <div className="max-w-xl text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-text sm:text-5xl leading-tight">
-            {t("landing.heroTitle")}
-            <br />
-            <span className="text-accent">{t("landing.heroHighlight")}</span>
-          </h1>
-          <p className="mt-6 text-base leading-relaxed text-text-secondary max-w-md mx-auto">
-            {t("landing.heroDescription")}
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/register"
-              className="inline-flex items-center px-6 py-3 rounded-md bg-accent text-white text-sm font-semibold hover:bg-accent-dark transition-colors w-full sm:w-auto justify-center"
-            >
-              {t("auth.register")}
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center px-6 py-3 rounded-md border border-border text-text text-sm font-semibold hover:bg-bg-secondary transition-colors w-full sm:w-auto justify-center"
-            >
-              {t("auth.login")}
-            </Link>
-          </div>
-        </div>
+      {/* ── Hero: the wordmark itself, dropped into a field of spots ── */}
+      <section className="relative isolate flex flex-col items-center overflow-hidden px-5 pb-16 pt-14 sm:pb-24 sm:pt-20">
+        <PlottedField />
 
-        {/* How it works */}
-        <div className="mt-20 w-full max-w-2xl">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            {FEATURE_KEYS.map((feature, i) => (
-              <div key={i} className="text-center">
-                <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-bg-secondary text-accent">
-                  {FEATURE_ICONS[i]}
-                </div>
-                <h3 className="mt-4 text-sm font-semibold text-text tracking-wide uppercase">
-                  {t(feature.title)}
-                </h3>
-                <p className="mt-2 text-sm text-text-secondary leading-relaxed">
-                  {t(feature.desc)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Wordmark className="relative text-[19vw] text-accent sm:text-[9rem]" />
 
-        {/* Composition types preview */}
-        <div className="mt-16 w-full max-w-2xl">
-          <p className="text-center text-xs text-text-tertiary tracking-wide uppercase mb-4">
-            {t("spots.composition")}
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {[
-              "SYMMETRY",
-              "RULE_OF_THIRDS",
-              "LEADING_LINES",
-              "FIBONACCI",
-              "MINIMALIST",
-              "FRAME_IN_FRAME",
-              "DIAGONAL",
-              "PATTERN",
-            ].map((comp) => (
-              <span
-                key={comp}
-                className="inline-block px-3 py-1.5 text-sm bg-bg-secondary text-text-secondary border border-border rounded-md"
-              >
-                {t(`compositions.${comp}`)}
-              </span>
-            ))}
-          </div>
+        <p className="relative mt-6 max-w-[24ch] text-center text-xl font-semibold leading-snug text-text sm:text-2xl">
+          {t("landing.tagline")}
+        </p>
+        <p className="relative mt-4 max-w-[46ch] text-center text-base leading-relaxed text-text-secondary">
+          {t("landing.heroDescription")}
+        </p>
+
+        <div className="relative mt-9 flex flex-col items-center gap-3 sm:flex-row">
+          <Link
+            href="/register"
+            className="inline-flex w-full items-center justify-center rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-on-accent shadow-raise transition-colors hover:bg-accent-dark sm:w-auto"
+          >
+            {t("landing.getStarted")}
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex w-full items-center justify-center rounded-full px-7 py-3.5 text-base font-semibold text-text transition-colors hover:bg-bg-secondary sm:w-auto"
+          >
+            {t("auth.login")}
+          </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border px-6 py-6">
-        <p className="text-center text-xs text-text-tertiary">
-          {t("landing.footer")}
-        </p>
+      {/* ── The journey: genuinely a sequence, so it is drawn as one ── */}
+      <section className="bg-bg-secondary px-5 py-16 sm:px-8 sm:py-20">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="max-w-[20ch] text-2xl font-semibold leading-tight text-text sm:text-4xl">
+            {t("landing.journeyHeadline")}
+          </h2>
+
+          <ol className="mt-10 grid gap-9 sm:grid-cols-3 sm:gap-8">
+            {JOURNEY.map((step, i) => (
+              <li key={step.title} className="relative pl-8 sm:pl-0">
+                {/* The thread between the points: down the gutter on narrow
+                    screens, across the row once there is width for it. */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-[6px] top-5 h-[calc(100%+2rem)] w-px bg-border-dark sm:left-4 sm:top-[7px] sm:h-px sm:w-[calc(100%+2rem)] ${
+                    i === JOURNEY.length - 1 ? "hidden" : ""
+                  }`}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full bg-accent sm:static sm:block"
+                />
+                <h3 className="font-display text-lg font-medium text-text sm:mt-5">
+                  {t(step.title)}
+                </h3>
+                <p className="mt-2 max-w-[34ch] text-[0.9375rem] leading-relaxed text-text-secondary">
+                  {t(step.desc)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <footer className="border-t border-border px-5 py-8 sm:px-8">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Wordmark className="text-lg text-text-tertiary" />
+            <p className="text-sm text-text-tertiary">{t("landing.footer")}</p>
+          </div>
+          <LocaleToggle />
+        </div>
       </footer>
     </div>
   );

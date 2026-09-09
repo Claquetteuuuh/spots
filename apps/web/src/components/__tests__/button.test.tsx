@@ -72,11 +72,11 @@ describe("Button", () => {
       const result = render(<Button size="sm">Btn</Button>);
       rerender = result.rerender;
     });
-    expect(screen.getByRole("button").className).toContain("px-3");
+    expect(screen.getByRole("button").className).toContain("px-3.5");
 
     await act(async () => {
       rerender!(<Button size="lg">Btn</Button>);
     });
-    expect(screen.getByRole("button").className).toContain("px-6");
+    expect(screen.getByRole("button").className).toContain("px-7");
   });
 });

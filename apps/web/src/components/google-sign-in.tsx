@@ -2,7 +2,7 @@
 
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+import { useT } from "@/lib/use-t";
 
 interface GoogleSignInButtonProps {
   onSuccess: (idToken: string) => void;
@@ -38,6 +38,7 @@ declare global {
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 export function GoogleSignInButton({ onSuccess }: GoogleSignInButtonProps) {
+  const t = useT();
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

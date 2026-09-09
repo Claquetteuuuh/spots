@@ -2,12 +2,12 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "The Right Spot",
-    short_name: "TRS",
-    description: "Photography spot discovery",
+    name: "spots",
+    short_name: "spots",
+    description: "The places your best photographs come from.",
     start_url: "/",
     display: "standalone",
-    background_color: "#FAFAF8",
-    theme_color: "#8B7355",
+    background_color: "#FFFFFF",
+    theme_color: "#4574C4",
   };
 }

@@ -146,7 +146,7 @@ export default function EditProfilePage() {
                 className="h-20 w-20 rounded-full object-cover border border-border"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent text-white text-xl font-semibold">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent text-on-accent text-xl font-semibold">
                 {initials}
               </div>
             )}
@@ -210,7 +210,7 @@ export default function EditProfilePage() {
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full rounded bg-accent py-2.5 text-sm font-semibold text-white hover:bg-accent-dark transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
         >
           {isSaving ? t("common.loading") : t("common.save")}
         </button>

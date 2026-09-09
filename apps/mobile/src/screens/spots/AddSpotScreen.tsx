@@ -1028,7 +1028,7 @@ export function AddSpotScreen() {
                         width: 8,
                         height: 8,
                         borderRadius: 4,
-                        backgroundColor: theme.colors.sage,
+                        backgroundColor: theme.colors.accent,
                       }}
                     />
                     <Text
@@ -1483,19 +1483,19 @@ export function AddSpotScreen() {
                       gap: theme.spacing.sm,
                       paddingVertical: theme.spacing.md,
                       borderWidth: visibility === "FOLLOWERS" ? theme.borderWidth.thick : StyleSheet.hairlineWidth,
-                      borderColor: visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.border,
+                      borderColor: visibility === "FOLLOWERS" ? theme.colors.accent : theme.colors.border,
                       borderRadius: theme.radius.sm,
-                      backgroundColor: visibility === "FOLLOWERS" ? `${theme.colors.sage}15` : theme.colors.bg,
+                      backgroundColor: visibility === "FOLLOWERS" ? theme.colors.accentTint : theme.colors.bg,
                     }}
                   >
                     <Ionicons
                       name="people-outline"
                       size={16}
-                      color={visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.textSecondary}
+                      color={visibility === "FOLLOWERS" ? theme.colors.accent : theme.colors.textSecondary}
                     />
                     <Text
                       style={{
-                        color: visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.textSecondary,
+                        color: visibility === "FOLLOWERS" ? theme.colors.accent : theme.colors.textSecondary,
                         fontSize: theme.typography.size.sm,
                         fontWeight: theme.typography.weight.medium,
                       }}

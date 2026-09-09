@@ -13,21 +13,26 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
+/**
+ * Buttons are pills — the roundest thing in the interface after the wordmark's
+ * dot. Only `primary` carries brand colour; everything else is a neutral
+ * surface, so there is never a question about which action is the main one.
+ */
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-accent text-white hover:bg-accent-dark active:bg-accent-dark disabled:opacity-50",
+    "bg-accent text-on-accent hover:bg-accent-dark active:bg-accent-dark disabled:opacity-40",
   secondary:
-    "border border-border bg-bg-secondary text-text hover:bg-bg-tertiary active:bg-bg-tertiary disabled:opacity-50",
+    "bg-bg-secondary text-text hover:bg-bg-tertiary active:bg-bg-tertiary disabled:opacity-40",
   ghost:
-    "bg-transparent text-accent hover:text-accent-dark hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50",
+    "bg-transparent text-text hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-40",
   danger:
-    "bg-error text-white hover:opacity-90 active:opacity-80 disabled:opacity-50",
+    "bg-error text-white hover:brightness-95 active:brightness-90 disabled:opacity-40",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "px-3.5 py-1.5 text-sm",
+  md: "px-5 py-2.5 text-sm",
+  lg: "px-7 py-3.5 text-base",
 };
 
 export function Button({
@@ -45,7 +50,7 @@ export function Button({
       disabled={disabled || loading}
       className={`
         inline-flex items-center justify-center gap-2
-        rounded-md font-semibold
+        rounded-full font-semibold
         transition-colors duration-150
         cursor-pointer disabled:cursor-not-allowed
         ${variantClasses[variant]}

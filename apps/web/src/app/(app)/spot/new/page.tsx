@@ -622,9 +622,9 @@ export default function AddSpotPage() {
                 // Only allow going back
                 if (i < currentIndex) setStep(s.key);
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-sm rounded-full transition-colors cursor-pointer ${
                 step === s.key
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-on-accent"
                   : i < currentIndex
                     ? "text-accent hover:bg-bg-secondary"
                     : "text-text-tertiary"
@@ -642,7 +642,7 @@ export default function AddSpotPage() {
 
       {/* Error */}
       {error ? (
-        <div className="mt-4 rounded-sm border border-error/20 bg-error-light px-4 py-3 space-y-1">
+        <div className="mt-4 rounded-lg border border-error/20 bg-error-light px-4 py-3 space-y-1">
           {error.split("\n").map((line, i) => (
             <p key={i} className="text-sm text-error flex items-start gap-2">
               <span className="shrink-0 mt-0.5">⚠</span>
@@ -670,7 +670,7 @@ export default function AddSpotPage() {
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
-                      className={`relative aspect-square overflow-hidden rounded-sm border cursor-grab active:cursor-grabbing transition-all ${
+                      className={`relative aspect-square overflow-hidden rounded-lg border cursor-grab active:cursor-grabbing transition-all ${
                         dragOverIndex === index && dragIndex !== index
                           ? "border-2 border-dashed border-accent"
                           : dragIndex === index
@@ -686,13 +686,13 @@ export default function AddSpotPage() {
 
                       {/* Cover badge */}
                       {index === 0 ? (
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-white rounded-sm">
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-on-accent rounded-lg">
                           Cover
                         </span>
                       ) : null}
 
                       {/* Order number */}
-                      <span className="absolute bottom-1.5 left-1.5 flex h-5 w-5 items-center justify-center text-[10px] font-semibold bg-bg/80 backdrop-blur-sm text-text rounded-sm border border-border">
+                      <span className="absolute bottom-1.5 left-1.5 flex h-5 w-5 items-center justify-center text-[10px] font-semibold bg-bg/80 backdrop-blur-sm text-text rounded-lg border border-border">
                         {index + 1}
                       </span>
 
@@ -703,7 +703,7 @@ export default function AddSpotPage() {
                           e.stopPropagation();
                           removePhoto(index);
                         }}
-                        className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-sm bg-bg/80 backdrop-blur-sm text-text-secondary hover:text-error transition-colors cursor-pointer border border-border"
+                        className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-lg bg-bg/80 backdrop-blur-sm text-text-secondary hover:text-error transition-colors cursor-pointer border border-border"
                       >
                         ×
                       </button>
@@ -715,7 +715,7 @@ export default function AddSpotPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-sm border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer bg-bg-secondary"
+                      className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer bg-bg-secondary"
                     >
                       <svg
                         className="h-6 w-6 text-text-tertiary"
@@ -745,7 +745,7 @@ export default function AddSpotPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full aspect-[4/3] rounded-sm border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-3 transition-colors cursor-pointer bg-bg-secondary"
+                className="w-full aspect-[4/3] rounded-lg border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-3 transition-colors cursor-pointer bg-bg-secondary"
               >
                 <svg
                   className="h-10 w-10 text-text-tertiary"
@@ -800,7 +800,7 @@ export default function AddSpotPage() {
                     if (searchResults.length > 0) setShowDropdown(true);
                   }}
                   placeholder={t("map.searchAddress")}
-                  className="w-full rounded-sm border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors pr-9"
+                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors pr-9"
                 />
                 {/* Search icon / spinner */}
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary">
@@ -819,7 +819,7 @@ export default function AddSpotPage() {
 
               {/* Dropdown results */}
               {showDropdown ? (
-                <div className="absolute left-0 right-0 top-full mt-1 z-10 border border-border rounded-sm bg-bg overflow-hidden">
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 border border-border rounded-lg bg-bg overflow-hidden">
                   {searchResults.length > 0 ? (
                     searchResults.map((result, i) => (
                       <button
@@ -861,7 +861,7 @@ export default function AddSpotPage() {
                   onBlur={handleSetManualCoords}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
                   placeholder="-90 … 90"
-                  className="w-full rounded-sm border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
               </div>
               <div className="flex-1">
@@ -878,7 +878,7 @@ export default function AddSpotPage() {
                   onBlur={handleSetManualCoords}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
                   placeholder="-180 … 180"
-                  className="w-full rounded-sm border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
               </div>
               <Button
@@ -892,7 +892,7 @@ export default function AddSpotPage() {
             </div>
 
             {/* Map */}
-            <div className="h-[400px] rounded-sm border border-border overflow-hidden">
+            <div className="h-[400px] rounded-lg border border-border overflow-hidden">
               <LocationPicker
                 latitude={latitude}
                 longitude={longitude}
@@ -945,7 +945,7 @@ export default function AddSpotPage() {
                 placeholder={t("spots.descriptionPlaceholder")}
                 rows={3}
                 maxLength={2000}
-                className="w-full rounded-md border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
+                className="w-full rounded-2xl border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
               />
               <p className="text-xs text-text-tertiary">
                 {description.length}/2000
@@ -968,10 +968,10 @@ export default function AddSpotPage() {
                       key={comp}
                       type="button"
                       onClick={() => toggleComposition(comp)}
-                      className={`px-2.5 py-1 text-sm rounded-md border transition-colors cursor-pointer ${
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors cursor-pointer ${
                         selected
-                          ? "bg-sage/15 text-sage border-sage/30"
-                          : "bg-bg text-text-secondary border-border hover:border-sage/30"
+                          ? "border-accent bg-accent-tint text-accent-dark"
+                          : "border-border bg-bg text-text-secondary hover:border-border-dark"
                       }`}
                     >
                       {t(`compositions.${comp}`)}
@@ -988,7 +988,7 @@ export default function AddSpotPage() {
                     onChange={(e) => setCustomComposition(e.target.value)}
                     placeholder={t("spots.customCompositionPlaceholder")}
                     maxLength={100}
-                    className="w-full rounded-sm border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                    className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                   />
                   <p className="mt-1 text-xs text-text-tertiary">
                     {t("spots.customComposition")}
@@ -1015,7 +1015,7 @@ export default function AddSpotPage() {
                       key={color}
                       type="button"
                       onClick={() => toggleColor(color)}
-                      className={`h-8 w-8 rounded-sm border-2 transition-all cursor-pointer ${
+                      className={`h-8 w-8 rounded-lg border-2 transition-all cursor-pointer ${
                         selected
                           ? "border-accent scale-110"
                           : "border-transparent hover:scale-105"
@@ -1033,10 +1033,10 @@ export default function AddSpotPage() {
                   {selectedColors.map((c) => (
                     <span
                       key={c}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono text-text-tertiary bg-bg-secondary rounded-sm border border-border"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono text-text-tertiary bg-bg-secondary rounded-lg border border-border"
                     >
                       <span
-                        className="inline-block h-3 w-3 rounded-sm border border-border"
+                        className="inline-block h-3 w-3 rounded-lg border border-border"
                         style={{ backgroundColor: c }}
                       />
                       {c}
@@ -1065,7 +1065,7 @@ export default function AddSpotPage() {
                   type="button"
                   onClick={() => colorPickerRef.current?.click()}
                   disabled={selectedColors.length >= 10}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
@@ -1079,7 +1079,7 @@ export default function AddSpotPage() {
                     type="button"
                     onClick={handleEyeDropper}
                     disabled={selectedColors.length >= 10}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="m15 11-1 1-2-2 1-1m4 0 2-2a1.414 1.414 0 0 0-2-2l-2 2m-4 4-5.5 5.5a2.121 2.121 0 1 0 3 3L15 11Z" />
@@ -1094,7 +1094,7 @@ export default function AddSpotPage() {
                     type="button"
                     onClick={openPhotoEyedropper}
                     disabled={selectedColors.length >= 10}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.41a2.25 2.25 0 0 1 3.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -1106,7 +1106,7 @@ export default function AddSpotPage() {
 
               {/* Photo eyedropper overlay */}
               {showPhotoEyedropper ? (
-                <div className="mt-3 rounded-sm border border-accent bg-bg-secondary p-3">
+                <div className="mt-3 rounded-lg border border-accent bg-bg-secondary p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs text-text-secondary font-medium">
                       {t("spots.clickPhotoToPickColor")}
@@ -1139,7 +1139,7 @@ export default function AddSpotPage() {
                             };
                             img.src = photo.preview;
                           }}
-                          className="h-10 w-10 flex-shrink-0 rounded-sm border border-border overflow-hidden cursor-pointer hover:border-accent transition-colors"
+                          className="h-10 w-10 flex-shrink-0 rounded-lg border border-border overflow-hidden cursor-pointer hover:border-accent transition-colors"
                         >
                           <img src={photo.preview} alt="" className="h-full w-full object-cover" />
                         </button>
@@ -1149,7 +1149,7 @@ export default function AddSpotPage() {
                   <canvas
                     ref={eyedropperCanvasRef}
                     onClick={handlePhotoEyedropper}
-                    className="w-full max-h-[300px] object-contain rounded-sm cursor-crosshair border border-border"
+                    className="w-full max-h-[300px] object-contain rounded-lg cursor-crosshair border border-border"
                     style={{ imageRendering: "auto" }}
                   />
                 </div>
@@ -1159,11 +1159,11 @@ export default function AddSpotPage() {
               <div className="mt-2 flex items-center gap-2">
                 {colorInputPreview ? (
                   <span
-                    className="h-8 w-8 rounded-sm border border-border flex-shrink-0"
+                    className="h-8 w-8 rounded-lg border border-border flex-shrink-0"
                     style={{ backgroundColor: colorInputPreview }}
                   />
                 ) : (
-                  <span className="h-8 w-8 rounded-sm border border-dashed border-border flex-shrink-0 bg-bg-secondary" />
+                  <span className="h-8 w-8 rounded-lg border border-dashed border-border flex-shrink-0 bg-bg-secondary" />
                 )}
                 <input
                   type="text"
@@ -1171,13 +1171,13 @@ export default function AddSpotPage() {
                   onChange={(e) => handleColorInputChange(e.target.value)}
                   onKeyDown={handleColorInputKeyDown}
                   placeholder={t("spots.colorInputPlaceholder")}
-                  className="flex-1 min-w-0 rounded-sm border border-border bg-bg-secondary px-3 py-1.5 text-xs font-mono text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                  className="flex-1 min-w-0 rounded-lg border border-border bg-bg-secondary px-3 py-1.5 text-xs font-mono text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
                 <button
                   type="button"
                   onClick={addColorFromInput}
                   disabled={!colorInputPreview || selectedColors.length >= 10}
-                  className="px-3 py-1.5 text-xs font-medium rounded-sm border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {t("spots.addColor")}
                 </button>
@@ -1196,7 +1196,7 @@ export default function AddSpotPage() {
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-bg-secondary text-text-secondary border border-border rounded-sm"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-bg-secondary text-text-secondary border border-border rounded-lg"
                   >
                     {tag}
                     <button
@@ -1234,7 +1234,7 @@ export default function AddSpotPage() {
                 <button
                   type="button"
                   onClick={() => setVisibility("PRIVATE")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-sm border transition-colors cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${
                     visibility === "PRIVATE"
                       ? "border-accent text-accent bg-accent/10"
                       : "border-border text-text-secondary hover:bg-bg-secondary"
@@ -1248,9 +1248,9 @@ export default function AddSpotPage() {
                 <button
                   type="button"
                   onClick={() => setVisibility("FOLLOWERS")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-sm border transition-colors cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${
                     visibility === "FOLLOWERS"
-                      ? "border-sage text-sage bg-sage/10"
+                      ? "border-accent bg-accent-tint text-accent-dark"
                       : "border-border text-text-secondary hover:bg-bg-secondary"
                   }`}
                 >
@@ -1267,7 +1267,7 @@ export default function AddSpotPage() {
 
       {/* Validation errors */}
       {validationErrors.length > 0 ? (
-        <div className="mt-6 rounded-sm border border-error/20 bg-error-light px-4 py-3 space-y-1">
+        <div className="mt-6 rounded-lg border border-error/20 bg-error-light px-4 py-3 space-y-1">
           {validationErrors.map((msg, i) => (
             <p key={i} className="text-sm text-error flex items-start gap-2">
               <span className="shrink-0 mt-0.5">⚠</span>

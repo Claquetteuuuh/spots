@@ -56,7 +56,7 @@ function FeedCarousel({
           e.stopPropagation();
           setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
         }}
-        className="absolute left-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+        className="absolute left-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -71,7 +71,7 @@ function FeedCarousel({
           e.stopPropagation();
           setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
         }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
       >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -79,7 +79,7 @@ function FeedCarousel({
       </button>
 
       {/* Counter badge */}
-      <span className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium bg-bg/60 backdrop-blur-sm text-text rounded-sm border border-border/40">
+      <span className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium bg-bg/60 backdrop-blur-sm text-text rounded-lg border border-border/40">
         {currentIndex + 1}/{images.length}
       </span>
 
@@ -112,7 +112,7 @@ function FeedSpotCard({ spot }: { spot: Spot }) {
   const t = useT();
 
   return (
-    <article className="bg-bg sm:border sm:border-border sm:rounded-md overflow-hidden">
+    <article className="bg-bg sm:border sm:border-border sm:rounded-2xl overflow-hidden">
       {/* User header — Instagram style */}
       {spot.user ? (
         <Link
@@ -126,7 +126,7 @@ function FeedSpotCard({ spot }: { spot: Spot }) {
               className="h-8 w-8 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-white text-xs font-semibold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent text-xs font-semibold">
               {spot.user.name?.charAt(0)?.toUpperCase() ?? "?"}
             </div>
           )}
@@ -175,7 +175,7 @@ function FeedSpotCard({ spot }: { spot: Spot }) {
             {spot.compositions.map((c) => (
               <span
                 key={c}
-                className="inline-block px-2 py-0.5 text-xs bg-sage/10 text-sage border border-sage/20 rounded-sm"
+                className="inline-block rounded-full bg-accent-tint px-2.5 py-0.5 text-xs font-medium text-accent-dark"
               >
                 {t(`compositions.${c}`)}
               </span>

@@ -55,14 +55,14 @@ export async function sendPasswordResetEmail(
 
   await sendEmail({
     to,
-    subject: "Reset your password — The Right Spot",
+    subject: "Reset your password — spots",
     html: `
       <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
         <h2 style="color: #1A1A18; font-size: 20px; font-weight: 600; margin: 0 0 16px;">
           Reset your password
         </h2>
         <p style="color: #6B6960; font-size: 14px; line-height: 1.6; margin: 0 0 24px;">
-          You requested a password reset for your The Right Spot account.
+          You requested a password reset for your spots account.
           Click the button below to choose a new password. This link expires in 1 hour.
         </p>
         <a href="${resetUrl}"

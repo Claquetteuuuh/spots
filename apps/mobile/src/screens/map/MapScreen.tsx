@@ -135,7 +135,7 @@ export function MapScreen() {
                 style={[
                   styles.pin,
                   {
-                    backgroundColor: filter === "following" ? theme.colors.sage : theme.colors.accent,
+                    backgroundColor: theme.colors.accent,
                     borderColor: theme.colors.bg,
                   },
                 ]}
