@@ -154,7 +154,8 @@ export const fr = {
     longitudePlaceholder: "Longitude",
     setCoordinates: "Définir les coordonnées",
     noResults: "Aucun résultat trouvé",
-    clickMapHint: "Cliquez sur la carte pour placer le spot, ou utilisez l'adresse / les coordonnées ci-dessus",
+    clickMapHint: "Appuyez sur la carte pour placer le spot",
+    tapToExpand: "Appuyez pour agrandir",
   },
   settings: {
     title: "Paramètres",

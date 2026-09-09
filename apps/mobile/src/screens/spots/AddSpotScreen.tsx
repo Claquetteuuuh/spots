@@ -4,6 +4,7 @@ import {
   Dimensions,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -17,8 +18,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import { WebView } from "react-native-webview";
+import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
+import ColorPicker, { Panel1, HueSlider, OpacitySlider, Preview } from "reanimated-color-picker";
 import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
@@ -243,6 +247,14 @@ export function AddSpotScreen() {
   const [colorInput, setColorInput] = useState("");
   const [colorPreview, setColorPreview] = useState<string | null>(null);
   const [selectedHue, setSelectedHue] = useState<number | null>(null);
+
+  // Color wheel modal
+  const [showColorWheel, setShowColorWheel] = useState(false);
+  const [wheelColor, setWheelColor] = useState("#8B7355");
+
+  // Photo eyedropper
+  const [showEyedropper, setShowEyedropper] = useState(false);
+  const [eyedropperPhotoIndex, setEyedropperPhotoIndex] = useState(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -947,6 +959,56 @@ export function AddSpotScreen() {
                   loading={isLocating}
                 />
 
+                {/* Map picker */}
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xs,
+                    textAlign: "center",
+                  }}
+                >
+                  {t("map.clickMapHint")}
+                </Text>
+                <View
+                  style={{
+                    height: 200,
+                    borderRadius: theme.radius.sm,
+                    overflow: "hidden",
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: theme.colors.border,
+                  }}
+                >
+                  <MapView
+                    provider={PROVIDER_DEFAULT}
+                    style={StyleSheet.absoluteFill}
+                    initialRegion={{
+                      latitude: location?.latitude ?? 48.8566,
+                      longitude: location?.longitude ?? 2.3522,
+                      latitudeDelta: location ? 0.02 : 5,
+                      longitudeDelta: location ? 0.02 : 5,
+                    }}
+                    onPress={(e) => {
+                      const { latitude, longitude } = e.nativeEvent.coordinate;
+                      void applyLocation(latitude, longitude);
+                    }}
+                  >
+                    {location ? (
+                      <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }}>
+                        <View
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 7,
+                            backgroundColor: theme.colors.accent,
+                            borderWidth: 2,
+                            borderColor: theme.colors.bg,
+                          }}
+                        />
+                      </Marker>
+                    ) : null}
+                  </MapView>
+                </View>
+
                 {/* Current location display */}
                 {location ? (
                   <View
@@ -1038,6 +1100,62 @@ export function AddSpotScreen() {
               <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs }}>
                 {selectedColors.length}/10
               </Text>
+
+              {/* Color tools: wheel + eyedropper */}
+              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                {/* Color wheel button */}
+                <Pressable
+                  onPress={() => setShowColorWheel(true)}
+                  disabled={selectedColors.length >= 10}
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: theme.spacing.md,
+                    backgroundColor: theme.colors.bgSecondary,
+                    borderRadius: theme.radius.sm,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: theme.colors.border,
+                    opacity: selectedColors.length >= 10 ? 0.4 : 1,
+                  }}
+                >
+                  <Ionicons name="color-palette-outline" size={18} color={theme.colors.text} />
+                  <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm }}>
+                    {t("spots.pickColor")}
+                  </Text>
+                </Pressable>
+
+                {/* Eyedropper button */}
+                <Pressable
+                  onPress={() => {
+                    if (photos.length > 0) {
+                      setEyedropperPhotoIndex(0);
+                      setShowEyedropper(true);
+                    }
+                  }}
+                  disabled={photos.length === 0 || selectedColors.length >= 10}
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: theme.spacing.md,
+                    backgroundColor: theme.colors.bgSecondary,
+                    borderRadius: theme.radius.sm,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: theme.colors.border,
+                    opacity: photos.length === 0 || selectedColors.length >= 10 ? 0.4 : 1,
+                  }}
+                >
+                  <Ionicons name="eyedrop-outline" size={18} color={theme.colors.text} />
+                  <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm }}>
+                    {t("spots.pickFromPhoto")}
+                  </Text>
+                </Pressable>
+              </View>
 
               {/* ── More colors section ──────────────────────────── */}
               <Text
@@ -1548,6 +1666,137 @@ export function AddSpotScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Color Wheel Modal ─────────────────────────────── */}
+      <Modal visible={showColorWheel} animationType="slide" transparent onRequestClose={() => setShowColorWheel(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <View
+            style={{
+              backgroundColor: theme.colors.bg,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingHorizontal: theme.spacing.lg,
+              paddingTop: theme.spacing.lg,
+              paddingBottom: 40,
+            }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.lg }}>
+              <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.md, fontWeight: theme.typography.weight.semibold }}>
+                {t("spots.pickColor")}
+              </Text>
+              <Pressable onPress={() => setShowColorWheel(false)} hitSlop={12}>
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+
+            <ColorPicker
+              value={wheelColor}
+              onComplete={(color) => setWheelColor(color.hex)}
+              style={{ gap: theme.spacing.md }}
+            >
+              <Preview hideInitialColor />
+              <Panel1 />
+              <HueSlider />
+              <OpacitySlider />
+            </ColorPicker>
+
+            <Button
+              title={t("spots.addColor")}
+              variant="primary"
+              onPress={() => {
+                const hex = wheelColor.substring(0, 7).toUpperCase();
+                if (!selectedColors.includes(hex) && selectedColors.length < 10) {
+                  setSelectedColors((prev) => [...prev, hex]);
+                }
+                setShowColorWheel(false);
+              }}
+              style={{ marginTop: theme.spacing.lg }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Photo Eyedropper Modal ────────────────────────── */}
+      <Modal visible={showEyedropper} animationType="slide" onRequestClose={() => setShowEyedropper(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }} edges={["top", "bottom"]}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md }}>
+            <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.md, fontWeight: theme.typography.weight.semibold }}>
+              {t("spots.pickFromPhoto")}
+            </Text>
+            <Pressable onPress={() => setShowEyedropper(false)} hitSlop={12}>
+              <Ionicons name="close" size={24} color={theme.colors.text} />
+            </Pressable>
+          </View>
+
+          <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs, textAlign: "center", marginBottom: theme.spacing.sm }}>
+            {t("spots.clickPhotoToPickColor")}
+          </Text>
+
+          {/* Photo thumbnails for multi-photo selection */}
+          {photos.length > 1 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: 8, marginBottom: theme.spacing.sm }}
+            >
+              {photos.map((photo, idx) => (
+                <Pressable
+                  key={photo.id}
+                  onPress={() => setEyedropperPhotoIndex(idx)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: theme.radius.sm,
+                    overflow: "hidden",
+                    borderWidth: idx === eyedropperPhotoIndex ? 2 : StyleSheet.hairlineWidth,
+                    borderColor: idx === eyedropperPhotoIndex ? theme.colors.accent : theme.colors.border,
+                  }}
+                >
+                  <Image source={{ uri: photo.uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          {/* WebView-based eyedropper canvas */}
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.lg, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }}>
+            <WebView
+              originWhitelist={["*"]}
+              source={{
+                html: `<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}
+canvas{max-width:100%;max-height:100%;object-fit:contain;cursor:crosshair}</style></head>
+<body><canvas id="c"></canvas>
+<script>
+const canvas=document.getElementById('c');const ctx=canvas.getContext('2d');
+const img=new Image();img.crossOrigin='anonymous';
+img.onload=()=>{canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;ctx.drawImage(img,0,0);};
+img.src='${photos[eyedropperPhotoIndex]?.uri ?? ""}';
+canvas.addEventListener('click',(e)=>{
+  const rect=canvas.getBoundingClientRect();
+  const x=Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+  const y=Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
+  const p=ctx.getImageData(x,y,1,1).data;
+  const hex='#'+[p[0],p[1],p[2]].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  window.ReactNativeWebView.postMessage(hex);
+});
+</script></body></html>`,
+              }}
+              onMessage={(event) => {
+                const hex = event.nativeEvent.data;
+                if (/^#[0-9A-F]{6}$/.test(hex) && !selectedColors.includes(hex) && selectedColors.length < 10) {
+                  setSelectedColors((prev) => [...prev, hex]);
+                }
+                setShowEyedropper(false);
+              }}
+              style={{ flex: 1, backgroundColor: "transparent" }}
+              javaScriptEnabled
+              scrollEnabled={false}
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

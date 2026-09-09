@@ -147,6 +147,7 @@ export default function SpotDetailPage({
   const [spot, setSpot] = useState<Spot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   // Community photos state
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
@@ -427,11 +428,22 @@ export default function SpotDetailPage({
           </div>
         </div>
 
-        {/* Mini map */}
+        {/* Mini map — click to expand */}
         <div className="border-t border-border">
-          <div className="h-40 sm:h-48">
+          <button
+            type="button"
+            onClick={() => setMapExpanded(true)}
+            className="relative w-full h-40 sm:h-48 cursor-pointer group"
+          >
             <MiniMap latitude={spot.latitude} longitude={spot.longitude} />
-          </div>
+            {/* Expand hint */}
+            <span className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-text-secondary bg-bg/80 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+              </svg>
+              {t("map.tapToExpand")}
+            </span>
+          </button>
           <div className="px-4 py-2 border-t border-border flex items-center justify-between">
             <p className="text-xs text-text-tertiary font-mono">
               {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
@@ -443,6 +455,35 @@ export default function SpotDetailPage({
             ) : null}
           </div>
         </div>
+
+        {/* Expanded map overlay */}
+        {mapExpanded ? (
+          <div className="fixed inset-0 z-50 bg-bg flex flex-col">
+            <div className="flex-1 relative">
+              <ExpandedMap latitude={spot.latitude} longitude={spot.longitude} />
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setMapExpanded(false)}
+                className="absolute top-4 right-4 w-10 h-10 bg-bg rounded-full flex items-center justify-center shadow-md cursor-pointer hover:bg-bg-secondary transition-colors"
+              >
+                <svg className="h-5 w-5 text-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <p className="text-xs text-text-tertiary font-mono">
+                {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
+              </p>
+              {spot.address ? (
+                <p className="text-xs text-text-tertiary truncate ml-4">
+                  {spot.address}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* ── Community Photos Section ─────────────────────────────── */}
@@ -572,4 +613,42 @@ export default function SpotDetailPage({
       </div>
     </div>
   );
+}
+
+/** Full-screen interactive Leaflet map for spot detail */
+function ExpandedMap({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
+    import("leaflet").then((L) => {
+      if (!containerRef.current || mapRef.current) return;
+      const map = L.map(containerRef.current).setView([latitude, longitude], 15);
+      mapRef.current = map;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      }).addTo(map);
+
+      L.marker([latitude, longitude]).addTo(map);
+    });
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [latitude, longitude]);
+
+  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

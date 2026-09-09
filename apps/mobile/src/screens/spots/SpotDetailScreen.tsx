@@ -4,8 +4,11 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -34,6 +37,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,8 +279,9 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </Text>
           </View>
 
-          {/* Mini map */}
-          <View
+          {/* Mini map — tap to expand */}
+          <Pressable
+            onPress={() => setMapExpanded(true)}
             style={[
               styles.mapThumb,
               { borderColor: theme.colors.border, borderRadius: theme.radius.md },
@@ -300,7 +305,47 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
                 <View style={[styles.pin, { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg }]} />
               </Marker>
             </MapView>
-          </View>
+            {/* Expand hint */}
+            <View style={[styles.expandHint, { backgroundColor: theme.colors.bg + "CC" }]}>
+              <Ionicons name="expand-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs, marginLeft: 4 }}>
+                {t("map.tapToExpand")}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Fullscreen map modal */}
+          <Modal visible={mapExpanded} animationType="slide" onRequestClose={() => setMapExpanded(false)}>
+            <View style={[styles.fullMapContainer, { backgroundColor: theme.colors.bg }]}>
+              <MapView
+                provider={PROVIDER_DEFAULT}
+                style={StyleSheet.absoluteFill}
+                initialRegion={{
+                  latitude: spot.latitude,
+                  longitude: spot.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+              >
+                <Marker coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}>
+                  <View style={[styles.pin, { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg }]} />
+                </Marker>
+              </MapView>
+              {/* Close button */}
+              <Pressable
+                onPress={() => setMapExpanded(false)}
+                style={[styles.mapCloseButton, { backgroundColor: theme.colors.bg }]}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </Pressable>
+              {/* Coordinates bar */}
+              <View style={[styles.mapCoordsBar, { backgroundColor: theme.colors.bg + "EE" }]}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                  {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
+                </Text>
+              </View>
+            </View>
+          </Modal>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -370,5 +415,42 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
+  },
+  expandHint: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  fullMapContainer: {
+    flex: 1,
+  },
+  mapCloseButton: {
+    position: "absolute",
+    top: 56,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  mapCoordsBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 36,
   },
 });
