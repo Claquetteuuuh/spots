@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type React from "react";
 import { Figtree, Fredoka } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { getTranslator } from "@/lib/i18n";
@@ -46,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getServerLocale();
 
   return (
