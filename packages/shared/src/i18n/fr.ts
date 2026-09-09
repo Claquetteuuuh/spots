@@ -1,4 +1,8 @@
 export const fr = {
+  app: {
+    name: "The Right Spot",
+    description: "Découvrez et partagez des spots photo",
+  },
   common: {
     loading: "Chargement...",
     error: "Une erreur est survenue",
@@ -239,5 +243,7 @@ export const fr = {
     notFoundMessage:
       "La page que vous cherchez n'existe pas ou a été déplacée.",
     goHome: "Retour à l'accueil",
+    unexpected: "Une erreur inattendue est survenue",
+    tryAgain: "Réessayer",
   },
 } as const;

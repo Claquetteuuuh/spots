@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { getTranslator } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/server-locale";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = getTranslator(await getServerLocale());
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-24">
       <p className="text-6xl font-semibold text-accent">404</p>

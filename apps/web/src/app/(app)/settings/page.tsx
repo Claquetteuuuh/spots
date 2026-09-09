@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient, getToken } from "@/lib/api-client";
 import { Input } from "@/components/ui/input";
-import { useLocale, type Locale } from "@/lib/locale-context";
+import { useLocale } from "@/lib/locale-context";
+import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@/lib/locale";
 import { useT } from "@/lib/use-t";
 import { getTheme, setTheme, type ThemeMode } from "@/lib/theme";
 
@@ -413,24 +414,24 @@ export default function SettingsPage() {
   /* Language Panel                                                  */
   /* ─────────────────────────────────────────────────────────────── */
   if (panel === "language") {
-    const languages: { key: Locale; label: string; flag: string }[] = [
-      { key: "en", label: "English", flag: "🇬🇧" },
-      { key: "fr", label: "Français", flag: "🇫🇷" },
-    ];
-
     return (
       <div className="mx-auto max-w-lg">
         <PanelHeader title={t("settings.language")} onBack={goBackToMain} />
         <div className="py-2">
-          {languages.map(({ key, label, flag }) => (
+          {SUPPORTED_LOCALES.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setLocale(key)}
+              aria-pressed={locale === key}
               className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
             >
-              <span className="text-lg">{flag}</span>
-              <span className="flex-1 text-sm text-text">{label}</span>
+              <span className="w-7 shrink-0 border border-border rounded-sm py-0.5 text-center text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+                {key}
+              </span>
+              <span className="flex-1 text-sm text-text">
+                {LOCALE_LABELS[key]}
+              </span>
               <span
                 className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors
                   ${locale === key ? "border-accent" : "border-border-dark"}`}
@@ -456,7 +457,7 @@ export default function SettingsPage() {
         ? t("settings.themeLight")
         : t("settings.themeSystem");
 
-  const langLabel = locale === "fr" ? "Français" : "English";
+  const langLabel = LOCALE_LABELS[locale];
 
   return (
     <div className="mx-auto max-w-lg">

@@ -10,11 +10,16 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import {
+  FALLBACK_LOCALE,
+  LOCALE_COOKIE_MAX_AGE,
+  LOCALE_STORAGE_KEY,
+  normalizeLocale,
+  parseLocaleCookie,
+  type Locale,
+} from "./locale";
 
-export type Locale = "en" | "fr";
-
-const STORAGE_KEY = "trs_locale";
-const DEFAULT_LOCALE: Locale = "en";
+export type { Locale };
 
 interface LocaleContextValue {
   locale: Locale;
@@ -23,52 +28,72 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
+/**
+ * Client-side locale detection, in the same order the server uses:
+ * cookie → localStorage → browser language → fallback.
+ */
 function getStoredLocale(): Locale {
-  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  if (typeof window === "undefined") return FALLBACK_LOCALE;
+
+  const fromCookie = parseLocaleCookie(document.cookie);
+  if (fromCookie) return fromCookie;
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "en" || stored === "fr") return stored;
+    const stored = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
+    if (stored) return stored;
+  } catch {
+    // localStorage unavailable (private mode, blocked cookies)
+  }
+
+  if (typeof navigator !== "undefined") {
+    const fromBrowser = normalizeLocale(navigator.language);
+    if (fromBrowser) return fromBrowser;
+  }
+
+  return FALLBACK_LOCALE;
+}
+
+function persistLocale(locale: Locale) {
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   } catch {
     // localStorage unavailable
   }
-  // Detect from browser language
-  if (typeof navigator !== "undefined") {
-    const lang = navigator.language.toLowerCase();
-    if (lang.startsWith("fr")) return "fr";
-  }
-  return DEFAULT_LOCALE;
+  // The cookie is what lets server components render in the right language.
+  document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+export function LocaleProvider({
+  children,
+  initialLocale = FALLBACK_LOCALE,
+}: {
+  children: ReactNode;
+  /** Locale resolved on the server, so first paint matches the markup. */
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
-  // Hydrate from storage after mount
+  // Reconcile with client-side storage after mount. This only differs from
+  // `initialLocale` when no cookie was sent yet (first visit, browser default).
   useEffect(() => {
-    startTransition(() => {
-      setLocaleState(getStoredLocale());
-    });
-  }, []);
+    const detected = getStoredLocale();
+    if (detected !== initialLocale) {
+      startTransition(() => setLocaleState(detected));
+    }
+    persistLocale(detected);
+  }, [initialLocale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
-    try {
-      localStorage.setItem(STORAGE_KEY, newLocale);
-    } catch {
-      // localStorage unavailable
-    }
-    // Update html lang attribute
+    persistLocale(newLocale);
     document.documentElement.lang = newLocale;
   }, []);
 
-  // Set html lang on mount
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const value = useMemo(
-    () => ({ locale, setLocale }),
-    [locale, setLocale],
-  );
+  const value = useMemo(() => ({ locale, setLocale }), [locale, setLocale]);
 
   return (
     <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>

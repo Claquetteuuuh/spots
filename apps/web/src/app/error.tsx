@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useT } from "@/lib/use-t";
 
 export default function GlobalError({
   error,
@@ -9,6 +10,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
+
   useEffect(() => {
     console.error("Global error:", error);
   }, [error]);
@@ -26,10 +29,10 @@ export default function GlobalError({
       color: "#1A1A18",
     }}>
       <h2 style={{ fontSize: "1.5rem", fontWeight: 600 }}>
-        Something went wrong
+        {t("common.error")}
       </h2>
       <p style={{ marginTop: "0.5rem", color: "#6B6960", fontSize: "0.875rem" }}>
-        {error.message || "An unexpected error occurred"}
+        {error.message || t("errors.unexpected")}
       </p>
       <button
         onClick={reset}
@@ -45,7 +48,7 @@ export default function GlobalError({
           cursor: "pointer",
         }}
       >
-        Try again
+        {t("errors.tryAgain")}
       </button>
     </div>
   );

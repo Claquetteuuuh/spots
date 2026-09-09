@@ -1,4 +1,8 @@
 export const en = {
+  app: {
+    name: "The Right Spot",
+    description: "Discover and share photography spots",
+  },
   common: {
     loading: "Loading...",
     error: "Something went wrong",
@@ -239,5 +243,7 @@ export const en = {
     notFoundMessage:
       "The page you're looking for doesn't exist or has been moved.",
     goHome: "Go home",
+    unexpected: "An unexpected error occurred",
+    tryAgain: "Try again",
   },
 } as const;

@@ -15,11 +15,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme, useThemeMode, type ThemeMode } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import * as api from "../../lib/api";
-import { setAppLocale } from "../../lib/i18n";
+import { getAppLocale, LOCALE_LABELS, setAppLocale } from "../../lib/i18n";
 import { Button } from "../../components/ui/Button";
 
 export function SettingsScreen() {
-  const { t, i18n } = useTranslation();
+  // useTranslation() also re-renders this screen when the language changes,
+  // which keeps the row's value label in sync with getAppLocale().
+  const { t } = useTranslation();
   const theme = useTheme();
   const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const user = useAuthStore((s) => s.user);
@@ -109,8 +111,8 @@ export function SettingsScreen() {
         : t("settings.themeSystem");
 
   const handleChangeLanguage = async () => {
-    const next = i18n.language === "fr" ? "en" : "fr";
-    await setAppLocale(next as "fr" | "en");
+    // Two supported locales — the row acts as a toggle between them.
+    await setAppLocale(getAppLocale() === "fr" ? "en" : "fr");
   };
 
   const handleLogout = () => {
@@ -296,7 +298,7 @@ export function SettingsScreen() {
           <Row
             icon="language-outline"
             label={t("settings.language")}
-            value={i18n.language === "fr" ? "Français" : "English"}
+            value={LOCALE_LABELS[getAppLocale()]}
             onPress={handleChangeLanguage}
             theme={theme}
           />

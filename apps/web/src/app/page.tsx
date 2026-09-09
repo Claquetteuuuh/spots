@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { getTranslator } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/server-locale";
 
 const FEATURE_ICONS = [
   // Camera
@@ -24,7 +25,9 @@ const FEATURE_KEYS = [
   { title: "landing.stepDiscover", desc: "landing.stepDiscoverDesc" },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const t = getTranslator(await getServerLocale());
+
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
