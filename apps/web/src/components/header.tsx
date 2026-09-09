@@ -73,7 +73,7 @@ export function Header() {
     <>
       {/* ── Top bar ────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur-md">
-        <nav className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-4">
+        <nav className="mx-auto grid h-14 w-full max-w-4xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
           {/* Logo */}
           <Link
             href={isAuthenticated ? "/map" : "/"}
@@ -82,9 +82,9 @@ export function Header() {
             <Wordmark className="text-xl" />
           </Link>
 
-          {/* Desktop nav icons (authenticated) */}
+          {/* Destinations — centre column, desktop only */}
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden items-center gap-2 md:flex">
               {/* Map */}
               <Link
                 href="/map"
@@ -166,11 +166,20 @@ export function Header() {
                 ) : null}
               </Link>
 
-              {/* User menu */}
-              <div className="relative ml-2" ref={menuRef}>
+            </div>
+          ) : (
+            <span />
+          )}
+
+          {/* Account — right column */}
+          <div className="flex items-center justify-end gap-3">
+            {isAuthenticated ? (
+              // On a phone the profile lives in the bottom tab bar; a second
+              // avatar up here would just be the same destination twice.
+              <div className="relative hidden md:block" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-all cursor-pointer ring-2 ${
+                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-xs font-medium transition-all ring-2 ${
                     isActive(`/profile/${user?.username}`)
                       ? "ring-accent"
                       : "ring-transparent hover:ring-border-dark"
@@ -180,10 +189,10 @@ export function Header() {
                     <img
                       src={user.avatarUrl}
                       alt={user.name}
-                      className="h-7 w-7 rounded-full object-cover"
+                      className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary">
                       {initials}
                     </div>
                   )}
@@ -233,23 +242,23 @@ export function Header() {
                   </div>
                 ) : null}
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className="rounded-full px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg-secondary"
-              >
-                {t("auth.login")}
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark"
-              >
-                {t("auth.register")}
-              </Link>
-            </div>
-          )}
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-bg-secondary"
+                >
+                  {t("auth.login")}
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark"
+                >
+                  {t("auth.register")}
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
       </header>
 
