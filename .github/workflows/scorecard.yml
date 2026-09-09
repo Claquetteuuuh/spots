@@ -25,7 +25,13 @@ jobs:
     name: Scorecard analysis
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Scorecard can only publish results (and Code scanning only accepts SARIF)
+    # for public repos. Runs automatically the day the repo goes public.
+    if: ${{ !github.event.repository.private }}
     permissions:
+      # Job-level permissions REPLACE the top-level set, so `contents: read` must be
+      # repeated here — without it the token cannot even fetch a private repo (git exit 128).
+      contents: read
       security-events: write  # SARIF upload
       id-token: write         # OIDC token for Scorecard API
 
@@ -43,6 +49,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
         with:
           sarif_file: scorecard-results.sarif

@@ -1,0 +1,6 @@
+# Grype SCA configuration — used by `grype dir:.` locally and in
+# .github/workflows/security-scan.yml.
+exclude:
+  # Agent worktrees are nested checkouts with their own (stale) lockfiles.
+  # They are never part of the shipped tree and must not fail the scan.
+  - ./.claude/**

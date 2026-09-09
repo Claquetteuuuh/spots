@@ -1,0 +1,12 @@
+# Bearer SAST configuration — used by `bearer scan .` locally and in
+# .github/workflows/bearer.yml.
+scan:
+  skip-path:
+    # Translation catalogs: plain UI strings, no code. Labels such as
+    # "Current password" trip the hard-coded-secret rule (CWE-798) with no
+    # secret anywhere in sight.
+    - packages/shared/src/i18n
+    # Generated Prisma client — not our code, rebuilt by `pnpm db:generate`.
+    - apps/web/src/generated
+    # Agent worktrees are nested checkouts, not part of the shipped tree.
+    - .claude

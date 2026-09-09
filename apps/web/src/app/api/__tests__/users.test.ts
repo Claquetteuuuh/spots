@@ -7,6 +7,9 @@ const mockUserFindMany = vi.fn();
 const mockFollowCreate = vi.fn();
 const mockFollowFindUnique = vi.fn();
 const mockFollowDelete = vi.fn();
+// GET /api/users/[username] counts accepted followers/following separately
+// from the raw `_count` relation totals (which include pending requests).
+const mockFollowCount = vi.fn();
 vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
@@ -17,6 +20,7 @@ vi.mock("@/lib/db", () => ({
       create: (...args: unknown[]) => mockFollowCreate(...args),
       findUnique: (...args: unknown[]) => mockFollowFindUnique(...args),
       delete: (...args: unknown[]) => mockFollowDelete(...args),
+      count: (...args: unknown[]) => mockFollowCount(...args),
     },
   },
   Prisma: {
@@ -48,6 +52,20 @@ import { GET as GetProfile } from "../users/[username]/route";
 import { POST as FollowUser, DELETE as UnfollowUser } from "../users/[username]/follow/route";
 import { GET as SearchUsers } from "../users/search/route";
 
+/**
+ * Clear call history and restore neutral defaults so a query a test did not
+ * explicitly mock resolves to "nothing found" instead of `undefined` (or a
+ * value leaked from a previous test — `vi.clearAllMocks()` alone keeps
+ * implementations set via `mockResolvedValue`).
+ */
+function resetPrismaMocks() {
+  vi.clearAllMocks();
+  mockUserFindUnique.mockResolvedValue(null);
+  mockUserFindMany.mockResolvedValue([]);
+  mockFollowFindUnique.mockResolvedValue(null);
+  mockFollowCount.mockResolvedValue(0);
+}
+
 const DB_USER = {
   id: "user-1",
   email: "alice@example.com",
@@ -71,7 +89,17 @@ beforeAll(() => {
 
 describe("GET /api/users/[username]", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
+    // The handler replaces the raw `_count` follower/following totals with
+    // ACCEPTED-only counts: one `follow.count` keyed on `followingId`
+    // (followers of the user), one keyed on `followerId` (users they follow).
+    mockFollowCount.mockImplementation(
+      async ({ where }: { where: { followingId?: string; followerId?: string } }) => {
+        if (where.followingId === DB_USER.id) return 10;
+        if (where.followerId === DB_USER.id) return 3;
+        return 0;
+      },
+    );
   });
 
   it("returns user profile with counts", async () => {
@@ -88,6 +116,13 @@ describe("GET /api/users/[username]", () => {
     expect(json.data.followerCount).toBe(10);
     expect(json.data.followingCount).toBe(3);
     expect(json.data.isFollowing).toBe(false);
+    expect(json.data.followStatus).toBeNull();
+    expect(mockFollowCount).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { followingId: DB_USER.id, status: "ACCEPTED" } }),
+    );
+    expect(mockFollowCount).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { followerId: DB_USER.id, status: "ACCEPTED" } }),
+    );
     // Sensitive fields stripped
     expect(json.data.passwordHash).toBeUndefined();
     expect(json.data.providerId).toBeUndefined();
@@ -100,7 +135,8 @@ describe("GET /api/users/[username]", () => {
       email: "viewer@example.com",
       username: "viewer",
     });
-    mockFollowFindUnique.mockResolvedValue({ id: "follow-1" });
+    // The handler selects `{ status }` and only counts ACCEPTED as following.
+    mockFollowFindUnique.mockResolvedValue({ status: "ACCEPTED" });
 
     const req = new NextRequest("http://localhost/api/users/alice", {
       headers: { Authorization: "Bearer mock-token" },
@@ -108,7 +144,29 @@ describe("GET /api/users/[username]", () => {
     const res = await GetProfile(req, { params: Promise.resolve({ username: "alice" }) });
     const json = await res.json();
 
+    expect(res.status).toBe(200);
     expect(json.data.isFollowing).toBe(true);
+    expect(json.data.followStatus).toBe("ACCEPTED");
+  });
+
+  it("reports a pending follow request as not following", async () => {
+    mockUserFindUnique.mockResolvedValue(DB_USER);
+    mockGetUserFromRequest.mockResolvedValue({
+      userId: "viewer-1",
+      email: "viewer@example.com",
+      username: "viewer",
+    });
+    mockFollowFindUnique.mockResolvedValue({ status: "PENDING" });
+
+    const req = new NextRequest("http://localhost/api/users/alice", {
+      headers: { Authorization: "Bearer mock-token" },
+    });
+    const res = await GetProfile(req, { params: Promise.resolve({ username: "alice" }) });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.isFollowing).toBe(false);
+    expect(json.data.followStatus).toBe("PENDING");
   });
 
   it("returns 404 for non-existent user", async () => {
@@ -124,7 +182,7 @@ describe("GET /api/users/[username]", () => {
 
 describe("GET /api/users/search", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
   });
 
   it("returns matching users", async () => {
@@ -162,7 +220,7 @@ describe("GET /api/users/search", () => {
 
 describe("POST /api/users/[username]/follow", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
     mockGetUserFromRequest.mockResolvedValue({
       userId: "viewer-1",
       email: "viewer@example.com",
@@ -225,7 +283,7 @@ describe("POST /api/users/[username]/follow", () => {
 
 describe("DELETE /api/users/[username]/follow", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
     mockGetUserFromRequest.mockResolvedValue({
       userId: "viewer-1",
       email: "viewer@example.com",

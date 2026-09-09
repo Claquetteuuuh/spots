@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import { createContext, useContext } from "react";
 
 type TabContextValue = {
   /** Switch to a tab by its index (0=Map, 1=Search, 2=Add, 3=Notifications, 4=Profile) */

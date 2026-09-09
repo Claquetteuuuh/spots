@@ -14,7 +14,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href, ...props }: any) =>
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.PropsWithChildren<{ href?: string } & Record<string, unknown>>) =>
     React.createElement("a", { href, ...props }, children),
 }));
 
@@ -57,12 +61,12 @@ vi.mock("@/lib/use-t", () => ({
 }));
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: any) =>
+  Button: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
     React.createElement("button", props, children),
 }));
 
 vi.mock("@/components/ui/skeleton", () => ({
-  Skeleton: (props: any) =>
+  Skeleton: (props: Record<string, unknown>) =>
     React.createElement("div", { "data-testid": "skeleton", ...props }),
 }));
 

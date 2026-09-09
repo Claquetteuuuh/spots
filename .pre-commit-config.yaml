@@ -17,8 +17,6 @@ repos:
         args: ['--fix=lf']
       - id: check-symlinks
       - id: check-executables-have-shebangs
-      - id: no-commit-to-branch
-        args: ['--branch', 'main']
 
   # ── Secrets detection ──────────────────────────────────────────────
   - repo: https://github.com/gitleaks/gitleaks

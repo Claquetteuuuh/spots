@@ -31,16 +31,30 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Grype SCA scan
-        uses: anchore/scan-action@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e # v6.2.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2 (grype 0.118)
         id: grype
         with:
           path: "."
           fail-build: true
           severity-cutoff: high
           output-format: sarif
+          cache-db: true
 
+      # SARIF is unreadable in the job log — print what tripped the gate so the
+      # failure is actionable without downloading artifacts.
+      - name: Show findings
+        if: failure() && steps.grype.outputs.sarif != ''
+        env:
+          SARIF: ${{ steps.grype.outputs.sarif }}
+        run: |
+          jq -r '.runs[0].results[] | "\(.level)\t\(.ruleId)\t\(.message.text)"' "$SARIF" || cat "$SARIF"
+
+      # The scan step above is the gate. The upload is best-effort: Code scanning is
+      # only available on public repos (or with Code Security), so it must never
+      # turn a clean scan into a red check.
       - name: Upload SARIF to GitHub Security tab
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}

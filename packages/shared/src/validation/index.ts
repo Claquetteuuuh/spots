@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COMPOSITION_TYPES, ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "../constants";
+import { COMPOSITION_TYPES } from "../constants";
 
 // ─── Auth ────────────────────────────────────────────────────────────
 

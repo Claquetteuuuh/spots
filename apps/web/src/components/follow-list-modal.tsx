@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient, type User } from "@/lib/api-client";
@@ -28,38 +28,46 @@ export function FollowListModal({
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [followers, setFollowers] = useState<User[]>([]);
-  const [following, setFollowing] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [lists, setLists] = useState<{ followers: User[]; following: User[] } | null>(null);
   const [unfollowedIds, setUnfollowedIds] = useState<Set<string>>(new Set());
   const [swipeDirection, setSwipeDirection] = useState(0);
 
-  useEffect(() => {
+  // "Loading" is simply "open and nothing has arrived yet". Deriving it keeps
+  // the fetch effect below free of synchronous setState calls.
+  const isLoading = open && lists === null;
+
+  // Re-sync the active tab when the caller opens the modal on a different one.
+  // Adjusting state during render, guarded by the previous prop value, is
+  // React's sanctioned replacement for a setState-in-effect prop sync.
+  const [syncedInitialTab, setSyncedInitialTab] = useState(initialTab);
+  if (initialTab !== syncedInitialTab) {
+    setSyncedInitialTab(initialTab);
     setTab(initialTab);
-  }, [initialTab]);
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [f, g] = await Promise.all([
-        apiClient.users.followers(username),
-        apiClient.users.following(username),
-      ]);
-      setFollowers(f);
-      setFollowing(g);
-      setUnfollowedIds(new Set());
-    } catch {
-      // Silently fail
-    } finally {
-      setIsLoading(false);
-    }
-  }, [username]);
+  }
 
   useEffect(() => {
-    if (open) {
-      void loadData();
-    }
-  }, [open, loadData]);
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [followers, following] = await Promise.all([
+          apiClient.users.followers(username),
+          apiClient.users.following(username),
+        ]);
+        if (cancelled) return;
+        setLists({ followers, following });
+        setUnfollowedIds(new Set());
+      } catch {
+        if (!cancelled) setLists({ followers: [], following: [] });
+      }
+    })();
+    // Closing (or switching profile) discards the data, so the next open
+    // starts from the spinner again rather than flashing a stale list.
+    return () => {
+      cancelled = true;
+      setLists(null);
+    };
+  }, [open, username]);
 
   // Close on Escape
   useEffect(() => {
@@ -110,7 +118,7 @@ export function FollowListModal({
 
   if (!open) return null;
 
-  const list = tab === "followers" ? followers : following;
+  const list = (tab === "followers" ? lists?.followers : lists?.following) ?? [];
   const emptyText =
     tab === "followers" ? t("users.noFollowers") : t("users.noFollowing");
   const isOwnProfile = username === currentUser?.username;

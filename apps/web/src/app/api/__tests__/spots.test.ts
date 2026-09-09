@@ -7,6 +7,12 @@ const mockSpotFindUnique = vi.fn();
 const mockSpotCreate = vi.fn();
 const mockSpotUpdate = vi.fn();
 const mockSpotDelete = vi.fn();
+// Visibility checks: GET /api/spots resolves the viewer's accepted follows
+// (follow.findMany) and GET /api/spots/[id] checks a single follow row
+// (follow.findUnique) when the viewer is not the owner.
+const mockFollowFindMany = vi.fn();
+const mockFollowFindUnique = vi.fn();
+const mockFollowCount = vi.fn();
 vi.mock("@/lib/db", () => ({
   prisma: {
     spot: {
@@ -16,11 +22,31 @@ vi.mock("@/lib/db", () => ({
       update: (...args: unknown[]) => mockSpotUpdate(...args),
       delete: (...args: unknown[]) => mockSpotDelete(...args),
     },
+    follow: {
+      findMany: (...args: unknown[]) => mockFollowFindMany(...args),
+      findUnique: (...args: unknown[]) => mockFollowFindUnique(...args),
+      count: (...args: unknown[]) => mockFollowCount(...args),
+    },
   },
   Prisma: {
     PrismaClientKnownRequestError: class extends Error {},
   },
 }));
+
+/**
+ * Clear call history and restore neutral defaults so a query a test did not
+ * explicitly mock resolves to "nothing found" instead of `undefined` (or a
+ * value leaked from a previous test — `vi.clearAllMocks()` alone keeps
+ * implementations set via `mockResolvedValue`).
+ */
+function resetPrismaMocks() {
+  vi.clearAllMocks();
+  mockSpotFindMany.mockResolvedValue([]);
+  mockSpotFindUnique.mockResolvedValue(null);
+  mockFollowFindMany.mockResolvedValue([]);
+  mockFollowFindUnique.mockResolvedValue(null);
+  mockFollowCount.mockResolvedValue(0);
+}
 
 // Mock auth
 const mockGetUserFromRequest = vi.fn();
@@ -58,9 +84,23 @@ import {
   DELETE,
 } from "../spots/[id]/route";
 
+/** The spot owner — spots are only visible to the owner and accepted followers. */
+const OWNER = {
+  userId: "user-1",
+  email: "alice@example.com",
+  username: "alice",
+};
+
+/** Another user, who can only see the owner's spots once they follow them. */
+const OTHER_VIEWER = {
+  userId: "user-2",
+  email: "bob@example.com",
+  username: "bob",
+};
+
 const SAMPLE_SPOT = {
   id: "spot-1",
-  userId: "user-1",
+  userId: OWNER.userId,
   latitude: 48.8566,
   longitude: 2.3522,
   address: "Paris, France",
@@ -72,12 +112,15 @@ const SAMPLE_SPOT = {
   description: "A beautiful view",
   isFree: true,
   priceInfo: null,
+  visibility: "FOLLOWERS",
+  customComposition: null,
   colors: ["#D4A574"],
   compositions: ["SYMMETRY"],
   tags: ["sunset"],
   createdAt: new Date(),
   updatedAt: new Date(),
-  user: { id: "user-1", username: "alice", name: "Alice", avatarUrl: null },
+  user: { id: OWNER.userId, username: OWNER.username, name: "Alice", avatarUrl: null },
+  images: [],
 };
 
 function makeGetRequest(params: Record<string, string> = {}) {
@@ -106,7 +149,46 @@ beforeAll(() => {
 
 describe("GET /api/spots", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
+    // Spots are private to the owner + accepted followers, so the listing
+    // is only populated for an authenticated viewer. View as the owner.
+    mockGetUserFromRequest.mockResolvedValue(OWNER);
+  });
+
+  it("returns an empty page without querying the DB for unauthenticated viewers", async () => {
+    mockGetUserFromRequest.mockResolvedValue(null);
+    mockSpotFindMany.mockResolvedValue([SAMPLE_SPOT]);
+
+    const res = await GET(makeGetRequest());
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data).toEqual({ items: [], nextCursor: null });
+    expect(mockSpotFindMany).not.toHaveBeenCalled();
+  });
+
+  it("restricts results to the viewer and the users they follow", async () => {
+    mockFollowFindMany.mockResolvedValue([{ followingId: "user-3" }]);
+
+    await GET(makeGetRequest());
+
+    expect(mockFollowFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { followerId: OWNER.userId, status: "ACCEPTED" },
+      }),
+    );
+    const call = mockSpotFindMany.mock.calls[0][0];
+    expect(call.where.userId).toEqual({ in: [OWNER.userId, "user-3"] });
+  });
+
+  it("returns an empty page when filtering by a user the viewer does not follow", async () => {
+    mockSpotFindMany.mockResolvedValue([SAMPLE_SPOT]);
+
+    const res = await GET(makeGetRequest({ userId: "user-3" }));
+    const json = await res.json();
+
+    expect(json.data).toEqual({ items: [], nextCursor: null });
+    expect(mockSpotFindMany).not.toHaveBeenCalled();
   });
 
   it("returns paginated spots", async () => {
@@ -165,12 +247,8 @@ describe("GET /api/spots", () => {
 
 describe("POST /api/spots", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetUserFromRequest.mockResolvedValue({
-      userId: "user-1",
-      email: "alice@example.com",
-      username: "alice",
-    });
+    resetPrismaMocks();
+    mockGetUserFromRequest.mockResolvedValue(OWNER);
   });
 
   it("creates a spot and returns 201", async () => {
@@ -211,7 +289,10 @@ describe("POST /api/spots", () => {
 
 describe("GET /api/spots/[id]", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetPrismaMocks();
+    // A spot is only visible to its owner and accepted followers.
+    // View as the owner unless a test says otherwise.
+    mockGetUserFromRequest.mockResolvedValue(OWNER);
   });
 
   it("returns a single spot", async () => {
@@ -223,6 +304,61 @@ describe("GET /api/spots/[id]", () => {
 
     expect(res.status).toBe(200);
     expect(json.data.id).toBe("spot-1");
+  });
+
+  it("returns 404 for unauthenticated viewers", async () => {
+    mockSpotFindUnique.mockResolvedValue(SAMPLE_SPOT);
+    mockGetUserFromRequest.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1");
+    const res = await GET_BY_ID(req, { params: Promise.resolve({ id: "spot-1" }) });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns the spot to an accepted follower", async () => {
+    mockSpotFindUnique.mockResolvedValue(SAMPLE_SPOT);
+    mockGetUserFromRequest.mockResolvedValue(OTHER_VIEWER);
+    mockFollowFindUnique.mockResolvedValue({ status: "ACCEPTED" });
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1");
+    const res = await GET_BY_ID(req, { params: Promise.resolve({ id: "spot-1" }) });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.id).toBe("spot-1");
+    expect(mockFollowFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          followerId_followingId: {
+            followerId: OTHER_VIEWER.userId,
+            followingId: OWNER.userId,
+          },
+        },
+      }),
+    );
+  });
+
+  it("returns 404 to a viewer who does not follow the owner", async () => {
+    mockSpotFindUnique.mockResolvedValue(SAMPLE_SPOT);
+    mockGetUserFromRequest.mockResolvedValue(OTHER_VIEWER);
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1");
+    const res = await GET_BY_ID(req, { params: Promise.resolve({ id: "spot-1" }) });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for a PRIVATE spot even to an accepted follower", async () => {
+    mockSpotFindUnique.mockResolvedValue({ ...SAMPLE_SPOT, visibility: "PRIVATE" });
+    mockGetUserFromRequest.mockResolvedValue(OTHER_VIEWER);
+    mockFollowFindUnique.mockResolvedValue({ status: "ACCEPTED" });
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1");
+    const res = await GET_BY_ID(req, { params: Promise.resolve({ id: "spot-1" }) });
+
+    expect(res.status).toBe(404);
+    expect(mockFollowFindUnique).not.toHaveBeenCalled();
   });
 
   it("returns 404 for non-existent spot", async () => {
@@ -237,12 +373,8 @@ describe("GET /api/spots/[id]", () => {
 
 describe("PATCH /api/spots/[id]", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetUserFromRequest.mockResolvedValue({
-      userId: "user-1",
-      email: "alice@example.com",
-      username: "alice",
-    });
+    resetPrismaMocks();
+    mockGetUserFromRequest.mockResolvedValue(OWNER);
   });
 
   it("updates a spot owned by the user", async () => {
@@ -287,12 +419,8 @@ describe("PATCH /api/spots/[id]", () => {
 
 describe("DELETE /api/spots/[id]", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetUserFromRequest.mockResolvedValue({
-      userId: "user-1",
-      email: "alice@example.com",
-      username: "alice",
-    });
+    resetPrismaMocks();
+    mockGetUserFromRequest.mockResolvedValue(OWNER);
   });
 
   it("deletes a spot owned by the user", async () => {

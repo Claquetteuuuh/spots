@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -23,7 +23,7 @@ import { useSpotsStore } from "../../stores/spots-store";
 import { extractErrorMessage } from "../../lib/error";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import type { RootStackScreenProps } from "../../navigation/types";
-import type { Spot, SpotImage } from "../../types";
+import type { Spot } from "../../types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
