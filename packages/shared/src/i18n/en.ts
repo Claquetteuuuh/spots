@@ -113,6 +113,7 @@ export const en = {
     selectShade: "Select a shade",
     pickFromPhoto: "Pick from photo",
     clickPhotoToPickColor: "Click on the photo to pick a color",
+    selectedColors: "Selected colors",
     validation: {
       photosRequired: "At least one photo is required",
       locationRequired: "Location is required — search an address or enter coordinates",

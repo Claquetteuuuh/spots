@@ -31,16 +31,22 @@ function parseStep(value: string | null): Step {
 }
 
 const SUGGESTED_COLORS = [
-  "#C44536",
-  "#D4A574",
-  "#D4A017",
-  "#7D8C6E",
-  "#4A90A4",
-  "#8B7355",
-  "#6B6960",
-  "#1A1A18",
-  "#F2F0EB",
-  "#B49A7A",
+  // Whites & Creams
+  "#FAFAF8", "#F5E6D3",
+  // Earth tones
+  "#D4A574", "#B49A7A", "#8B7355", "#6B5740",
+  // Greens & Sage
+  "#7D8C6E", "#5B6850", "#2E4A3E",
+  // Blues
+  "#4A6FA5", "#4A90A4", "#2C5F7C",
+  // Reds & Warm
+  "#C44536", "#9B2335",
+  // Yellows & Gold
+  "#D4A017", "#C8B560",
+  // Purples
+  "#6B5B8D", "#8E6F8E",
+  // Neutrals
+  "#6B6960", "#3D3D3D", "#1A1A18",
 ];
 
 const MAX_PHOTOS = 10;
@@ -67,10 +73,14 @@ function AddSpotForm() {
 
   // Every step reached so far stays reachable, so you can jump straight back
   // to where you were rather than clicking Next repeatedly.
-  const [furthestStep, setFurthestStep] = useState(0);
+  // Seeded from the URL so a deep link / refresh onto a later step keeps the
+  // earlier ones reachable; advanced in goToStep. Back/forward can only land on
+  // steps already visited, so no effect is needed to track them.
+  const [furthestStep, setFurthestStep] = useState(() => STEPS.indexOf(step));
 
   const goToStep = useCallback(
     (next: Step) => {
+      setFurthestStep((furthest) => Math.max(furthest, STEPS.indexOf(next)));
       router.push(`/spot/new?step=${next}`, { scroll: false });
     },
     [router],
@@ -292,11 +302,9 @@ function AddSpotForm() {
   useEffect(() => {
     // Only trigger search when user is actively typing, not when we
     // programmatically update searchQuery from a map click / geocode.
-    if (!isTypingAddress || searchQuery.length < 2) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
+    // Stale results are cleared by the handlers that leave the "typing"
+    // state, so this effect never has to set state synchronously.
+    if (!isTypingAddress || searchQuery.length < 2) return;
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
@@ -328,6 +336,7 @@ function AddSpotForm() {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
         setIsTypingAddress(false);
+        setSearchResults([]);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -338,6 +347,7 @@ function AddSpotForm() {
   function selectSearchResult(result: ForwardGeocodeResult) {
     setIsTypingAddress(false);
     setShowDropdown(false);
+    setSearchResults([]);
     applyLocation(result.latitude, result.longitude, {
       address: result.displayName,
       city: result.city,
@@ -633,10 +643,6 @@ function AddSpotForm() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasWork]);
 
-  useEffect(() => {
-    setFurthestStep((furthest) => Math.max(furthest, currentIndex));
-  }, [currentIndex]);
-
   function canAdvance(): boolean {
     if (step === "photo") return photos.length > 0;
     if (step === "location") return latitude !== null && longitude !== null;
@@ -835,6 +841,10 @@ function AddSpotForm() {
                   onChange={(e) => {
                     setIsTypingAddress(true);
                     setSearchQuery(e.target.value);
+                    if (e.target.value.length < 2) {
+                      setSearchResults([]);
+                      setShowDropdown(false);
+                    }
                   }}
                   onFocus={() => {
                     if (searchResults.length > 0) setShowDropdown(true);
@@ -1071,7 +1081,11 @@ function AddSpotForm() {
 
               {/* Selected colors with remove */}
               {selectedColors.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-1">
+                <div className="mt-3">
+                  <p className="text-xs text-text-secondary uppercase tracking-wide mb-1.5">
+                    {t("spots.selectedColors")} ({selectedColors.length}/10)
+                  </p>
+                  <div className="flex flex-wrap gap-1">
                   {selectedColors.map((c) => (
                     <span
                       key={c}
@@ -1091,6 +1105,7 @@ function AddSpotForm() {
                       </button>
                     </span>
                   ))}
+                  </div>
                 </div>
               ) : null}
 

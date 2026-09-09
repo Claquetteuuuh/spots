@@ -113,6 +113,7 @@ export const fr = {
     selectShade: "Choisir une teinte",
     pickFromPhoto: "Pipette sur photo",
     clickPhotoToPickColor: "Cliquez sur la photo pour récupérer une couleur",
+    selectedColors: "Couleurs sélectionnées",
     validation: {
       photosRequired: "Au moins une photo est requise",
       locationRequired: "La localisation est requise — cherchez une adresse ou entrez des coordonnées",

@@ -14,9 +14,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { WebView } from "react-native-webview";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
@@ -37,18 +38,22 @@ const TOTAL_STEPS = 5;
 const MAX_PHOTOS = 10;
 
 const PRESET_COLORS = [
-  "#FAFAF8",
-  "#D4A574",
-  "#8B7355",
-  "#6B5740",
-  "#7D8C6E",
-  "#5B6850",
-  "#2E4A3E",
-  "#4A6FA5",
-  "#C44536",
-  "#D4A017",
-  "#6B6960",
-  "#1A1A18",
+  // Whites & Creams
+  "#FAFAF8", "#F5E6D3",
+  // Earth tones
+  "#D4A574", "#B49A7A", "#8B7355", "#6B5740",
+  // Greens & Sage
+  "#7D8C6E", "#5B6850", "#2E4A3E",
+  // Blues
+  "#4A6FA5", "#4A90A4", "#2C5F7C",
+  // Reds & Warm
+  "#C44536", "#9B2335",
+  // Yellows & Gold
+  "#D4A017", "#C8B560",
+  // Purples
+  "#6B5B8D", "#8E6F8E",
+  // Neutrals
+  "#6B6960", "#3D3D3D", "#1A1A18",
 ];
 
 interface LocationData {
@@ -158,64 +163,10 @@ function makePhotoId() {
   return `photo_${Date.now()}_${photoIdCounter++}`;
 }
 
-// ─── Color helpers ─────────────────────────────────────────────────
-
-function rgbToHex(r: number, g: number, b: number): string {
-  return (
-    "#" +
-    [r, g, b]
-      .map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, "0"))
-      .join("")
-      .toUpperCase()
-  );
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-  const sn = s / 100;
-  const ln = l / 100;
-  const a = sn * Math.min(ln, 1 - ln);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
-}
-
-function parseColorInput(input: string): string | null {
-  const trimmed = input.trim();
-  if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) return trimmed.toUpperCase();
-  const rgbMatch = trimmed.match(
-    /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i,
-  );
-  if (rgbMatch) return rgbToHex(+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]);
-  const hslMatch = trimmed.match(
-    /^hsl\(\s*(\d{1,3})\s*,\s*(\d{1,3})%?\s*,\s*(\d{1,3})%?\s*\)$/i,
-  );
-  if (hslMatch) return hslToHex(+hslMatch[1], +hslMatch[2], +hslMatch[3]);
-  return null;
-}
-
-const HUE_SAMPLES = [
-  { hue: 0, label: "Red" },
-  { hue: 30, label: "Orange" },
-  { hue: 60, label: "Yellow" },
-  { hue: 90, label: "Lime" },
-  { hue: 120, label: "Green" },
-  { hue: 160, label: "Teal" },
-  { hue: 195, label: "Cyan" },
-  { hue: 220, label: "Blue" },
-  { hue: 260, label: "Indigo" },
-  { hue: 280, label: "Purple" },
-  { hue: 320, label: "Magenta" },
-  { hue: 350, label: "Pink" },
-];
-
 export function AddSpotScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<MainTabNavigationProp<"Add">>();
   const createSpot = useSpotsStore((s) => s.createSpot);
   const user = useAuthStore((s) => s.user);
@@ -242,18 +193,14 @@ export function AddSpotScreen() {
   const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
   const [customComposition, setCustomComposition] = useState("");
 
-  // Advanced color picker state
-  const [colorInput, setColorInput] = useState("");
-  const [colorPreview, setColorPreview] = useState<string | null>(null);
-  const [selectedHue, setSelectedHue] = useState<number | null>(null);
-
   // Color wheel modal
   const [showColorWheel, setShowColorWheel] = useState(false);
-  const [wheelColor, setWheelColor] = useState("#8B7355");
 
   // Photo eyedropper
   const [showEyedropper, setShowEyedropper] = useState(false);
   const [eyedropperPhotoIndex, setEyedropperPhotoIndex] = useState(0);
+  const [eyedropperDataUri, setEyedropperDataUri] = useState<string | null>(null);
+  const [eyedropperLoading, setEyedropperLoading] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -268,6 +215,29 @@ export function AddSpotScreen() {
   // Manual coordinates state
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
+
+  /**
+   * Downscale a photo natively and return it as a small base64 data URI.
+   * WKWebView refuses file:// images inside inline HTML, so we embed the pixels directly.
+   * Capping at 1200px keeps the payload ~150–300 KB — safe to pass through the bridge.
+   */
+  const prepareEyedropperPhoto = useCallback(async (photoUri: string) => {
+    setEyedropperLoading(true);
+    setEyedropperDataUri(null);
+    try {
+      const ctx = ImageManipulator.manipulate(photoUri);
+      ctx.resize({ width: 1200 });
+      const rendered = await ctx.renderAsync();
+      const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
+      if (saved.base64) {
+        setEyedropperDataUri(`data:image/jpeg;base64,${saved.base64}`);
+      }
+    } catch {
+      setEyedropperDataUri(null);
+    } finally {
+      setEyedropperLoading(false);
+    }
+  }, []);
 
   // Debounced address search
   useEffect(() => {
@@ -442,27 +412,6 @@ export function AddSpotScreen() {
     );
   };
 
-  const handleColorInputChange = (text: string) => {
-    setColorInput(text);
-    const parsed = parseColorInput(text);
-    setColorPreview(parsed);
-  };
-
-  const addCustomColor = () => {
-    if (!colorPreview || selectedColors.length >= 10) return;
-    if (!selectedColors.includes(colorPreview)) {
-      setSelectedColors((prev) => [...prev, colorPreview]);
-    }
-    setColorInput("");
-    setColorPreview(null);
-  };
-
-  const addShadeColor = (hex: string) => {
-    if (selectedColors.length >= 10 || selectedColors.includes(hex)) return;
-    setSelectedColors((prev) => [...prev, hex]);
-    setSelectedHue(null);
-  };
-
   const addTag = () => {
     const value = tagInput.trim();
     if (value && !tags.includes(value) && tags.length < 10) {
@@ -502,9 +451,7 @@ export function AddSpotScreen() {
     setTagInput("");
     setVisibility("FOLLOWERS");
     setCustomComposition("");
-    setColorInput("");
-    setColorPreview(null);
-    setSelectedHue(null);
+    setEyedropperDataUri(null);
     setSubmitError(null);
     setValidationErrors([]);
     setAddressQuery("");
@@ -1095,11 +1042,6 @@ export function AddSpotScreen() {
                 })}
               </View>
 
-              {/* Selected count */}
-              <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs }}>
-                {selectedColors.length}/10
-              </Text>
-
               {/* Color tools: wheel + eyedropper */}
               <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 {/* Color wheel button */}
@@ -1132,6 +1074,7 @@ export function AddSpotScreen() {
                     if (photos.length > 0) {
                       setEyedropperPhotoIndex(0);
                       setShowEyedropper(true);
+                      void prepareEyedropperPhoto(photos[0].uri);
                     }
                   }}
                   disabled={photos.length === 0 || selectedColors.length >= 10}
@@ -1156,148 +1099,47 @@ export function AddSpotScreen() {
                 </Pressable>
               </View>
 
-              {/* ── More colors section ──────────────────────────── */}
-              <Text
-                style={{
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.size.xs,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {t("spots.moreColors")}
-              </Text>
-
-              {/* Hue samples row */}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                {HUE_SAMPLES.map((sample) => {
-                  const sampleColor = hslToHex(sample.hue, 70, 50);
-                  const isSelected = selectedHue === sample.hue;
-                  return (
-                    <Pressable
-                      key={sample.hue}
-                      onPress={() => setSelectedHue(isSelected ? null : sample.hue)}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        backgroundColor: sampleColor,
-                        borderWidth: isSelected ? 3 : StyleSheet.hairlineWidth,
-                        borderColor: isSelected ? theme.colors.text : theme.colors.border,
-                      }}
-                    />
-                  );
-                })}
-              </View>
-
-              {/* Shade picker for selected hue */}
-              {selectedHue !== null ? (
+              {/* Selected colors */}
+              {selectedColors.length > 0 ? (
                 <View style={{ gap: theme.spacing.xs }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
-                    {t("spots.selectShade")}
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {t("spots.selectedColors")} ({selectedColors.length}/10)
                   </Text>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    {[20, 35, 50, 65, 80].map((lightness) => {
-                      const shade = hslToHex(selectedHue, 70, lightness);
-                      const alreadySelected = selectedColors.includes(shade);
-                      return (
-                        <Pressable
-                          key={lightness}
-                          onPress={() => addShadeColor(shade)}
-                          disabled={alreadySelected}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {selectedColors.map((color) => (
+                      <View key={color} style={{ position: "relative" }}>
+                        <View
                           style={{
-                            width: 44,
-                            height: 44,
+                            width: 36,
+                            height: 36,
                             borderRadius: theme.radius.sm,
-                            backgroundColor: shade,
-                            borderWidth: alreadySelected ? theme.borderWidth.thick : StyleSheet.hairlineWidth,
-                            borderColor: alreadySelected ? theme.colors.text : theme.colors.border,
-                            opacity: alreadySelected ? 0.5 : 1,
+                            backgroundColor: color,
+                            borderWidth: StyleSheet.hairlineWidth,
+                            borderColor: theme.colors.border,
                           }}
                         />
-                      );
-                    })}
+                        <Pressable
+                          onPress={() => toggleColor(color)}
+                          hitSlop={4}
+                          style={{
+                            position: "absolute",
+                            top: -6,
+                            right: -6,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: theme.colors.bg,
+                            borderWidth: StyleSheet.hairlineWidth,
+                            borderColor: theme.colors.border,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: theme.typography.weight.bold, lineHeight: 13 }}>×</Text>
+                        </Pressable>
+                      </View>
+                    ))}
                   </View>
-                </View>
-              ) : null}
-
-              {/* Color code input */}
-              <View style={{ gap: theme.spacing.xs }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
-                  {t("spots.pickColor")}
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
-                  <TextInput
-                    value={colorInput}
-                    onChangeText={handleColorInputChange}
-                    placeholder={t("spots.colorInputPlaceholder")}
-                    placeholderTextColor={theme.colors.textTertiary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={{
-                      flex: 1,
-                      color: theme.colors.text,
-                      backgroundColor: theme.colors.bgSecondary,
-                      borderColor: theme.colors.border,
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderRadius: theme.radius.sm,
-                      fontSize: theme.typography.size.sm,
-                      paddingHorizontal: theme.spacing.md,
-                      paddingVertical: theme.spacing.md,
-                    }}
-                  />
-                  {/* Color preview swatch */}
-                  <View
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: theme.radius.sm,
-                      backgroundColor: colorPreview ?? theme.colors.bgTertiary,
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderColor: theme.colors.border,
-                    }}
-                  />
-                  <Pressable
-                    onPress={addCustomColor}
-                    disabled={!colorPreview || selectedColors.length >= 10}
-                    style={{
-                      paddingHorizontal: theme.spacing.md,
-                      paddingVertical: theme.spacing.sm,
-                      backgroundColor: colorPreview ? theme.colors.accent : theme.colors.bgTertiary,
-                      borderRadius: theme.radius.sm,
-                      opacity: colorPreview && selectedColors.length < 10 ? 1 : 0.4,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colorPreview ? "#FFFFFF" : theme.colors.textTertiary,
-                        fontSize: theme.typography.size.sm,
-                        fontWeight: theme.typography.weight.semibold,
-                      }}
-                    >
-                      {t("spots.addColor")}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* Show selected colors below */}
-              {selectedColors.length > 0 ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  {selectedColors.map((color) => (
-                    <Pressable
-                      key={color}
-                      onPress={() => toggleColor(color)}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                        backgroundColor: color,
-                        borderWidth: StyleSheet.hairlineWidth,
-                        borderColor: theme.colors.border,
-                      }}
-                    />
-                  ))}
                 </View>
               ) : null}
             </View>
@@ -1555,7 +1397,7 @@ export function AddSpotScreen() {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ gap: theme.spacing.sm }}
                 >
-                  {photos.slice(1).map((photo, index) => (
+                  {photos.slice(1).map((photo) => (
                     <Image
                       key={photo.id}
                       source={{ uri: photo.uri }}
@@ -1759,12 +1601,17 @@ upd();
 
       {/* ── Photo Eyedropper Modal ────────────────────────── */}
       <Modal visible={showEyedropper} animationType="slide" onRequestClose={() => setShowEyedropper(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }} edges={["top", "bottom"]}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md }}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+          {/* Header — fixed, always accessible */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md, zIndex: 10 }}>
             <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.md, fontWeight: theme.typography.weight.semibold }}>
               {t("spots.pickFromPhoto")}
             </Text>
-            <Pressable onPress={() => setShowEyedropper(false)} hitSlop={12}>
+            <Pressable
+              onPress={() => setShowEyedropper(false)}
+              hitSlop={16}
+              style={{ padding: 8 }}
+            >
               <Ionicons name="close" size={24} color={theme.colors.text} />
             </Pressable>
           </View>
@@ -1783,7 +1630,10 @@ upd();
               {photos.map((photo, idx) => (
                 <Pressable
                   key={photo.id}
-                  onPress={() => setEyedropperPhotoIndex(idx)}
+                  onPress={() => {
+                    setEyedropperPhotoIndex(idx);
+                    void prepareEyedropperPhoto(photo.uri);
+                  }}
                   style={{
                     width: 48,
                     height: 48,
@@ -1799,44 +1649,66 @@ upd();
             </ScrollView>
           ) : null}
 
-          {/* WebView-based eyedropper canvas */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.lg, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }}>
-            <WebView
-              originWhitelist={["*"]}
-              source={{
-                html: `<!DOCTYPE html>
+          {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: "#000" }}>
+            {eyedropperDataUri ? (
+              <WebView
+                key={eyedropperPhotoIndex}
+                originWhitelist={["*"]}
+                source={{
+                  html: `<!DOCTYPE html>
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}
-canvas{max-width:100%;max-height:100%;object-fit:contain;cursor:crosshair}</style></head>
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+canvas{max-width:100%;max-height:100%;display:block}</style></head>
 <body><canvas id="c"></canvas>
 <script>
-const canvas=document.getElementById('c');const ctx=canvas.getContext('2d');
-const img=new Image();img.crossOrigin='anonymous';
-img.onload=()=>{canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;ctx.drawImage(img,0,0);};
-img.src='${photos[eyedropperPhotoIndex]?.uri ?? ""}';
-canvas.addEventListener('click',(e)=>{
-  const rect=canvas.getBoundingClientRect();
-  const x=Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
-  const y=Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
-  const p=ctx.getImageData(x,y,1,1).data;
-  const hex='#'+[p[0],p[1],p[2]].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+var canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+var img=new Image();
+img.onload=function(){
+  canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+  ctx.drawImage(img,0,0);
+};
+img.src="${eyedropperDataUri}";
+function pick(ex,ey){
+  var rect=canvas.getBoundingClientRect();
+  var x=Math.round((ex-rect.left)*(canvas.width/rect.width));
+  var y=Math.round((ey-rect.top)*(canvas.height/rect.height));
+  if(x<0||y<0||x>=canvas.width||y>=canvas.height)return;
+  var p=ctx.getImageData(x,y,1,1).data;
+  var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
   window.ReactNativeWebView.postMessage(hex);
-});
+}
+canvas.addEventListener('click',function(e){pick(e.clientX,e.clientY)});
+canvas.addEventListener('touchstart',function(e){
+  e.preventDefault();pick(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
 </script></body></html>`,
-              }}
-              onMessage={(event) => {
-                const hex = event.nativeEvent.data;
-                if (/^#[0-9A-F]{6}$/.test(hex) && !selectedColors.includes(hex) && selectedColors.length < 10) {
-                  setSelectedColors((prev) => [...prev, hex]);
-                }
-                setShowEyedropper(false);
-              }}
-              style={{ flex: 1, backgroundColor: "transparent" }}
-              javaScriptEnabled
-              scrollEnabled={false}
-            />
+                }}
+                onMessage={(event) => {
+                  const data = event.nativeEvent.data;
+                  if (/^#[0-9A-F]{6}$/.test(data) && !selectedColors.includes(data) && selectedColors.length < 10) {
+                    setSelectedColors((prev) => [...prev, data]);
+                    setShowEyedropper(false);
+                  }
+                }}
+                style={{ flex: 1, backgroundColor: "#000" }}
+                javaScriptEnabled
+                scrollEnabled={false}
+              />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                {eyedropperLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={{ color: "#888888", fontSize: theme.typography.size.sm }}>
+                    {t("common.error")}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
