@@ -67,7 +67,7 @@ export default async function LandingPage() {
           </Link>
           <Link
             href="/login"
-            className="inline-flex w-full items-center justify-center rounded-full px-7 py-3.5 text-base font-semibold text-text transition-shadow hover:bg-bg hover:shadow-raise sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-full bg-bg px-7 py-3.5 text-base font-semibold text-text shadow-raise transition-colors hover:bg-bg-secondary sm:w-auto"
           >
             {t("auth.login")}
           </Link>
