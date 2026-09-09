@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
-  FlatList,
   Image,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -89,14 +89,12 @@ export function OtherProfileScreen() {
         }
       } else {
         const result = await api.followUser(profile.username);
-        // Auto-accepted for public accounts, pending for private
         const newStatus = result?.status === "ACCEPTED" ? "ACCEPTED" : "PENDING";
         setFollowStatus(newStatus);
         if (newStatus === "ACCEPTED") {
           setProfile((p) =>
             p ? { ...p, followerCount: (p.followerCount ?? 0) + 1 } : p,
           );
-          // Reload spots since we now have access
           const spotsData = await api.getSpots({ userId: profile.id });
           setSpots(spotsData.items);
         }
@@ -105,6 +103,13 @@ export function OtherProfileScreen() {
       // Error
     }
   };
+
+  const openFollowList = (tab: "followers" | "following") => {
+    setFollowModalTab(tab);
+    setFollowModalVisible(true);
+  };
+
+  const openSpot = (spot: Spot) => navigation.navigate("SpotDetail", { spotId: spot.id });
 
   if (isLoading || !profile) {
     return (
@@ -127,10 +132,8 @@ export function OtherProfileScreen() {
   const followersCount = profile.followerCount ?? 0;
   const followingCount = profile.followingCount ?? 0;
 
-  // Can we see this user's content?
   const isPrivateAndNotFollowing = profile.isPrivate && followStatus !== "ACCEPTED";
 
-  // 3-state button
   let followLabel = t("users.follow");
   let followVariant: "primary" | "secondary" = "primary";
   if (followStatus === "ACCEPTED") {
@@ -140,13 +143,6 @@ export function OtherProfileScreen() {
     followLabel = t("notifications.requested");
     followVariant = "secondary";
   }
-
-  const openFollowList = (tab: "followers" | "following") => {
-    setFollowModalTab(tab);
-    setFollowModalVisible(true);
-  };
-
-  const openSpot = (spot: Spot) => navigation.navigate("SpotDetail", { spotId: spot.id });
 
   // Compute map region from spots
   const mapRegion = spots.length > 0
@@ -164,249 +160,207 @@ export function OtherProfileScreen() {
       }
     : { latitude: 48.8566, longitude: 2.3522, latitudeDelta: 0.1, longitudeDelta: 0.1 };
 
-  const renderHeader = () => (
-    <View
-      style={{
-        paddingHorizontal: theme.spacing.lg,
-        paddingTop: theme.spacing.lg,
-        paddingBottom: theme.spacing.md,
-      }}
-    >
-      {/* Avatar + Stats */}
-      <View style={styles.headerRow}>
-        {profile.avatarUrl ? (
-          <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View
-            style={[
-              styles.avatar,
-              styles.avatarPlaceholder,
-              { backgroundColor: theme.colors.bgTertiary },
-            ]}
-          >
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: theme.spacing.xxl }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textSecondary} />
+        }
+      >
+        {/* ─── Header ─────────────────────────────────────────── */}
+        <View
+          style={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingTop: theme.spacing.lg,
+            paddingBottom: theme.spacing.md,
+          }}
+        >
+          {/* Avatar + Stats */}
+          <View style={styles.headerRow}>
+            {profile.avatarUrl ? (
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View
+                style={[
+                  styles.avatar,
+                  styles.avatarPlaceholder,
+                  { backgroundColor: theme.colors.bgTertiary },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xl,
+                    fontWeight: theme.typography.weight.semibold,
+                  }}
+                >
+                  {initials}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.statsRow}>
+              <Stat label="spots" value={String(spotsCount)} theme={theme} />
+              <Pressable onPress={() => openFollowList("followers")}>
+                <Stat label={t("users.followers")} value={String(followersCount)} theme={theme} />
+              </Pressable>
+              <Pressable onPress={() => openFollowList("following")}>
+                <Stat label={t("users.following")} value={String(followingCount)} theme={theme} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Name + username + bio */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: theme.spacing.lg, gap: 6 }}>
             <Text
               style={{
-                color: theme.colors.textSecondary,
-                fontSize: theme.typography.size.xl,
+                color: theme.colors.text,
+                fontSize: theme.typography.size.base,
                 fontWeight: theme.typography.weight.semibold,
               }}
             >
-              {initials}
+              {profile.name}
+            </Text>
+            {profile.isPrivate ? (
+              <Ionicons name="lock-closed" size={14} color={theme.colors.textSecondary} />
+            ) : null}
+          </View>
+          <Text
+            style={{
+              color: theme.colors.textSecondary,
+              fontSize: theme.typography.size.sm,
+              marginTop: 2,
+            }}
+          >
+            @{profile.username}
+          </Text>
+          {profile.bio ? (
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: theme.typography.size.sm,
+                marginTop: theme.spacing.xs,
+                lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
+              }}
+            >
+              {profile.bio}
+            </Text>
+          ) : null}
+
+          {/* Follow button */}
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <Button title={followLabel} variant={followVariant} onPress={handleFollowToggle} />
+          </View>
+        </View>
+
+        {/* ─── Content ────────────────────────────────────────── */}
+        {isPrivateAndNotFollowing ? (
+          /* Private account gate */
+          <View style={{ alignItems: "center", paddingTop: theme.spacing.xxxl, paddingHorizontal: theme.spacing.xl }}>
+            <Ionicons name="lock-closed-outline" size={48} color={theme.colors.textTertiary} />
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: theme.typography.size.base,
+                fontWeight: theme.typography.weight.semibold,
+                marginTop: theme.spacing.lg,
+              }}
+            >
+              {t("users.privateAccountMessage")}
+            </Text>
+            <Text
+              style={{
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+                marginTop: theme.spacing.xs,
+                textAlign: "center",
+              }}
+            >
+              {t("users.followToSee")}
             </Text>
           </View>
-        )}
-
-        <View style={styles.statsRow}>
-          <Stat label="spots" value={String(spotsCount)} theme={theme} />
-          <Pressable onPress={() => openFollowList("followers")}>
-            <Stat label={t("users.followers")} value={String(followersCount)} theme={theme} />
-          </Pressable>
-          <Pressable onPress={() => openFollowList("following")}>
-            <Stat label={t("users.following")} value={String(followingCount)} theme={theme} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Name + username + bio */}
-      <View style={{ flexDirection: "row", alignItems: "center", marginTop: theme.spacing.lg, gap: 6 }}>
-        <Text
-          style={{
-            color: theme.colors.text,
-            fontSize: theme.typography.size.base,
-            fontWeight: theme.typography.weight.semibold,
-          }}
-        >
-          {profile.name}
-        </Text>
-        {profile.isPrivate ? (
-          <Ionicons name="lock-closed" size={14} color={theme.colors.textSecondary} />
-        ) : null}
-      </View>
-      <Text
-        style={{
-          color: theme.colors.textSecondary,
-          fontSize: theme.typography.size.sm,
-          marginTop: 2,
-        }}
-      >
-        @{profile.username}
-      </Text>
-      {profile.bio ? (
-        <Text
-          style={{
-            color: theme.colors.text,
-            fontSize: theme.typography.size.sm,
-            marginTop: theme.spacing.xs,
-            lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
-          }}
-        >
-          {profile.bio}
-        </Text>
-      ) : null}
-
-      {/* Follow button */}
-      <View style={{ marginTop: theme.spacing.lg }}>
-        <Button title={followLabel} variant={followVariant} onPress={handleFollowToggle} />
-      </View>
-
-      {/* Tab bar: Spots | Map */}
-      {!isPrivateAndNotFollowing ? (
-        <View style={[styles.tabBar, { borderBottomColor: theme.colors.border, marginTop: theme.spacing.lg }]}>
-          <Pressable
-            onPress={() => setActiveTab("spots")}
-            style={[styles.tab, activeTab === "spots" && { borderBottomColor: theme.colors.text, borderBottomWidth: 1.5 }]}
-          >
-            <Ionicons
-              name={activeTab === "spots" ? "grid" : "grid-outline"}
-              size={22}
-              color={activeTab === "spots" ? theme.colors.text : theme.colors.textTertiary}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab("map")}
-            style={[styles.tab, activeTab === "map" && { borderBottomColor: theme.colors.text, borderBottomWidth: 1.5 }]}
-          >
-            <Ionicons
-              name={activeTab === "map" ? "map" : "map-outline"}
-              size={22}
-              color={activeTab === "map" ? theme.colors.text : theme.colors.textTertiary}
-            />
-          </Pressable>
-        </View>
-      ) : null}
-    </View>
-  );
-
-  // Private account — show lock message
-  if (isPrivateAndNotFollowing) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-        <FlatList
-          data={[]}
-          keyExtractor={() => "empty"}
-          renderItem={() => null}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textSecondary} />
-          }
-          ListHeaderComponent={renderHeader}
-          ListEmptyComponent={
-            <View style={{ alignItems: "center", paddingTop: theme.spacing.xxxl, paddingHorizontal: theme.spacing.xl }}>
-              <Ionicons name="lock-closed-outline" size={48} color={theme.colors.textTertiary} />
-              <Text
-                style={{
-                  color: theme.colors.text,
-                  fontSize: theme.typography.size.base,
-                  fontWeight: theme.typography.weight.semibold,
-                  marginTop: theme.spacing.lg,
-                }}
+        ) : (
+          <>
+            {/* Tab bar: Spots | Map */}
+            <View style={[styles.tabBar, { borderBottomColor: theme.colors.border }]}>
+              <Pressable
+                onPress={() => setActiveTab("spots")}
+                style={[styles.tab, activeTab === "spots" && { borderBottomColor: theme.colors.text, borderBottomWidth: 1.5 }]}
               >
-                {t("users.privateAccountMessage")}
-              </Text>
-              <Text
-                style={{
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.size.sm,
-                  marginTop: theme.spacing.xs,
-                  textAlign: "center",
-                }}
+                <Ionicons
+                  name={activeTab === "spots" ? "grid" : "grid-outline"}
+                  size={22}
+                  color={activeTab === "spots" ? theme.colors.text : theme.colors.textTertiary}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => setActiveTab("map")}
+                style={[styles.tab, activeTab === "map" && { borderBottomColor: theme.colors.text, borderBottomWidth: 1.5 }]}
               >
-                {t("users.followToSee")}
-              </Text>
+                <Ionicons
+                  name={activeTab === "map" ? "map" : "map-outline"}
+                  size={22}
+                  color={activeTab === "map" ? theme.colors.text : theme.colors.textTertiary}
+                />
+              </Pressable>
             </View>
-          }
-        />
-        <FollowListModal
-          visible={followModalVisible}
-          onClose={() => setFollowModalVisible(false)}
-          username={profile.username}
-          initialTab={followModalTab}
-        />
-      </SafeAreaView>
-    );
-  }
 
-  // Map tab
-  if (activeTab === "map") {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-        <FlatList
-          data={[]}
-          keyExtractor={() => "map"}
-          renderItem={() => null}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textSecondary} />
-          }
-          ListHeaderComponent={renderHeader}
-          ListFooterComponent={
-            <View style={{ height: 300, marginHorizontal: 1 }}>
-              {spots.length > 0 ? (
-                <MapView
-                  provider={PROVIDER_DEFAULT}
-                  style={StyleSheet.absoluteFill}
-                  initialRegion={mapRegion}
-                >
-                  {spots.map((spot) => (
-                    <Marker
-                      key={spot.id}
-                      coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
-                      title={spot.title ?? undefined}
-                      onPress={() => openSpot(spot)}
-                    >
-                      <View
-                        style={[
-                          styles.pin,
-                          { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
-                        ]}
-                      />
-                    </Marker>
-                  ))}
-                </MapView>
-              ) : (
-                <View style={[styles.centered, { paddingVertical: theme.spacing.xxxl }]}>
+            {/* Tab content */}
+            {activeTab === "map" ? (
+              /* Map */
+              <View style={{ height: 400 }}>
+                {spots.length > 0 ? (
+                  <MapView
+                    provider={PROVIDER_DEFAULT}
+                    style={StyleSheet.absoluteFill}
+                    initialRegion={mapRegion}
+                  >
+                    {spots.map((spot) => (
+                      <Marker
+                        key={spot.id}
+                        coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
+                        title={spot.title ?? undefined}
+                        onPress={() => openSpot(spot)}
+                      >
+                        <View
+                          style={[
+                            styles.pin,
+                            { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
+                          ]}
+                        />
+                      </Marker>
+                    ))}
+                  </MapView>
+                ) : (
+                  <View style={[styles.centered, { paddingVertical: theme.spacing.xxxl }]}>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.base }}>
+                      {t("spots.noSpots")}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              /* Spots grid */
+              spots.length === 0 ? (
+                <View style={{ padding: theme.spacing.xxxl, alignItems: "center" }}>
                   <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.base }}>
                     {t("spots.noSpots")}
                   </Text>
                 </View>
-              )}
-            </View>
-          }
-        />
-        <FollowListModal
-          visible={followModalVisible}
-          onClose={() => setFollowModalVisible(false)}
-          username={profile.username}
-          initialTab={followModalTab}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // Spots grid tab (default)
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-      <FlatList
-        data={spots}
-        keyExtractor={(item) => item.id}
-        numColumns={GRID_COLUMNS}
-        columnWrapperStyle={{ gap: GRID_GAP }}
-        contentContainerStyle={{ gap: GRID_GAP, paddingBottom: theme.spacing.xxl }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.textSecondary} />
-        }
-        renderItem={({ item }) => (
-          <Pressable onPress={() => openSpot(item)} style={styles.gridItem}>
-            <Image source={{ uri: item.photoUrl }} style={styles.gridImage} resizeMode="cover" />
-          </Pressable>
+              ) : (
+                <View style={styles.grid}>
+                  {spots.map((spot) => (
+                    <Pressable key={spot.id} onPress={() => openSpot(spot)} style={styles.gridItem}>
+                      <Image source={{ uri: spot.photoUrl }} style={styles.gridImage} resizeMode="cover" />
+                    </Pressable>
+                  ))}
+                </View>
+              )
+            )}
+          </>
         )}
-        ListEmptyComponent={
-          <View style={{ padding: theme.spacing.xxxl, alignItems: "center" }}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.base }}>
-              {t("spots.noSpots")}
-            </Text>
-          </View>
-        }
-        ListHeaderComponent={renderHeader}
-      />
+      </ScrollView>
 
       <FollowListModal
         visible={followModalVisible}
@@ -484,6 +438,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: GRID_GAP,
   },
   gridItem: {
     width: cellSize,
