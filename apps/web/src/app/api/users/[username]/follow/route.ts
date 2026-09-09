@@ -8,7 +8,7 @@ interface RouteParams {
 async function resolveUser(username: string) {
   const user = await prisma.user.findUnique({
     where: { username },
-    select: { id: true },
+    select: { id: true, isPrivate: true },
   });
   if (!user) {
     throw new ApiError("User not found", 404);
@@ -25,11 +25,14 @@ export const POST = withAuth<RouteParams>(async (_request, authUser, { params })
   }
 
   try {
+    // Public accounts → auto-accept; private accounts → pending approval
+    const status = targetUser.isPrivate ? "PENDING" : "ACCEPTED";
+
     const follow = await prisma.follow.create({
       data: {
         followerId: authUser.userId,
         followingId: targetUser.id,
-        // status defaults to PENDING in schema
+        status,
       },
     });
     return successResponse(follow, 201);

@@ -23,8 +23,8 @@
   "pnpm": {
     "overrides": {
       "fast-uri": ">=3.1.5",
-      "js-yaml": ">=4.3.1",
-      "sharp": ">=0.35.0",
+      "js-yaml": ">=4.3.2",
+      "sharp": ">=0.35.4",
       "deepmerge-ts": ">=8.0.0"
     }
   }

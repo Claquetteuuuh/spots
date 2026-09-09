@@ -130,6 +130,10 @@ export default function SettingsPage() {
     text: string;
   } | null>(null);
 
+  // Privacy
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
   // Theme
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
 
@@ -138,6 +142,7 @@ export default function SettingsPage() {
       startTransition(() => {
         setEmail(user.email ?? "");
         setUsername(user.username ?? "");
+        setIsPrivate((user as unknown as { isPrivate?: boolean }).isPrivate ?? false);
       });
     }
   }, [user]);
@@ -218,6 +223,29 @@ export default function SettingsPage() {
     },
     [currentPassword, newPassword, confirmPassword, t],
   );
+
+  async function handleTogglePrivacy() {
+    const newValue = !isPrivate;
+    setIsPrivate(newValue);
+    setIsSavingPrivacy(true);
+    try {
+      const token = getToken();
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ isPrivate: newValue }),
+      });
+      if (!res.ok) throw new Error();
+      await refreshUser();
+    } catch {
+      setIsPrivate(!newValue); // revert
+    } finally {
+      setIsSavingPrivacy(false);
+    }
+  }
 
   function handleLogout() {
     logout();
@@ -457,6 +485,40 @@ export default function SettingsPage() {
         detail={t("settings.accountInfoDesc")}
         onClick={() => setPanel("account")}
       />
+
+      {/* Privacy section */}
+      <SectionHeader title={t("settings.privacy")} />
+
+      <button
+        type="button"
+        onClick={handleTogglePrivacy}
+        disabled={isSavingPrivacy}
+        className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50"
+      >
+        <span className="shrink-0 text-text-secondary">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+          </svg>
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm text-text">{t("settings.privateAccount")}</span>
+          <span className="block text-xs text-text-tertiary mt-0.5">
+            {isPrivate ? t("settings.privateAccountShort") : t("settings.publicAccountShort")}
+          </span>
+        </span>
+        {/* Toggle */}
+        <span
+          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+            isPrivate ? "bg-accent" : "bg-border-dark"
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform mt-0.5 ${
+              isPrivate ? "translate-x-[22px]" : "translate-x-0.5"
+            }`}
+          />
+        </span>
+      </button>
 
       {/* Preferences section */}
       <SectionHeader title={t("settings.preferences")} />

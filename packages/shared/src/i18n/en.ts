@@ -137,6 +137,10 @@ export const en = {
     searchPlaceholder: "Search for a photographer...",
     notFound: "User not found",
     noResults: "No photographers found",
+    privateAccountMessage: "This account is private",
+    followToSee: "Follow this user to see their spots",
+    spotsTab: "Spots",
+    mapTab: "Map",
   },
   map: {
     title: "Map",
@@ -190,6 +194,11 @@ export const en = {
     emailLabel: "Email address",
     usernameLabel: "Username",
     saveChanges: "Save changes",
+    privacy: "Privacy",
+    privateAccount: "Private account",
+    privateAccountDesc: "When your account is private, only people you approve can see your spots",
+    privateAccountShort: "Only approved followers can see your spots",
+    publicAccountShort: "Anyone can follow you and see your spots",
   },
   landing: {
     heroTitle: "Find the right spot.",

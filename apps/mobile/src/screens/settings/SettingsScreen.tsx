@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -36,7 +37,26 @@ export function SettingsScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
+  // Privacy
+  const [isPrivate, setIsPrivate] = useState(user?.isPrivate ?? false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
   const isOAuth = user?.provider === "GOOGLE" || user?.provider === "APPLE";
+
+  const handleTogglePrivacy = async (value: boolean) => {
+    setIsPrivate(value);
+    setIsSavingPrivacy(true);
+    try {
+      const updated = await api.updateProfile({ isPrivate: value });
+      setUser(updated);
+    } catch {
+      // Revert on error
+      setIsPrivate(!value);
+      Alert.alert(t("common.error"));
+    } finally {
+      setIsSavingPrivacy(false);
+    }
+  };
 
   const handleSaveAccount = async () => {
     if (!user) return;
@@ -226,6 +246,44 @@ export function SettingsScreen() {
           </Section>
         ) : null}
 
+        {/* Privacy */}
+        <Section title={t("settings.privacy")} theme={theme}>
+          <View style={styles.privacyRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} />
+                <Text
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: theme.typography.size.sm,
+                    fontWeight: theme.typography.weight.semibold,
+                  }}
+                >
+                  {t("settings.privateAccount")}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.size.xs,
+                  marginLeft: 28,
+                }}
+              >
+                {isPrivate
+                  ? t("settings.privateAccountShort")
+                  : t("settings.publicAccountShort")}
+              </Text>
+            </View>
+            <Switch
+              value={isPrivate}
+              onValueChange={handleTogglePrivacy}
+              disabled={isSavingPrivacy}
+              trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
+              thumbColor={theme.colors.bg}
+            />
+          </View>
+        </Section>
+
         {/* Preferences */}
         <Section title={t("settings.preferences")} theme={theme}>
           <Row
@@ -398,6 +456,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 4,
+  },
+  privacyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   logoutButton: {
     flexDirection: "row",

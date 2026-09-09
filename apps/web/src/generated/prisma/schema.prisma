@@ -27,6 +27,7 @@ model User {
   avatarUrl String?
   bio       String?
   locale    String  @default("fr")
+  isPrivate Boolean @default(false)
 
   spots               Spot[]
   spotPhotos          SpotPhoto[]

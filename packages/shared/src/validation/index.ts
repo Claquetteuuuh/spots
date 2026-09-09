@@ -96,6 +96,7 @@ export const updateProfileSchema = z.object({
     .optional(),
   bio: z.string().max(500).optional(),
   locale: z.enum(["fr", "en"]).optional(),
+  isPrivate: z.boolean().optional(),
 });
 
 export const userSearchSchema = z.object({

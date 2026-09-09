@@ -176,6 +176,7 @@ export interface User {
   bio: string | null;
   locale: string;
   provider: string;
+  isPrivate?: boolean;
   createdAt: string;
   _count?: {
     spots: number;

@@ -25,6 +25,20 @@ export const PATCH = withAuth(async (request: NextRequest, authUser) => {
   const body = await request.json();
   const data = validateBody(updateProfileSchema, body);
 
+  // If switching from private to public, auto-accept all pending follow requests
+  if (data.isPrivate === false) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: authUser.userId },
+      select: { isPrivate: true },
+    });
+    if (currentUser?.isPrivate) {
+      await prisma.follow.updateMany({
+        where: { followingId: authUser.userId, status: "PENDING" },
+        data: { status: "ACCEPTED" },
+      });
+    }
+  }
+
   try {
     const user = await prisma.user.update({
       where: { id: authUser.userId },

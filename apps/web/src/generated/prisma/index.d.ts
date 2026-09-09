@@ -1505,6 +1505,7 @@ export namespace Prisma {
     avatarUrl: string | null
     bio: string | null
     locale: string | null
+    isPrivate: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -1520,6 +1521,7 @@ export namespace Prisma {
     avatarUrl: string | null
     bio: string | null
     locale: string | null
+    isPrivate: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -1535,6 +1537,7 @@ export namespace Prisma {
     avatarUrl: number
     bio: number
     locale: number
+    isPrivate: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -1552,6 +1555,7 @@ export namespace Prisma {
     avatarUrl?: true
     bio?: true
     locale?: true
+    isPrivate?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -1567,6 +1571,7 @@ export namespace Prisma {
     avatarUrl?: true
     bio?: true
     locale?: true
+    isPrivate?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -1582,6 +1587,7 @@ export namespace Prisma {
     avatarUrl?: true
     bio?: true
     locale?: true
+    isPrivate?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -1670,6 +1676,7 @@ export namespace Prisma {
     avatarUrl: string | null
     bio: string | null
     locale: string
+    isPrivate: boolean
     createdAt: Date
     updatedAt: Date
     _count: UserCountAggregateOutputType | null
@@ -1702,6 +1709,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     bio?: boolean
     locale?: boolean
+    isPrivate?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     spots?: boolean | User$spotsArgs<ExtArgs>
@@ -1723,6 +1731,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     bio?: boolean
     locale?: boolean
+    isPrivate?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["user"]>
@@ -1738,6 +1747,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     bio?: boolean
     locale?: boolean
+    isPrivate?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["user"]>
@@ -1753,11 +1763,12 @@ export namespace Prisma {
     avatarUrl?: boolean
     bio?: boolean
     locale?: boolean
+    isPrivate?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "passwordHash" | "provider" | "providerId" | "username" | "name" | "avatarUrl" | "bio" | "locale" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "passwordHash" | "provider" | "providerId" | "username" | "name" | "avatarUrl" | "bio" | "locale" | "isPrivate" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     spots?: boolean | User$spotsArgs<ExtArgs>
     spotPhotos?: boolean | User$spotPhotosArgs<ExtArgs>
@@ -1789,6 +1800,7 @@ export namespace Prisma {
       avatarUrl: string | null
       bio: string | null
       locale: string
+      isPrivate: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["user"]>
@@ -2229,6 +2241,7 @@ export namespace Prisma {
     readonly avatarUrl: FieldRef<"User", 'String'>
     readonly bio: FieldRef<"User", 'String'>
     readonly locale: FieldRef<"User", 'String'>
+    readonly isPrivate: FieldRef<"User", 'Boolean'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
   }
@@ -8427,6 +8440,7 @@ export namespace Prisma {
     avatarUrl: 'avatarUrl',
     bio: 'bio',
     locale: 'locale',
+    isPrivate: 'isPrivate',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -8564,6 +8578,13 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+
+
+
+  /**
    * Reference to a field of type 'DateTime'
    */
   export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
@@ -8602,13 +8623,6 @@ export namespace Prisma {
    * Reference to a field of type 'Float[]'
    */
   export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
-
-
-
-  /**
-   * Reference to a field of type 'Boolean'
-   */
-  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
 
 
 
@@ -8671,6 +8685,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableFilter<"User"> | string | null
     bio?: StringNullableFilter<"User"> | string | null
     locale?: StringFilter<"User"> | string
+    isPrivate?: BoolFilter<"User"> | boolean
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     spots?: SpotListRelationFilter
@@ -8691,6 +8706,7 @@ export namespace Prisma {
     avatarUrl?: SortOrderInput | SortOrder
     bio?: SortOrderInput | SortOrder
     locale?: SortOrder
+    isPrivate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     spots?: SpotOrderByRelationAggregateInput
@@ -8714,6 +8730,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableFilter<"User"> | string | null
     bio?: StringNullableFilter<"User"> | string | null
     locale?: StringFilter<"User"> | string
+    isPrivate?: BoolFilter<"User"> | boolean
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     spots?: SpotListRelationFilter
@@ -8734,6 +8751,7 @@ export namespace Prisma {
     avatarUrl?: SortOrderInput | SortOrder
     bio?: SortOrderInput | SortOrder
     locale?: SortOrder
+    isPrivate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserCountOrderByAggregateInput
@@ -8755,6 +8773,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableWithAggregatesFilter<"User"> | string | null
     bio?: StringNullableWithAggregatesFilter<"User"> | string | null
     locale?: StringWithAggregatesFilter<"User"> | string
+    isPrivate?: BoolWithAggregatesFilter<"User"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
   }
@@ -9147,6 +9166,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotCreateNestedManyWithoutUserInput
@@ -9167,6 +9187,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotUncheckedCreateNestedManyWithoutUserInput
@@ -9187,6 +9208,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUpdateManyWithoutUserNestedInput
@@ -9207,6 +9229,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUncheckedUpdateManyWithoutUserNestedInput
@@ -9227,6 +9250,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -9242,6 +9266,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9257,6 +9282,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -9698,6 +9724,11 @@ export namespace Prisma {
     not?: NestedEnumAuthProviderFilter<$PrismaModel> | $Enums.AuthProvider
   }
 
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type DateTimeFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
@@ -9765,6 +9796,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     bio?: SortOrder
     locale?: SortOrder
+    isPrivate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9780,6 +9812,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     bio?: SortOrder
     locale?: SortOrder
+    isPrivate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9795,6 +9828,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     bio?: SortOrder
     locale?: SortOrder
+    isPrivate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -9843,6 +9877,14 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumAuthProviderFilter<$PrismaModel>
     _max?: NestedEnumAuthProviderFilter<$PrismaModel>
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
@@ -9943,11 +9985,6 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatFilter<$PrismaModel> | number
-  }
-
-  export type BoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
   export type EnumSpotVisibilityFilter<$PrismaModel = never> = {
@@ -10070,14 +10107,6 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type EnumSpotVisibilityWithAggregatesFilter<$PrismaModel = never> = {
@@ -10264,6 +10293,10 @@ export namespace Prisma {
 
   export type EnumAuthProviderFieldUpdateOperationsInput = {
     set?: $Enums.AuthProvider
+  }
+
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
   }
 
   export type DateTimeFieldUpdateOperationsInput = {
@@ -10510,10 +10543,6 @@ export namespace Prisma {
     divide?: number
   }
 
-  export type BoolFieldUpdateOperationsInput = {
-    set?: boolean
-  }
-
   export type EnumSpotVisibilityFieldUpdateOperationsInput = {
     set?: $Enums.SpotVisibility
   }
@@ -10682,6 +10711,11 @@ export namespace Prisma {
     not?: NestedEnumAuthProviderFilter<$PrismaModel> | $Enums.AuthProvider
   }
 
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type NestedDateTimeFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
@@ -10759,6 +10793,14 @@ export namespace Prisma {
     _max?: NestedEnumAuthProviderFilter<$PrismaModel>
   }
 
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
+  }
+
   export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
@@ -10801,11 +10843,6 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
   export type NestedEnumSpotVisibilityFilter<$PrismaModel = never> = {
     equals?: $Enums.SpotVisibility | EnumSpotVisibilityFieldRefInput<$PrismaModel>
     in?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
@@ -10827,14 +10864,6 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type NestedEnumSpotVisibilityWithAggregatesFilter<$PrismaModel = never> = {
@@ -11173,6 +11202,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotCreateNestedManyWithoutUserInput
@@ -11192,6 +11222,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotUncheckedCreateNestedManyWithoutUserInput
@@ -11216,6 +11247,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotCreateNestedManyWithoutUserInput
@@ -11235,6 +11267,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotUncheckedCreateNestedManyWithoutUserInput
@@ -11270,6 +11303,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUpdateManyWithoutUserNestedInput
@@ -11289,6 +11323,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUncheckedUpdateManyWithoutUserNestedInput
@@ -11319,6 +11354,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUpdateManyWithoutUserNestedInput
@@ -11338,6 +11374,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUncheckedUpdateManyWithoutUserNestedInput
@@ -11357,6 +11394,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotCreateNestedManyWithoutUserInput
@@ -11376,6 +11414,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotUncheckedCreateNestedManyWithoutUserInput
@@ -11411,6 +11450,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUpdateManyWithoutUserNestedInput
@@ -11430,6 +11470,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUncheckedUpdateManyWithoutUserNestedInput
@@ -11449,6 +11490,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spotPhotos?: SpotPhotoCreateNestedManyWithoutUserInput
@@ -11468,6 +11510,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spotPhotos?: SpotPhotoUncheckedCreateNestedManyWithoutUserInput
@@ -11555,6 +11598,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spotPhotos?: SpotPhotoUpdateManyWithoutUserNestedInput
@@ -11574,6 +11618,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spotPhotos?: SpotPhotoUncheckedUpdateManyWithoutUserNestedInput
@@ -11801,6 +11846,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotCreateNestedManyWithoutUserInput
@@ -11820,6 +11866,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     bio?: string | null
     locale?: string
+    isPrivate?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     spots?: SpotUncheckedCreateNestedManyWithoutUserInput
@@ -11914,6 +11961,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUpdateManyWithoutUserNestedInput
@@ -11933,6 +11981,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     bio?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spots?: SpotUncheckedUpdateManyWithoutUserNestedInput

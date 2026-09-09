@@ -13,6 +13,7 @@ export interface User {
   bio?: string | null;
   locale: "fr" | "en";
   provider?: string;
+  isPrivate?: boolean;
   createdAt: string;
   followerCount?: number;
   followingCount?: number;

@@ -132,6 +132,7 @@ exports.Prisma.UserScalarFieldEnum = {
   avatarUrl: 'avatarUrl',
   bio: 'bio',
   locale: 'locale',
+  isPrivate: 'isPrivate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

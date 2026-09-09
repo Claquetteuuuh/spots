@@ -137,6 +137,10 @@ export const fr = {
     searchPlaceholder: "Rechercher un photographe...",
     notFound: "Utilisateur introuvable",
     noResults: "Aucun photographe trouvé",
+    privateAccountMessage: "Ce compte est privé",
+    followToSee: "Abonnez-vous pour voir ses spots",
+    spotsTab: "Spots",
+    mapTab: "Carte",
   },
   map: {
     title: "Carte",
@@ -190,6 +194,11 @@ export const fr = {
     emailLabel: "Adresse email",
     usernameLabel: "Nom d'utilisateur",
     saveChanges: "Enregistrer les modifications",
+    privacy: "Confidentialité",
+    privateAccount: "Compte privé",
+    privateAccountDesc: "Quand votre compte est privé, seules les personnes que vous approuvez peuvent voir vos spots",
+    privateAccountShort: "Seuls les abonnés approuvés peuvent voir vos spots",
+    publicAccountShort: "Tout le monde peut s'abonner et voir vos spots",
   },
   landing: {
     heroTitle: "Trouvez le bon spot.",

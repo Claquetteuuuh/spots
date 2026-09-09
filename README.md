@@ -1,11 +1,13 @@
 # The Right Spot
 
-A photography spot discovery app. Photograph beautiful locations, tag them with composition types, colors, and metadata, then see them on your personal map. Follow other photographers to discover their spots.
+A photography spot discovery app. Photograph beautiful locations, tag them with
+composition types, colors, and metadata, then see them on your personal map.
+Follow other photographers to discover their spots.
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+| ----- | ---------- |
 | Monorepo | pnpm workspaces + Turborepo |
 | Web + API | Next.js (App Router) |
 | Mobile | Expo React Native (SDK 53) |
@@ -22,7 +24,7 @@ A photography spot discovery app. Photograph beautiful locations, tag them with 
 
 ## Architecture
 
-```
+```text
 the-right-spot/
 ├── apps/
 │   ├── web/                  # Next.js — API routes + web frontend + Prisma
@@ -75,6 +77,7 @@ docker compose up -d
 ```
 
 This starts PostgreSQL 17 on `localhost:5432` with:
+
 - User: `trs`
 - Password: `trs_local_pwd`
 - Database: `the_right_spot`
@@ -88,7 +91,7 @@ cp apps/web/.env.example apps/web/.env
 The defaults work for local dev. The `.env.example` contains:
 
 | Variable | Description | Default |
-|----------|-------------|---------|
+| -------- | ----------- | ------- |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://trs:trs_local_pwd@localhost:5432/the_right_spot` |
 | `JWT_SECRET` | Access token signing key | Change in production |
 | `JWT_REFRESH_SECRET` | Refresh token signing key | Change in production |
@@ -115,10 +118,10 @@ pnpm db:seed        # Seed test data
 
 The seed creates two test users and sample spots:
 
-| User | Email | Password |
-|------|-------|----------|
-| alice_photo | alice@example.com | password123 |
-| bob_captures | bob@example.com | password123 |
+| User         | Email               | Password    |
+| ------------ | ------------------- | ----------- |
+| alice_photo  | <alice@example.com> | password123 |
+| bob_captures | <bob@example.com>   | password123 |
 
 ### 5. Start development
 
@@ -127,7 +130,8 @@ pnpm dev
 ```
 
 This runs all apps in parallel via Turborepo:
-- **Web**: http://localhost:3000
+
+- **Web**: <http://localhost:3000>
 - **Mobile**: Expo DevTools on port 8081
 
 To run apps individually:
@@ -144,7 +148,7 @@ For the mobile app, press `i` for iOS Simulator or `a` for Android Emulator in t
 ## Available Scripts
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `pnpm dev` | Start all apps in development mode |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint all apps |
@@ -183,6 +187,7 @@ The Next.js app deploys to Vercel as a serverless application serving both the A
    - `RESEND_API_KEY`, `EMAIL_FROM` — For transactional emails
 
 4. **Run migrations** after first deploy:
+
    ```bash
    # From your local machine with DATABASE_URL pointing to production
    pnpm db:migrate
@@ -193,24 +198,28 @@ The Next.js app deploys to Vercel as a serverless application serving both the A
 The mobile app uses [Expo Application Services](https://expo.dev/eas) for building and distributing.
 
 1. **Install EAS CLI**:
+
    ```bash
    npm install -g eas-cli
    eas login
    ```
 
 2. **Configure EAS** (if not already done):
+
    ```bash
    cd apps/mobile
    eas build:configure
    ```
 
 3. **Set the API URL** — Point the mobile app to your production API:
+
    ```bash
    # In apps/mobile/.env or via EAS secrets
    EXPO_PUBLIC_API_URL=https://therightspot.app/api
    ```
 
 4. **Build for stores**:
+
    ```bash
    # iOS
    eas build --platform ios --profile production
@@ -220,6 +229,7 @@ The mobile app uses [Expo Application Services](https://expo.dev/eas) for buildi
    ```
 
 5. **Submit to stores**:
+
    ```bash
    eas submit --platform ios
    eas submit --platform android
@@ -228,6 +238,7 @@ The mobile app uses [Expo Application Services](https://expo.dev/eas) for buildi
 ### Database (Production)
 
 Use a managed PostgreSQL provider:
+
 - [Neon](https://neon.tech) — Serverless, scales to zero
 - [Supabase](https://supabase.com) — Managed Postgres + extras
 - [Railway](https://railway.app) — Simple managed Postgres
@@ -248,7 +259,7 @@ Set `DATABASE_URL` in your environment to the provider's connection string.
 The project includes a comprehensive DevSecOps pipeline via GitHub Actions:
 
 | Workflow | Purpose |
-|----------|---------|
+| -------- | ------- |
 | `ci.yml` | Lint, typecheck, test, build on every PR |
 | `pre-commit.yml` | Pre-commit hooks validation |
 | `bearer.yml` | SAST — static application security testing |
@@ -266,13 +277,17 @@ All endpoints are under `/api/`. Authentication uses Bearer JWT tokens.
 
 **Auth**: `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/refresh`
 
-**Spots**: `GET /api/spots`, `POST /api/spots`, `GET /api/spots/:id`, `PATCH /api/spots/:id`, `DELETE /api/spots/:id`, `GET /api/spots/feed`
+**Spots**: `GET /api/spots`, `POST /api/spots`, `GET /api/spots/:id`,
+`PATCH /api/spots/:id`, `DELETE /api/spots/:id`, `GET /api/spots/feed`
 
-**Users**: `GET /api/users/:username`, `POST /api/users/:username/follow`, `DELETE /api/users/:username/follow`, `GET /api/users/:username/followers`, `GET /api/users/:username/following`
+**Users**: `GET /api/users/:username`, `POST /api/users/:username/follow`,
+`DELETE /api/users/:username/follow`, `GET /api/users/:username/followers`,
+`GET /api/users/:username/following`
 
 **Notifications**: `GET /api/notifications`, `PATCH /api/notifications/:id`
 
 Response format:
+
 ```json
 { "data": { ... } }          // Success
 { "error": "message" }       // Error

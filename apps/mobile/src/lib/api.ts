@@ -202,8 +202,9 @@ export async function getFeed(cursor?: string, limit = 20): Promise<Paginated<Sp
 
 // ─── Users ───────────────────────────────────────────────────────────
 
-export async function followUser(username: string): Promise<void> {
-  await client.post(API_ROUTES.users.follow(username));
+export async function followUser(username: string): Promise<{ status: string }> {
+  const { data } = await client.post<{ status: string }>(API_ROUTES.users.follow(username));
+  return data;
 }
 
 export async function unfollowUser(username: string): Promise<void> {
@@ -237,6 +238,7 @@ export interface UpdateProfileParams {
   username?: string;
   bio?: string;
   locale?: "fr" | "en";
+  isPrivate?: boolean;
 }
 
 export async function updateProfile(params: UpdateProfileParams): Promise<User> {

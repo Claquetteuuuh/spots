@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, use, useCallback, useEffect, useState } from "react";
+import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
@@ -12,6 +12,7 @@ import { FollowListModal } from "@/components/follow-list-modal";
 import { useT } from "@/lib/use-t";
 
 type FollowStatus = "ACCEPTED" | "PENDING" | null;
+type ProfileTab = "spots" | "map";
 
 export default function ProfilePage({
   params,
@@ -27,6 +28,7 @@ export default function ProfilePage({
   const [isLoading, setIsLoading] = useState(true);
   const [followStatus, setFollowStatus] = useState<FollowStatus>(null);
 
+  const [activeTab, setActiveTab] = useState<ProfileTab>("spots");
   const [followModalOpen, setFollowModalOpen] = useState(false);
   const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
 
@@ -69,6 +71,17 @@ export default function ProfilePage({
     });
   }, [loadProfile]);
 
+  // Load Leaflet CSS for map tab
+  useEffect(() => {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+  }, []);
+
   async function handleFollowToggle() {
     if (!profile) return;
     try {
@@ -84,9 +97,23 @@ export default function ProfilePage({
           );
         }
       } else {
-        // Send follow request
+        // Send follow request — auto-accepted for public accounts
         await apiClient.users.follow(profile.username);
-        setFollowStatus("PENDING");
+        const profileAnyCheck = profile as unknown as Record<string, unknown>;
+        const targetIsPrivate = profileAnyCheck.isPrivate === true;
+        if (targetIsPrivate) {
+          setFollowStatus("PENDING");
+        } else {
+          setFollowStatus("ACCEPTED");
+          setProfile((p) =>
+            p?._count
+              ? { ...p, _count: { ...p._count, followers: p._count.followers + 1 } }
+              : p,
+          );
+          // Reload spots since we now have access
+          const spotsData = await apiClient.spots.list({ userId: profile.id });
+          setSpots(spotsData.items);
+        }
       }
     } catch {
       // Silently fail
@@ -118,6 +145,8 @@ export default function ProfilePage({
   const profileAny = profile as unknown as Record<string, unknown>;
   const followersCount = (profileAny.followerCount as number | undefined) ?? profile._count?.followers ?? 0;
   const followingCount = (profileAny.followingCount as number | undefined) ?? profile._count?.following ?? 0;
+  const profileIsPrivate = profileAny.isPrivate === true;
+  const isPrivateAndNotFollowing = profileIsPrivate && !isOwnProfile && followStatus !== "ACCEPTED";
 
   // Follow button label and variant
   let followLabel = t("users.follow");
@@ -154,8 +183,13 @@ export default function ProfilePage({
         <div className="flex-1 min-w-0">
           {/* Name + action row */}
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-normal text-text">
+            <h1 className="text-xl font-normal text-text flex items-center gap-1.5">
               {profile.username}
+              {profileIsPrivate ? (
+                <svg className="h-4 w-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+              ) : null}
             </h1>
             {!isOwnProfile ? (
               <Button
@@ -259,39 +293,92 @@ export default function ProfilePage({
         </button>
       </div>
 
-      {/* Spots grid — Instagram style (3 cols, square) */}
-      <div className="mt-8 border-t border-border pt-4">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <svg className="h-3 w-3 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+      {/* Private account gate */}
+      {isPrivateAndNotFollowing ? (
+        <div className="mt-8 border-t border-border pt-12 flex flex-col items-center gap-3">
+          <svg className="h-12 w-12 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
           </svg>
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-            {t("spots.title")}
-          </span>
-        </div>
-
-        {spots.length === 0 ? (
-          <p className="text-center py-12 text-text-secondary">
-            {t("spots.noSpots")}
+          <p className="text-base font-semibold text-text">
+            {t("users.privateAccountMessage")}
           </p>
-        ) : (
-          <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
-            {spots.map((spot) => (
-              <Link
-                key={spot.id}
-                href={`/spot/${spot.id}`}
-                className="aspect-square overflow-hidden bg-bg-secondary group"
-              >
-                <img
-                  src={spot.photoUrl}
-                  alt={spot.title ?? ""}
-                  className="h-full w-full object-cover group-hover:opacity-80 transition-opacity duration-200"
-                />
-              </Link>
-            ))}
+          <p className="text-sm text-text-secondary">
+            {t("users.followToSee")}
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Tab bar: Spots | Map */}
+          <div className="mt-8 border-t border-border flex">
+            <button
+              type="button"
+              onClick={() => setActiveTab("spots")}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors border-b-[1.5px] ${
+                activeTab === "spots"
+                  ? "text-text border-text"
+                  : "text-text-tertiary border-transparent hover:text-text-secondary"
+              }`}
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+              </svg>
+              {t("users.spotsTab")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("map")}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors border-b-[1.5px] ${
+                activeTab === "map"
+                  ? "text-text border-text"
+                  : "text-text-tertiary border-transparent hover:text-text-secondary"
+              }`}
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m0 0-3.75-1.5L9 15Zm0 0 3.75-1.5M9 15l3.75 1.5m0-9V15m0 0 3.75-1.5M12.75 15l3.75 1.5m0-9v7.5m0 0 .75-.25" />
+              </svg>
+              {t("users.mapTab")}
+            </button>
           </div>
-        )}
-      </div>
+
+          {/* Spots grid */}
+          {activeTab === "spots" ? (
+            <div className="pt-1">
+              {spots.length === 0 ? (
+                <p className="text-center py-12 text-text-secondary">
+                  {t("spots.noSpots")}
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+                  {spots.map((spot) => (
+                    <Link
+                      key={spot.id}
+                      href={`/spot/${spot.id}`}
+                      className="aspect-square overflow-hidden bg-bg-secondary group"
+                    >
+                      <img
+                        src={spot.photoUrl}
+                        alt={spot.title ?? ""}
+                        className="h-full w-full object-cover group-hover:opacity-80 transition-opacity duration-200"
+                      />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Map tab */
+            <div className="pt-1">
+              {spots.length === 0 ? (
+                <p className="text-center py-12 text-text-secondary">
+                  {t("spots.noSpots")}
+                </p>
+              ) : (
+                <ProfileMapView spots={spots} />
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
 
       <FollowListModal
@@ -301,5 +388,58 @@ export default function ProfilePage({
         initialTab={followModalTab}
       />
     </PullToRefresh>
+  );
+}
+
+/** Vanilla-Leaflet map showing a user's spots */
+function ProfileMapView({ spots }: { spots: Spot[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+
+  useEffect(() => {
+    import("leaflet").then((L) => {
+      if (!containerRef.current || mapRef.current) return;
+
+      const centerLat = spots.reduce((s, p) => s + p.latitude, 0) / spots.length;
+      const centerLng = spots.reduce((s, p) => s + p.longitude, 0) / spots.length;
+
+      const map = L.map(containerRef.current).setView([centerLat, centerLng], 11);
+      mapRef.current = map;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      }).addTo(map);
+
+      for (const spot of spots) {
+        L.marker([spot.latitude, spot.longitude])
+          .addTo(map)
+          .bindPopup(
+            `<a href="/spot/${spot.id}" style="font-weight:500">${spot.title ?? "Spot"}</a>`,
+          );
+      }
+
+      // Fit bounds if multiple spots
+      if (spots.length > 1) {
+        const group = L.featureGroup(
+          spots.map((s) => L.marker([s.latitude, s.longitude])),
+        );
+        map.fitBounds(group.getBounds().pad(0.15));
+      }
+    });
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [spots]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-[400px] rounded overflow-hidden border border-border"
+    />
   );
 }
