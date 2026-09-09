@@ -1,6 +1,8 @@
 export const fr = {
   app: {
     name: "spots",
+    /** Short enough to sit next to the name in a browser tab. */
+    tagline: "carte de repérage photo",
     description: "Les endroits d'où viennent vos meilleures photos.",
   },
   common: {
@@ -79,6 +81,10 @@ export const fr = {
       saveFailed: "Impossible d'enregistrer le spot",
       deleteFailed: "Impossible de supprimer le spot",
     },
+    notFound: "Spot introuvable",
+    untitled: "Spot sans titre",
+    metaDescription: "Un spot photo sur spots",
+    metaDescriptionAt: "Un spot photo à {{location}}",
     noSpots: "Aucun spot pour le moment",
     addFirstSpot: "Ajoutez votre premier spot photo !",
     deleteConfirm: "Supprimer ce spot ?",
@@ -140,6 +146,7 @@ export const fr = {
     bio: "Bio",
     searchPlaceholder: "Rechercher un photographe...",
     notFound: "Utilisateur introuvable",
+    metaDescription: "{{name}} — photographe sur spots",
     noResults: "Aucun photographe trouvé",
     privateAccountMessage: "Ce compte est privé",
     followToSee: "Abonnez-vous pour voir ses spots",
@@ -208,7 +215,7 @@ export const fr = {
   landing: {
     tagline: "Les endroits d'où viennent vos meilleures photos.",
     heroDescription:
-      "Épinglez un lieu, notez la lumière et la composition, revenez à la bonne heure. Suivez d'autres photographes et leurs spots arrivent sur votre carte.",
+      "Épinglez un lieu, revenez à la bonne heure. Suivez d'autres photographes et leurs spots arrivent sur votre carte.",
     getStarted: "Commencer ma carte",
     journeyHeadline:
       "D'un endroit croisé par hasard à un point sur votre carte.",

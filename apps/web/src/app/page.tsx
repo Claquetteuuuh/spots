@@ -1,45 +1,9 @@
 import Link from "next/link";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { Wordmark } from "@/components/wordmark";
+import { WorldMap } from "@/components/world-map";
 import { getTranslator } from "@/lib/i18n";
 import { getServerLocale } from "@/lib/server-locale";
-
-/**
- * A constellation of spots behind the wordmark — the product's own subject
- * matter as the hero, rather than a decorative gradient. Positions are fixed
- * so the arrangement is part of the brand and not noise, and they are kept to
- * the outer margins so nothing ever sits behind the reading column.
- * Decorative, so it stays out of the accessibility tree.
- */
-const PLOTTED = [
-  { left: "4%", top: "22%", size: 10, opacity: 0.5 },
-  { left: "11%", top: "62%", size: 18, opacity: 0.3 },
-  { left: "18%", top: "34%", size: 7, opacity: 0.45 },
-  { left: "8%", top: "84%", size: 13, opacity: 0.22 },
-  { left: "23%", top: "78%", size: 6, opacity: 0.35 },
-  { left: "77%", top: "26%", size: 8, opacity: 0.4 },
-  { left: "84%", top: "70%", size: 16, opacity: 0.26 },
-  { left: "91%", top: "38%", size: 6, opacity: 0.5 },
-  { left: "72%", top: "86%", size: 11, opacity: 0.24 },
-  { left: "95%", top: "80%", size: 8, opacity: 0.32 },
-];
-
-function PlottedField() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 hidden sm:block"
-    >
-      {PLOTTED.map(({ left, top, size, opacity }, i) => (
-        <span
-          key={i}
-          className="absolute rounded-full bg-accent-light"
-          style={{ left, top, width: size, height: size, opacity }}
-        />
-      ))}
-    </div>
-  );
-}
 
 const JOURNEY = [
   { title: "landing.stepPhotograph", desc: "landing.stepPhotographDesc" },
@@ -73,7 +37,17 @@ export default async function LandingPage() {
 
       {/* ── Hero: the wordmark itself, dropped into a field of spots ── */}
       <section className="relative isolate flex flex-col items-center overflow-hidden px-5 pb-16 pt-14 sm:pb-24 sm:pt-20">
-        <PlottedField />
+        <WorldMap />
+        {/* The map has to stay legible under the reading column, so it is
+            cleared where the words are rather than dimmed everywhere. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 44rem 20rem at 50% 46%, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 78%, transparent) 42%, transparent 72%)",
+          }}
+        />
 
         <Wordmark className="relative text-[19vw] text-accent sm:text-[9rem]" />
 
@@ -93,7 +67,7 @@ export default async function LandingPage() {
           </Link>
           <Link
             href="/login"
-            className="inline-flex w-full items-center justify-center rounded-full px-7 py-3.5 text-base font-semibold text-text transition-colors hover:bg-bg-secondary sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-full px-7 py-3.5 text-base font-semibold text-text transition-shadow hover:bg-bg hover:shadow-raise sm:w-auto"
           >
             {t("auth.login")}
           </Link>

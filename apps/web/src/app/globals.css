@@ -39,6 +39,10 @@
   --color-warning: #E0A020;
   --color-warning-light: #FDF4E3;
 
+  /* How loudly the dotted world map reads behind the hero. It needs a
+     different weight against white than against navy. */
+  --opacity-world-map: 0.14;
+
   /* Elevation. Blue-tinted rather than neutral grey, and used sparingly —
      only for things that genuinely float (menus, sheets, sticky bars). */
   --shadow-raise: 0 1px 2px rgba(22, 32, 58, 0.05),
@@ -67,6 +71,7 @@
     --color-error-light: #2C1A18;
     --color-success-light: #12261D;
     --color-warning-light: #2A2214;
+    --opacity-world-map: 0.22;
     --shadow-raise: 0 1px 2px rgba(0, 0, 0, 0.4),
       0 4px 12px rgba(0, 0, 0, 0.3);
     --shadow-float: 0 8px 28px rgba(0, 0, 0, 0.5);
@@ -90,6 +95,7 @@
   --color-error-light: #2C1A18;
   --color-success-light: #12261D;
   --color-warning-light: #2A2214;
+  --opacity-world-map: 0.22;
   --shadow-raise: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-float: 0 8px 28px rgba(0, 0, 0, 0.5);
 }
@@ -156,6 +162,47 @@ body {
   color: var(--color-text);
 }
 
+/* ─── Landing map ──────────────────────────────────────────────────
+   A few spots light up in turn behind the hero, one at a time, slowly.
+   Ambient rather than attention-seeking; killed under reduced motion by
+   the rule below. */
+
+.world-map-spot {
+  opacity: 0;
+  animation: world-map-spot 14s ease-in-out infinite;
+}
+
+.world-map-ring {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: world-map-ring 14s ease-out infinite;
+}
+
+@keyframes world-map-spot {
+  0%,
+  22%,
+  100% {
+    opacity: 0;
+  }
+  4%,
+  16% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes world-map-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.4);
+  }
+  18%,
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -164,5 +211,14 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Nothing pulses, but the highlighted spots should still read as lit. */
+  .world-map-spot {
+    opacity: 0.85;
+  }
+
+  .world-map-ring {
+    opacity: 0;
   }
 }

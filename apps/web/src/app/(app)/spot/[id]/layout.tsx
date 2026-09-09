@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { getTranslator } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/server-locale";
 
 export async function generateMetadata({
   params,
@@ -7,6 +9,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const t = getTranslator(await getServerLocale());
 
   const spot = await prisma.spot.findUnique({
     where: { id },
@@ -20,13 +23,16 @@ export async function generateMetadata({
   });
 
   if (!spot) {
-    return { title: "Spot not found" };
+    return { title: t("spots.notFound") };
   }
 
-  const title = spot.title ?? "Spot";
+  const title = spot.title ?? t("spots.untitled");
   const location = [spot.city, spot.country].filter(Boolean).join(", ");
   const description =
-    spot.description ?? (location ? `Photography spot in ${location}` : "Photography spot on The Right Spot");
+    spot.description ??
+    (location
+      ? t("spots.metaDescriptionAt", { location })
+      : t("spots.metaDescription"));
 
   return {
     title,

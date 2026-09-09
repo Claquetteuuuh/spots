@@ -28,13 +28,20 @@ const figtree = Figtree({
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = getTranslator(await getServerLocale());
-  const title = t("app.name");
+  const name = t("app.name");
+  const title = `${name} — ${t("app.tagline")}`;
   const description = t("app.description");
 
   return {
-    title,
+    title: {
+      default: title,
+      // Nested pages set a bare title ("@alice_photo", a spot name); the
+      // template is what puts the brand behind it.
+      template: `%s · ${name}`,
+    },
     description,
-    openGraph: { title, description, siteName: title, type: "website" },
+    applicationName: name,
+    openGraph: { title, description, siteName: name, type: "website" },
     twitter: { card: "summary", title, description },
   };
 }

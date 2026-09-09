@@ -1,6 +1,8 @@
 export const en = {
   app: {
     name: "spots",
+    /** Short enough to sit next to the name in a browser tab. */
+    tagline: "photo scouting map",
     description: "The places your best photographs come from.",
   },
   common: {
@@ -79,6 +81,10 @@ export const en = {
       saveFailed: "Unable to save spot",
       deleteFailed: "Unable to delete spot",
     },
+    notFound: "Spot not found",
+    untitled: "Untitled spot",
+    metaDescription: "A photography spot on spots",
+    metaDescriptionAt: "A photography spot in {{location}}",
     noSpots: "No spots yet",
     addFirstSpot: "Add your first photo spot!",
     deleteConfirm: "Delete this spot?",
@@ -140,6 +146,7 @@ export const en = {
     bio: "Bio",
     searchPlaceholder: "Search for a photographer...",
     notFound: "User not found",
+    metaDescription: "{{name}} — photographer on spots",
     noResults: "No photographers found",
     privateAccountMessage: "This account is private",
     followToSee: "Follow this user to see their spots",
@@ -208,7 +215,7 @@ export const en = {
   landing: {
     tagline: "The places your best photographs come from.",
     heroDescription:
-      "Pin a location, note the light and the composition, and come back at the right hour. Follow other photographers and their spots land on your map too.",
+      "Pin a location and come back at the right hour. Follow other photographers and their spots land on your map too.",
     getStarted: "Start your map",
     journeyHeadline:
       "From somewhere you happened to walk past to a point on your map.",

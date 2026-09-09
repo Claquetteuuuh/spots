@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { getTranslator } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/server-locale";
 
 export async function generateMetadata({
   params,
@@ -7,6 +9,7 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
+  const t = getTranslator(await getServerLocale());
 
   const user = await prisma.user.findUnique({
     where: { username },
@@ -19,11 +22,12 @@ export async function generateMetadata({
   });
 
   if (!user) {
-    return { title: "User not found" };
+    return { title: t("users.notFound") };
   }
 
   const title = `@${user.username}`;
-  const description = user.bio ?? `${user.name} — Photographer on spots`;
+  const description =
+    user.bio ?? t("users.metaDescription", { name: user.name });
 
   return {
     title,
