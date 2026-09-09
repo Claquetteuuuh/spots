@@ -35,7 +35,10 @@
     "react": "19.2.3",
     "react-i18next": "^17.0.12",
     "react-native": "0.86.2",
+    "react-native-gesture-handler": "^3.2.1",
     "react-native-maps": "1.29.0",
+    "react-native-pager-view": "^9.0.4",
+    "react-native-reanimated": "^4.6.0",
     "react-native-safe-area-context": "5.9.1",
     "react-native-screens": "~4.27.0",
     "zustand": "^5.0.15"

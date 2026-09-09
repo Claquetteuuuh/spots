@@ -22,6 +22,7 @@
     "@prisma/client": "^6.9.0",
     "@trs/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
+    "framer-motion": "^13.2.0",
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.2",
     "leaflet": "^1.9.4",
@@ -45,8 +46,8 @@
     "eslint-config-next": "16.3.3",
     "jsdom": "^30.0.1",
     "prisma": "^6.9.0",
-    "tsx": "^4.19.0",
     "tailwindcss": "^4",
+    "tsx": "^4.19.0",
     "typescript": "^5",
     "vitest": "^3.2.0"
   }

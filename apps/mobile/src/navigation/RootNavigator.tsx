@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   DarkTheme as NavigationDarkTheme,
   DefaultTheme as NavigationDefaultTheme,
   NavigationContainer,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import PagerView from "react-native-pager-view";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { useAuthStore } from "../stores/auth-store";
 import * as api from "../lib/api";
@@ -25,11 +26,11 @@ import { EditProfileScreen } from "../screens/profile/EditProfileScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
 import { OtherProfileScreen } from "../screens/profile/OtherProfileScreen";
 
+import { TabProvider } from "./tab-context";
 import type { AuthStackParamList, MainTabParamList, RootStackParamList } from "./types";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
-const MainTab = createBottomTabNavigator<MainTabParamList>();
 
 function AuthNavigator() {
   return (
@@ -39,6 +40,16 @@ function AuthNavigator() {
     </AuthStackNav.Navigator>
   );
 }
+
+// ─── Tab config ─────────────────────────────────────────────────────
+
+const TAB_KEYS: (keyof MainTabParamList)[] = [
+  "Map",
+  "Search",
+  "Add",
+  "Notifications",
+  "Profile",
+];
 
 const TAB_ICONS: Record<
   keyof MainTabParamList,
@@ -51,14 +62,26 @@ const TAB_ICONS: Record<
   Profile: { focused: "person-circle", unfocused: "person-circle-outline" },
 };
 
+const TAB_SCREENS: Record<keyof MainTabParamList, React.ComponentType> = {
+  Map: MapScreen,
+  Search: SearchScreen,
+  Add: AddSpotScreen,
+  Notifications: NotificationsScreen,
+  Profile: ProfileScreen,
+};
+
+// ─── Swipeable Main Tabs ────────────────────────────────────────────
+
 function MainTabs() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const pagerRef = useRef<PagerView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [badgeCount, setBadgeCount] = useState(0);
 
   // Poll for pending follow requests count
   useEffect(() => {
     let mounted = true;
-
     const fetchCount = async () => {
       try {
         const count = await api.getFollowRequestsCount();
@@ -67,7 +90,6 @@ function MainTabs() {
         // Silently fail
       }
     };
-
     void fetchCount();
     const interval = setInterval(fetchCount, 30_000);
     return () => {
@@ -76,46 +98,86 @@ function MainTabs() {
     };
   }, []);
 
+  const handleTabPress = useCallback((index: number) => {
+    setActiveIndex(index);
+    pagerRef.current?.setPage(index);
+  }, []);
+
+  const handlePageSelected = useCallback(
+    (e: { nativeEvent: { position: number } }) => {
+      setActiveIndex(e.nativeEvent.position);
+    },
+    [],
+  );
+
+  const tabBarHeight = Platform.OS === "ios" ? 50 + insets.bottom : 56;
+
   return (
-    <MainTab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: theme.colors.text,
-        tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: theme.colors.bg,
-          borderTopColor: theme.colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === "ios" ? 84 : 56,
-          paddingTop: 8,
-        },
-        tabBarIcon: ({ focused, color }) => {
-          const icons = TAB_ICONS[route.name as keyof MainTabParamList];
-          const iconName = focused ? icons.focused : icons.unfocused;
+    <TabProvider value={{ setTabIndex: handleTabPress, activeIndex }}>
+    <View style={[styles.tabContainer, { backgroundColor: theme.colors.bg }]}>
+      {/* Swipeable pages */}
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        onPageSelected={handlePageSelected}
+      >
+        {TAB_KEYS.map((key) => {
+          const Screen = TAB_SCREENS[key];
           return (
-            <View>
-              <Ionicons name={iconName} size={26} color={color} />
-              {route.name === "Notifications" && badgeCount > 0 ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {badgeCount > 9 ? "9+" : String(badgeCount)}
-                  </Text>
-                </View>
-              ) : null}
+            <View key={key} style={styles.page}>
+              <Screen />
             </View>
           );
-        },
-      })}
-    >
-      <MainTab.Screen name="Map" component={MapScreen} />
-      <MainTab.Screen name="Search" component={SearchScreen} />
-      <MainTab.Screen name="Add" component={AddSpotScreen} />
-      <MainTab.Screen name="Notifications" component={NotificationsScreen} />
-      <MainTab.Screen name="Profile" component={ProfileScreen} />
-    </MainTab.Navigator>
+        })}
+      </PagerView>
+
+      {/* Custom bottom tab bar */}
+      <View
+        style={[
+          styles.tabBar,
+          {
+            height: tabBarHeight,
+            backgroundColor: theme.colors.bg,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Platform.OS === "ios" ? insets.bottom : 0,
+          },
+        ]}
+      >
+        {TAB_KEYS.map((key, index) => {
+          const focused = index === activeIndex;
+          const icons = TAB_ICONS[key];
+          const iconName = focused ? icons.focused : icons.unfocused;
+          const color = focused ? theme.colors.text : theme.colors.textTertiary;
+
+          return (
+            <Pressable
+              key={key}
+              onPress={() => handleTabPress(index)}
+              style={styles.tabItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+            >
+              <View>
+                <Ionicons name={iconName} size={26} color={color} />
+                {key === "Notifications" && badgeCount > 0 ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {badgeCount > 9 ? "9+" : String(badgeCount)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+    </TabProvider>
   );
 }
+
+// ─── Root Navigator ─────────────────────────────────────────────────
 
 export function RootNavigator() {
   const { t } = useTranslation();
@@ -217,6 +279,26 @@ export function RootNavigator() {
 
 const styles = StyleSheet.create({
   splash: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabContainer: {
+    flex: 1,
+  },
+  pager: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
+  },
+  tabBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+  },
+  tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",

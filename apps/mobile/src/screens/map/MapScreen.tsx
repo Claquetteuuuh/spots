@@ -8,6 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
+import { useTabSwitch } from "../../navigation/tab-context";
 import type { MainTabNavigationProp } from "../../navigation/types";
 import type { Spot } from "../../types";
 
@@ -26,6 +27,7 @@ export function MapScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<MainTabNavigationProp<"Map">>();
+  const { setTabIndex } = useTabSwitch();
 
   const user = useAuthStore((s) => s.user);
   const spots = useSpotsStore((s) => s.spots);
@@ -158,7 +160,7 @@ export function MapScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => navigation.navigate("Add")}
+          onPress={() => setTabIndex(2)}
           style={[
             styles.fab,
             {
