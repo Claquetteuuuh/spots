@@ -11,9 +11,15 @@ export const COMPOSITION_TYPES = [
   "CENTERED",
   "MINIMALIST",
   "PATTERN",
+  "OTHER",
 ] as const;
 
 export type CompositionType = (typeof COMPOSITION_TYPES)[number];
+
+// ─── Spot Visibility ────────────────────────────────────────────────
+
+export const SPOT_VISIBILITIES = ["PRIVATE", "FOLLOWERS"] as const;
+export type SpotVisibility = (typeof SPOT_VISIBILITIES)[number];
 
 // ─── Design Tokens ───────────────────────────────────────────────────
 
@@ -74,6 +80,7 @@ export const API_ROUTES = {
     google: "/api/auth/google",
     forgotPassword: "/api/auth/forgot-password",
     resetPassword: "/api/auth/reset-password",
+    changePassword: "/api/auth/change-password",
   },
   spots: {
     list: "/api/spots",
@@ -90,12 +97,19 @@ export const API_ROUTES = {
     following: (username: string) => `/api/users/${username}/following`,
     search: "/api/users/search",
   },
+  followRequests: {
+    list: "/api/follow-requests",
+    count: "/api/follow-requests/count",
+    accept: (id: string) => `/api/follow-requests/${id}/accept`,
+    reject: (id: string) => `/api/follow-requests/${id}/reject`,
+  },
   upload: {
     photo: "/api/upload/photo",
     avatar: "/api/upload/avatar",
   },
   geocoding: {
     reverse: "/api/geocoding/reverse",
+    forward: "/api/geocoding/forward",
   },
 } as const;
 

@@ -3,6 +3,8 @@ import { API_ROUTES, type CompositionType } from "@trs/shared/constants";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
 import type {
   AuthResponse,
+  FollowRequest,
+  ForwardGeocodeResult,
   MapBounds,
   Paginated,
   ReverseGeocodeResult,
@@ -172,6 +174,9 @@ export interface CreateSpotParams {
   colors?: string[];
   compositions?: CompositionType[];
   tags?: string[];
+  photos?: { url: string; key: string }[];
+  visibility?: "PRIVATE" | "FOLLOWERS";
+  customComposition?: string;
 }
 
 export async function createSpot(params: CreateSpotParams): Promise<Spot> {
@@ -203,6 +208,16 @@ export async function followUser(username: string): Promise<void> {
 
 export async function unfollowUser(username: string): Promise<void> {
   await client.delete(API_ROUTES.users.unfollow(username));
+}
+
+export async function getFollowers(username: string): Promise<User[]> {
+  const { data } = await client.get<User[]>(API_ROUTES.users.followers(username));
+  return data;
+}
+
+export async function getFollowing(username: string): Promise<User[]> {
+  const { data } = await client.get<User[]>(API_ROUTES.users.following(username));
+  return data;
 }
 
 export async function searchUsers(query: string, limit = 10): Promise<User[]> {
@@ -250,6 +265,32 @@ export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<
   return data;
 }
 
+// ─── Follow requests ────────────────────────────────────────────────
+
+export async function getFollowRequests(): Promise<FollowRequest[]> {
+  const { data } = await client.get<FollowRequest[]>(API_ROUTES.followRequests.list);
+  return data;
+}
+
+export async function getFollowRequestsCount(): Promise<number> {
+  const { data } = await client.get<{ count: number }>(API_ROUTES.followRequests.count);
+  return data.count;
+}
+
+export async function acceptFollowRequest(id: string): Promise<void> {
+  await client.post(API_ROUTES.followRequests.accept(id));
+}
+
+export async function rejectFollowRequest(id: string): Promise<void> {
+  await client.post(API_ROUTES.followRequests.reject(id));
+}
+
+// ─── Password ───────────────────────────────────────────────────────
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await client.post(API_ROUTES.auth.changePassword, { currentPassword, newPassword });
+}
+
 // ─── Geocoding ───────────────────────────────────────────────────────
 
 export async function reverseGeocode(
@@ -258,6 +299,13 @@ export async function reverseGeocode(
 ): Promise<ReverseGeocodeResult> {
   const { data } = await client.get<ReverseGeocodeResult>(API_ROUTES.geocoding.reverse, {
     params: { latitude, longitude },
+  });
+  return data;
+}
+
+export async function forwardGeocode(query: string): Promise<ForwardGeocodeResult[]> {
+  const { data } = await client.get<ForwardGeocodeResult[]>(API_ROUTES.geocoding.forward, {
+    params: { q: query },
   });
   return data;
 }

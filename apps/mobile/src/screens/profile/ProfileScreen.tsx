@@ -1,12 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Dimensions, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
 import { Button } from "../../components/ui/Button";
+import { FollowListModal } from "../../components/profile/FollowListModal";
 import type { MainTabNavigationProp } from "../../navigation/types";
 import type { Spot } from "../../types";
 
@@ -21,7 +23,6 @@ export function ProfileScreen() {
   const navigation = useNavigation<MainTabNavigationProp<"Profile">>();
 
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const spots = useSpotsStore((s) => s.spots);
   const fetchMySpots = useSpotsStore((s) => s.fetchMySpots);
 
@@ -37,6 +38,14 @@ export function ProfileScreen() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const [followModalVisible, setFollowModalVisible] = useState(false);
+  const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
+
+  const openFollowList = (tab: "followers" | "following") => {
+    setFollowModalTab(tab);
+    setFollowModalVisible(true);
+  };
 
   const openSpot = (spot: Spot) => navigation.navigate("SpotDetail", { spotId: spot.id });
 
@@ -62,8 +71,29 @@ export function ProfileScreen() {
         }
         ListHeaderComponent={
           <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xl }}>
+            {/* Top row: username + action icons */}
+            <View style={styles.topRow}>
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: theme.typography.size.lg,
+                  fontWeight: theme.typography.weight.semibold,
+                  flex: 1,
+                }}
+              >
+                {user.username}
+              </Text>
+              <Pressable
+                onPress={() => navigation.navigate("Settings" as never)}
+                style={styles.iconButton}
+                accessibilityLabel={t("settings.title")}
+              >
+                <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+              </Pressable>
+            </View>
+
             {/* Avatar + Stats row */}
-            <View style={styles.headerRow}>
+            <View style={[styles.headerRow, { marginTop: theme.spacing.lg }]}>
               {user.avatarUrl ? (
                 <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
               ) : (
@@ -88,20 +118,24 @@ export function ProfileScreen() {
 
               <View style={styles.statsRow}>
                 <Stat label={t("users.spots", { count: spots.length })} value={String(spots.length)} theme={theme} />
-                <Stat
-                  label={t("users.followers")}
-                  value={String(user.followerCount ?? 0)}
-                  theme={theme}
-                />
-                <Stat
-                  label={t("users.following")}
-                  value={String(user.followingCount ?? 0)}
-                  theme={theme}
-                />
+                <Pressable onPress={() => openFollowList("followers")}>
+                  <Stat
+                    label={t("users.followers")}
+                    value={String(user.followerCount ?? 0)}
+                    theme={theme}
+                  />
+                </Pressable>
+                <Pressable onPress={() => openFollowList("following")}>
+                  <Stat
+                    label={t("users.following")}
+                    value={String(user.followingCount ?? 0)}
+                    theme={theme}
+                  />
+                </Pressable>
               </View>
             </View>
 
-            {/* Name + username + bio */}
+            {/* Name + bio */}
             <Text
               style={{
                 color: theme.colors.text,
@@ -111,15 +145,6 @@ export function ProfileScreen() {
               }}
             >
               {user.name}
-            </Text>
-            <Text
-              style={{
-                color: theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                marginTop: 2,
-              }}
-            >
-              @{user.username}
             </Text>
             {user.bio ? (
               <Text
@@ -134,21 +159,23 @@ export function ProfileScreen() {
               </Text>
             ) : null}
 
-            {/* Full-width Edit Profile + Logout */}
-            <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+            {/* Edit Profile button */}
+            <View style={{ marginTop: theme.spacing.lg }}>
               <Button
                 title={t("users.editProfile")}
                 variant="secondary"
                 onPress={() => navigation.navigate("EditProfile")}
               />
-              <Button
-                title={t("auth.logout")}
-                variant="ghost"
-                onPress={() => void logout()}
-              />
             </View>
           </View>
         }
+      />
+
+      <FollowListModal
+        visible={followModalVisible}
+        onClose={() => setFollowModalVisible(false)}
+        username={user.username}
+        initialTab={followModalTab}
       />
     </SafeAreaView>
   );
@@ -174,6 +201,14 @@ function Stat({ label, value, theme }: { label: string; value: string; theme: Re
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconButton: {
+    padding: 4,
+    marginLeft: 12,
   },
   headerRow: {
     flexDirection: "row",

@@ -20,6 +20,8 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.1,
 };
 
+type MapFilter = "mine" | "following";
+
 export function MapScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -32,7 +34,7 @@ export function MapScreen() {
   const fetchFeed = useSpotsStore((s) => s.fetchFeed);
 
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState<MapFilter>("mine");
 
   useEffect(() => {
     if (user) {
@@ -41,10 +43,10 @@ export function MapScreen() {
   }, [user, fetchMySpots]);
 
   useEffect(() => {
-    if (showAll) {
+    if (filter === "following") {
       void fetchFeed();
     }
-  }, [showAll, fetchFeed]);
+  }, [filter, fetchFeed]);
 
   const locateMe = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -66,7 +68,12 @@ export function MapScreen() {
     navigation.navigate("SpotDetail", { spotId: spot.id });
   };
 
-  const markersToShow = showAll ? feedSpots : spots;
+  const markersToShow = filter === "following" ? feedSpots : spots;
+
+  const filters: { key: MapFilter; label: string }[] = [
+    { key: "mine", label: t("map.mySpots") },
+    { key: "following", label: t("map.followingSpots") },
+  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
@@ -81,46 +88,29 @@ export function MapScreen() {
             },
           ]}
         >
-          <Pressable
-            onPress={() => setShowAll(false)}
-            style={[
-              styles.toggleButton,
-              {
-                backgroundColor: !showAll ? theme.colors.text : "transparent",
-                borderRadius: theme.radius.sm,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: !showAll ? theme.colors.bg : theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                fontWeight: theme.typography.weight.medium,
-              }}
+          {filters.map(({ key, label }) => (
+            <Pressable
+              key={key}
+              onPress={() => setFilter(key)}
+              style={[
+                styles.toggleButton,
+                {
+                  backgroundColor: filter === key ? theme.colors.text : "transparent",
+                  borderRadius: theme.radius.sm,
+                },
+              ]}
             >
-              {t("map.mySpots")}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setShowAll(true)}
-            style={[
-              styles.toggleButton,
-              {
-                backgroundColor: showAll ? theme.colors.text : "transparent",
-                borderRadius: theme.radius.sm,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: showAll ? theme.colors.bg : theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                fontWeight: theme.typography.weight.medium,
-              }}
-            >
-              {t("map.allSpots")}
-            </Text>
-          </Pressable>
+              <Text
+                style={{
+                  color: filter === key ? theme.colors.bg : theme.colors.textSecondary,
+                  fontSize: theme.typography.size.sm,
+                  fontWeight: theme.typography.weight.medium,
+                }}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
       </View>
 
@@ -143,7 +133,7 @@ export function MapScreen() {
                 style={[
                   styles.pin,
                   {
-                    backgroundColor: showAll ? theme.colors.sage : theme.colors.accent,
+                    backgroundColor: filter === "following" ? theme.colors.sage : theme.colors.accent,
                     borderColor: theme.colors.bg,
                   },
                 ]}

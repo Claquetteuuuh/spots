@@ -29,6 +29,7 @@ export function usePullToRefresh({
   const [pullDistance, setPullDistance] = useState(0);
   const startY = useRef(0);
   const pulling = useRef(false);
+  const pullDistanceRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = useCallback(async () => {
@@ -38,6 +39,7 @@ export function usePullToRefresh({
     } finally {
       setIsRefreshing(false);
       setPullDistance(0);
+      pullDistanceRef.current = 0;
     }
   }, [onRefresh]);
 
@@ -65,19 +67,23 @@ export function usePullToRefresh({
       if (diff < 0) {
         pulling.current = false;
         setPullDistance(0);
+        pullDistanceRef.current = 0;
         return;
       }
       // Dampen the pull distance
-      setPullDistance(Math.min(diff * 0.4, threshold * 1.5));
+      const distance = Math.min(diff * 0.4, threshold * 1.5);
+      pullDistanceRef.current = distance;
+      setPullDistance(distance);
     }
 
     function onTouchEnd() {
       if (!pulling.current) return;
       pulling.current = false;
-      if (pullDistance >= threshold) {
+      if (pullDistanceRef.current >= threshold) {
         handleRefresh();
       } else {
         setPullDistance(0);
+        pullDistanceRef.current = 0;
       }
     }
 
@@ -90,7 +96,7 @@ export function usePullToRefresh({
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [enabled, threshold, pullDistance, handleRefresh]);
+  }, [enabled, threshold, handleRefresh]);
 
   return {
     isRefreshing,

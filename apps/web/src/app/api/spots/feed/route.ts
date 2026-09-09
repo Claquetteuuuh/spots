@@ -14,8 +14,9 @@ export const GET = withAuth(async (request, authUser) => {
   const searchParams = Object.fromEntries(request.nextUrl.searchParams);
   const { cursor, limit } = validateBody(spotQuerySchema, searchParams);
 
+  // Only show spots from accepted followers
   const following = await prisma.follow.findMany({
-    where: { followerId: authUser.userId },
+    where: { followerId: authUser.userId, status: "ACCEPTED" },
     select: { followingId: true },
   });
 
@@ -26,11 +27,14 @@ export const GET = withAuth(async (request, authUser) => {
   const followingIds = following.map((f) => f.followingId);
 
   const rows = await prisma.spot.findMany({
-    where: { userId: { in: followingIds } },
+    where: { userId: { in: followingIds }, visibility: "FOLLOWERS" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    include: { user: { select: SPOT_AUTHOR_SELECT } },
+    include: {
+      user: { select: SPOT_AUTHOR_SELECT },
+      images: { orderBy: { order: "asc" } },
+    },
   });
 
   return successResponse(paginate(rows, limit));

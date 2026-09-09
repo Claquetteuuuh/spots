@@ -33,6 +33,11 @@ export const resetPasswordSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
+
 // ─── Spots ───────────────────────────────────────────────────────────
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
@@ -56,6 +61,13 @@ export const createSpotSchema = z.object({
     .array(z.string().min(1).max(50))
     .max(10)
     .default([]),
+  photos: z
+    .array(z.object({ url: z.string().url(), key: z.string().min(1) }))
+    .min(1)
+    .max(10)
+    .optional(),
+  visibility: z.enum(["PRIVATE", "FOLLOWERS"]).default("FOLLOWERS"),
+  customComposition: z.string().max(100).optional(),
 });
 
 export const updateSpotSchema = createSpotSchema.partial();
@@ -110,4 +122,5 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UserSearchQuery = z.infer<typeof userSearchSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type ReverseGeocodeInput = z.infer<typeof reverseGeocodeSchema>;

@@ -26,7 +26,11 @@ export const POST = withAuth<RouteParams>(async (_request, authUser, { params })
 
   try {
     const follow = await prisma.follow.create({
-      data: { followerId: authUser.userId, followingId: targetUser.id },
+      data: {
+        followerId: authUser.userId,
+        followingId: targetUser.id,
+        // status defaults to PENDING in schema
+      },
     });
     return successResponse(follow, 201);
   } catch (error) {
@@ -34,6 +38,20 @@ export const POST = withAuth<RouteParams>(async (_request, authUser, { params })
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
+      // Check if it's a pending request or already accepted
+      const existing = await prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: authUser.userId,
+            followingId: targetUser.id,
+          },
+        },
+        select: { status: true },
+      });
+
+      if (existing?.status === "PENDING") {
+        throw new ApiError("Follow request already sent", 409);
+      }
       throw new ApiError("You are already following this user", 409);
     }
     throw error;
@@ -57,6 +75,7 @@ export const DELETE = withAuth<RouteParams>(async (_request, authUser, { params 
     throw new ApiError("You are not following this user", 404);
   }
 
+  // Deletes both accepted follows and pending requests
   await prisma.follow.delete({ where: { id: existing.id } });
 
   return successResponse({ username });

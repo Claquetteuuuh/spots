@@ -11,13 +11,13 @@ import { useT } from "@/lib/use-t";
 // react-leaflet must be loaded without SSR
 const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
 
-type MapFilter = "mine" | "following" | "all";
+type MapFilter = "mine" | "following";
 
 export default function MapPage() {
   const { user } = useAuth();
   const t = useT();
   const [spots, setSpots] = useState<Spot[]>([]);
-  const [filter, setFilter] = useState<MapFilter>("all");
+  const [filter, setFilter] = useState<MapFilter>("mine");
   const [isLoading, setIsLoading] = useState(true);
 
   // Store the latest bounds so we can re-fetch when filter changes
@@ -34,17 +34,14 @@ export default function MapPage() {
             ...(bounds ?? {}),
             limit: 50,
           });
-        } else if (filter === "mine" && user) {
+        } else if (user) {
           result = await apiClient.spots.list({
             userId: user.id,
             ...(bounds ?? {}),
             limit: 50,
           });
         } else {
-          result = await apiClient.spots.list({
-            ...(bounds ?? {}),
-            limit: 50,
-          });
+          result = { items: [] };
         }
         setSpots(result.items);
       } catch (err) {
@@ -78,13 +75,12 @@ export default function MapPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-1 flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-3.5rem)] -mb-16 md:mb-0 overflow-hidden">
       {/* Filter bar — pill-shaped segmented control */}
-      <div className="flex items-center justify-between px-4 py-2 bg-bg">
+      <div className="flex items-center justify-between px-4 py-2 bg-bg relative z-10">
         <div className="flex items-center gap-1 rounded-md bg-bg-secondary p-0.5">
           {(
             [
-              { key: "all", label: t("map.allSpots") },
               { key: "mine", label: t("map.mySpots") },
               { key: "following", label: t("map.followingSpots") },
             ] as const
@@ -111,8 +107,8 @@ export default function MapPage() {
         </span>
       </div>
 
-      {/* Map */}
-      <div className="flex-1">
+      {/* Map — isolate z-index so Leaflet internals don't overlap the bottom nav */}
+      <div className="flex-1 relative z-0">
         <SpotMap spots={spots} onBoundsChange={handleBoundsChange} />
       </div>
     </div>

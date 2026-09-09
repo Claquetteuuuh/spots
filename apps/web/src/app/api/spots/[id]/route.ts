@@ -8,6 +8,7 @@ import {
   validateBody,
   withAuth,
 } from "@/lib/api-utils";
+import { getUserFromRequest } from "@/lib/auth";
 import { reverseGeocode } from "@/lib/geocode";
 import { deleteFile } from "@/lib/storage";
 
@@ -23,7 +24,7 @@ interface RouteParams {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
@@ -31,11 +32,41 @@ export async function GET(
 
     const spot = await prisma.spot.findUnique({
       where: { id },
-      include: { user: { select: SPOT_AUTHOR_SELECT } },
+      include: {
+        user: { select: SPOT_AUTHOR_SELECT },
+        images: { orderBy: { order: "asc" } },
+      },
     });
 
     if (!spot) {
       throw new ApiError("Spot not found", 404);
+    }
+
+    // Privacy: spots are only visible to the owner and their accepted followers
+    const viewer = await getUserFromRequest(request);
+    if (!viewer) {
+      throw new ApiError("Spot not found", 404);
+    }
+
+    if (spot.userId !== viewer.userId) {
+      // PRIVATE spots are only visible to the owner
+      if (spot.visibility === "PRIVATE") {
+        throw new ApiError("Spot not found", 404);
+      }
+
+      const follow = await prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: viewer.userId,
+            followingId: spot.userId,
+          },
+        },
+        select: { status: true },
+      });
+
+      if (follow?.status !== "ACCEPTED") {
+        throw new ApiError("Spot not found", 404);
+      }
     }
 
     return successResponse(spot);

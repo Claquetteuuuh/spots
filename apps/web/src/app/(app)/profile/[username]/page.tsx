@@ -8,7 +8,10 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { ProfileSkeleton, SpotGridSkeleton } from "@/components/ui/skeleton";
+import { FollowListModal } from "@/components/follow-list-modal";
 import { useT } from "@/lib/use-t";
+
+type FollowStatus = "ACCEPTED" | "PENDING" | null;
 
 export default function ProfilePage({
   params,
@@ -19,19 +22,37 @@ export default function ProfilePage({
   const { user: currentUser } = useAuth();
   const t = useT();
 
-  const [profile, setProfile] = useState<(User & { isFollowing?: boolean }) | null>(null);
+  const [profile, setProfile] = useState<(User & { followStatus?: FollowStatus }) | null>(null);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [followStatus, setFollowStatus] = useState<FollowStatus>(null);
+
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
+
+  const openFollowList = (tab: "followers" | "following") => {
+    setFollowModalTab(tab);
+    setFollowModalOpen(true);
+  };
 
   const isOwnProfile = currentUser?.username === username;
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      const userData = await apiClient.users.profile(username) as User & { isFollowing?: boolean };
+      const userData = await apiClient.users.profile(username) as User & {
+        isFollowing?: boolean;
+        followStatus?: FollowStatus;
+      };
       setProfile(userData);
-      setIsFollowing(userData.isFollowing ?? false);
+      // Use followStatus from API if available, fall back to isFollowing
+      if (userData.followStatus) {
+        setFollowStatus(userData.followStatus);
+      } else if (userData.isFollowing) {
+        setFollowStatus("ACCEPTED");
+      } else {
+        setFollowStatus(null);
+      }
 
       const spotsData = await apiClient.spots.list({ userId: userData.id });
       setSpots(spotsData.items);
@@ -51,22 +72,21 @@ export default function ProfilePage({
   async function handleFollowToggle() {
     if (!profile) return;
     try {
-      if (isFollowing) {
+      if (followStatus === "ACCEPTED" || followStatus === "PENDING") {
+        // Unfollow or cancel request
         await apiClient.users.unfollow(profile.username);
-        setIsFollowing(false);
-        setProfile((p) =>
-          p?._count
-            ? { ...p, _count: { ...p._count, followers: p._count.followers - 1 } }
-            : p,
-        );
+        setFollowStatus(null);
+        if (followStatus === "ACCEPTED") {
+          setProfile((p) =>
+            p?._count
+              ? { ...p, _count: { ...p._count, followers: p._count.followers - 1 } }
+              : p,
+          );
+        }
       } else {
+        // Send follow request
         await apiClient.users.follow(profile.username);
-        setIsFollowing(true);
-        setProfile((p) =>
-          p?._count
-            ? { ...p, _count: { ...p._count, followers: p._count.followers + 1 } }
-            : p,
-        );
+        setFollowStatus("PENDING");
       }
     } catch {
       // Silently fail
@@ -93,8 +113,22 @@ export default function ProfilePage({
   }
 
   const spotsCount = profile._count?.spots ?? spots.length;
-  const followersCount = profile._count?.followers ?? 0;
-  const followingCount = profile._count?.following ?? 0;
+  // Use accepted-only counts returned by the API (followerCount/followingCount)
+  // falling back to _count which may include pending
+  const profileAny = profile as unknown as Record<string, unknown>;
+  const followersCount = (profileAny.followerCount as number | undefined) ?? profile._count?.followers ?? 0;
+  const followingCount = (profileAny.followingCount as number | undefined) ?? profile._count?.following ?? 0;
+
+  // Follow button label and variant
+  let followLabel = t("users.follow");
+  let followVariant: "primary" | "secondary" = "primary";
+  if (followStatus === "ACCEPTED") {
+    followLabel = t("users.unfollow");
+    followVariant = "secondary";
+  } else if (followStatus === "PENDING") {
+    followLabel = t("notifications.requested");
+    followVariant = "secondary";
+  }
 
   return (
     <PullToRefresh onRefresh={loadProfile}>
@@ -125,18 +159,27 @@ export default function ProfilePage({
             </h1>
             {!isOwnProfile ? (
               <Button
-                variant={isFollowing ? "secondary" : "primary"}
+                variant={followVariant}
                 size="sm"
                 onClick={handleFollowToggle}
               >
-                {isFollowing ? t("users.unfollow") : t("users.follow")}
+                {followLabel}
               </Button>
             ) : (
               <>
-                <Link href="/settings">
+                <Link href="/profile/edit">
                   <Button variant="secondary" size="sm">
                     {t("users.editProfile")}
                   </Button>
+                </Link>
+                <Link
+                  href="/notifications"
+                  className="p-2 text-text-secondary hover:text-text transition-colors"
+                  title={t("notifications.title")}
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                  </svg>
                 </Link>
                 <Link
                   href="/settings"
@@ -158,18 +201,26 @@ export default function ProfilePage({
               <strong className="font-semibold text-text">{spotsCount}</strong>{" "}
               <span className="text-text-secondary">spots</span>
             </span>
-            <span className="text-sm">
+            <button
+              type="button"
+              onClick={() => openFollowList("followers")}
+              className="text-sm cursor-pointer hover:opacity-70 transition-opacity"
+            >
               <strong className="font-semibold text-text">{followersCount}</strong>{" "}
               <span className="text-text-secondary">
                 {t("users.followers").toLowerCase()}
               </span>
-            </span>
-            <span className="text-sm">
+            </button>
+            <button
+              type="button"
+              onClick={() => openFollowList("following")}
+              className="text-sm cursor-pointer hover:opacity-70 transition-opacity"
+            >
               <strong className="font-semibold text-text">{followingCount}</strong>{" "}
               <span className="text-text-secondary">
                 {t("users.following").toLowerCase()}
               </span>
-            </span>
+            </button>
           </div>
 
           {/* Bio */}
@@ -190,14 +241,22 @@ export default function ProfilePage({
           <p className="text-sm font-semibold text-text">{spotsCount}</p>
           <p className="text-xs text-text-secondary">spots</p>
         </div>
-        <div className="text-center">
+        <button
+          type="button"
+          onClick={() => openFollowList("followers")}
+          className="text-center cursor-pointer"
+        >
           <p className="text-sm font-semibold text-text">{followersCount}</p>
           <p className="text-xs text-text-secondary">{t("users.followers").toLowerCase()}</p>
-        </div>
-        <div className="text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => openFollowList("following")}
+          className="text-center cursor-pointer"
+        >
           <p className="text-sm font-semibold text-text">{followingCount}</p>
           <p className="text-xs text-text-secondary">{t("users.following").toLowerCase()}</p>
-        </div>
+        </button>
       </div>
 
       {/* Spots grid — Instagram style (3 cols, square) */}
@@ -234,6 +293,13 @@ export default function ProfilePage({
         )}
       </div>
     </div>
+
+      <FollowListModal
+        open={followModalOpen}
+        onClose={() => setFollowModalOpen(false)}
+        username={username}
+        initialTab={followModalTab}
+      />
     </PullToRefresh>
   );
 }

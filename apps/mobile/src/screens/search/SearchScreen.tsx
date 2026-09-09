@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import { searchUsers, followUser, unfollowUser } from "../../lib/api";
 import { Button } from "../../components/ui/Button";
+import type { RootStackNavigationProp } from "../../navigation/types";
 import type { User } from "../../types";
 
 const SEARCH_DEBOUNCE_MS = 350;
@@ -12,6 +14,7 @@ const SEARCH_DEBOUNCE_MS = 350;
 export function SearchScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const navigation = useNavigation<RootStackNavigationProp>();
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
@@ -47,19 +50,21 @@ export function SearchScreen() {
 
   const toggleFollow = async (user: User) => {
     setPendingIds((prev) => new Set(prev).add(user.id));
-    const wasFollowing = Boolean(user.isFollowing);
+    const prevStatus = user.followStatus ?? (user.isFollowing ? "ACCEPTED" : null);
+    // Optimistic update
+    const nextStatus = prevStatus ? null : "PENDING" as const;
     setResults((prev) =>
-      prev.map((u) => (u.id === user.id ? { ...u, isFollowing: !wasFollowing } : u))
+      prev.map((u) => (u.id === user.id ? { ...u, followStatus: nextStatus, isFollowing: false } : u))
     );
     try {
-      if (wasFollowing) {
+      if (prevStatus) {
         await unfollowUser(user.username);
       } else {
         await followUser(user.username);
       }
     } catch {
       setResults((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: wasFollowing } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, followStatus: prevStatus, isFollowing: prevStatus === "ACCEPTED" } : u))
       );
     } finally {
       setPendingIds((prev) => {
@@ -68,6 +73,18 @@ export function SearchScreen() {
         return next;
       });
     }
+  };
+
+  const getFollowLabel = (user: User): string => {
+    const status = user.followStatus ?? (user.isFollowing ? "ACCEPTED" : null);
+    if (status === "ACCEPTED") return t("users.unfollow");
+    if (status === "PENDING") return t("notifications.requested");
+    return t("users.follow");
+  };
+
+  const getFollowVariant = (user: User): "primary" | "secondary" => {
+    const status = user.followStatus ?? (user.isFollowing ? "ACCEPTED" : null);
+    return status ? "secondary" : "primary";
   };
 
   return (
@@ -110,44 +127,49 @@ export function SearchScreen() {
                 },
               ]}
             >
-              {item.avatarUrl ? (
-                <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View
-                  style={[
-                    styles.avatar,
-                    styles.avatarPlaceholder,
-                    { backgroundColor: theme.colors.bgTertiary },
-                  ]}
-                >
-                  <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: theme.typography.size.base }}>
-                    {item.name.slice(0, 1).toUpperCase()}
+              <Pressable
+                onPress={() => navigation.navigate("OtherProfile", { username: item.username })}
+                style={styles.rowTappable}
+              >
+                {item.avatarUrl ? (
+                  <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      styles.avatarPlaceholder,
+                      { backgroundColor: theme.colors.bgTertiary },
+                    ]}
+                  >
+                    <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: theme.typography.size.base }}>
+                      {item.name.slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.info}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: theme.colors.text,
+                      fontSize: theme.typography.size.base,
+                      fontWeight: theme.typography.weight.semibold,
+                    }}
+                  >
+                    {item.username}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}
+                  >
+                    {item.name}
                   </Text>
                 </View>
-              )}
-
-              <View style={styles.info}>
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: theme.typography.size.base,
-                    fontWeight: theme.typography.weight.semibold,
-                  }}
-                >
-                  {item.username}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}
-                >
-                  {item.name}
-                </Text>
-              </View>
+              </Pressable>
 
               <Button
-                title={item.isFollowing ? t("users.unfollow") : t("users.follow")}
-                variant={item.isFollowing ? "secondary" : "primary"}
+                title={getFollowLabel(item)}
+                variant={getFollowVariant(item)}
                 fullWidth={false}
                 loading={pendingIds.has(item.id)}
                 onPress={() => void toggleFollow(item)}
@@ -183,6 +205,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  rowTappable: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
     gap: 12,
   },
   avatar: {

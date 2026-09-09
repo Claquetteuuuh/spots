@@ -1,5 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
@@ -8,7 +20,9 @@ import { useSpotsStore } from "../../stores/spots-store";
 import { extractErrorMessage } from "../../lib/error";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import type { RootStackScreenProps } from "../../navigation/types";
-import type { Spot } from "../../types";
+import type { Spot, SpotImage } from "../../types";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) {
   const { spotId } = route.params;
@@ -19,6 +33,7 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
   const [spot, setSpot] = useState<Spot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +53,23 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
     };
   }, [spotId, fetchSpotById, t]);
 
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / SCREEN_WIDTH);
+    setActiveImageIndex(index);
+  }, []);
+
+  const renderCarouselItem = useCallback(
+    ({ item }: { item: { url: string; key: string } }) => (
+      <Image
+        source={{ uri: item.url }}
+        style={{ width: SCREEN_WIDTH, aspectRatio: 1 }}
+        resizeMode="cover"
+      />
+    ),
+    [],
+  );
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -56,6 +88,14 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
     );
   }
 
+  // Build images list: use spot.images if available, otherwise fallback to cover photo
+  const images: { url: string; key: string }[] =
+    spot.images && spot.images.length > 0
+      ? spot.images.map((img) => ({ url: img.photoUrl, key: img.photoKey }))
+      : [{ url: spot.photoUrl, key: spot.photoKey }];
+
+  const hasMultipleImages = images.length > 1;
+
   const locationLabel =
     [spot.city, spot.country].filter(Boolean).join(", ") ||
     spot.address ||
@@ -64,8 +104,55 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["bottom"]}>
       <ScrollView>
-        {/* Full-width photo — Instagram post style */}
-        <Image source={{ uri: spot.photoUrl }} style={styles.photo} resizeMode="cover" />
+        {/* Photo carousel or single photo */}
+        {hasMultipleImages ? (
+          <View>
+            <FlatList
+              data={images}
+              renderItem={renderCarouselItem}
+              keyExtractor={(item, index) => `${item.key}-${index}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleScroll}
+              getItemLayout={(_, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+            />
+            {/* Dots indicator */}
+            <View style={styles.dotsContainer}>
+              {images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor:
+                        index === activeImageIndex
+                          ? theme.colors.accent
+                          : theme.colors.border,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+            {/* Counter */}
+            <View
+              style={[
+                styles.counterBadge,
+                { backgroundColor: "rgba(0,0,0,0.5)", borderRadius: theme.radius.sm },
+              ]}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "600" }}>
+                {activeImageIndex + 1}/{images.length}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <Image source={{ uri: images[0].url }} style={styles.photo} resizeMode="cover" />
+        )}
 
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
           {/* Title + location */}
@@ -112,6 +199,18 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
                   <CompositionBadge key={composition} type={composition} />
                 ))}
               </View>
+              {spot.customComposition ? (
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.sm,
+                    fontStyle: "italic",
+                    marginTop: theme.spacing.xs,
+                  }}
+                >
+                  {spot.customComposition}
+                </Text>
+              ) : null}
             </View>
           ) : null}
 
@@ -156,18 +255,25 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
             </View>
           ) : null}
 
-          {/* Price badge */}
-          <Text
-            style={{
-              color: spot.isFree ? theme.colors.sage : theme.colors.accent,
-              fontSize: theme.typography.size.sm,
-              fontWeight: theme.typography.weight.medium,
-              textTransform: "uppercase",
-              letterSpacing: 0.4,
-            }}
-          >
-            {spot.isFree ? t("common.free") : spot.priceInfo || t("common.paid")}
-          </Text>
+          {/* Visibility badge */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.xs }}>
+            <Ionicons
+              name={spot.visibility === "PRIVATE" ? "lock-closed-outline" : "people-outline"}
+              size={14}
+              color={spot.visibility === "PRIVATE" ? theme.colors.accent : theme.colors.sage}
+            />
+            <Text
+              style={{
+                color: spot.visibility === "PRIVATE" ? theme.colors.accent : theme.colors.sage,
+                fontSize: theme.typography.size.sm,
+                fontWeight: theme.typography.weight.medium,
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+              }}
+            >
+              {spot.visibility === "PRIVATE" ? t("spots.visibilityPrivate") : t("spots.visibilityFollowers")}
+            </Text>
+          </View>
 
           {/* Mini map */}
           <View
@@ -219,6 +325,25 @@ const styles = StyleSheet.create({
   photo: {
     width: "100%",
     aspectRatio: 1,
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  counterBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   wrapRow: {
     flexDirection: "row",

@@ -2,6 +2,8 @@ import type { CompositionType } from "@trs/shared/constants";
 
 export type { CompositionType };
 
+export type FollowStatus = "ACCEPTED" | "PENDING" | null;
+
 export interface User {
   id: string;
   email: string;
@@ -10,11 +12,31 @@ export interface User {
   avatarUrl?: string | null;
   bio?: string | null;
   locale: "fr" | "en";
+  provider?: string;
   createdAt: string;
   followerCount?: number;
   followingCount?: number;
   spotCount?: number;
   isFollowing?: boolean;
+  followStatus?: FollowStatus;
+}
+
+export interface FollowRequest {
+  id: string;
+  follower: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  createdAt: string;
+}
+
+export interface SpotImage {
+  id: string;
+  photoUrl: string;
+  photoKey: string;
+  order: number;
 }
 
 export interface Spot {
@@ -35,10 +57,13 @@ export interface Spot {
   description?: string | null;
   isFree: boolean;
   priceInfo?: string | null;
+  visibility?: "PRIVATE" | "FOLLOWERS";
+  customComposition?: string | null;
 
   colors: string[];
   compositions: CompositionType[];
   tags: string[];
+  images?: SpotImage[];
 
   createdAt: string;
   updatedAt: string;
@@ -62,6 +87,14 @@ export interface ReverseGeocodeResult {
   address?: string | null;
   city?: string | null;
   country?: string | null;
+}
+
+export interface ForwardGeocodeResult {
+  latitude: number;
+  longitude: number;
+  displayName: string;
+  city: string | null;
+  country: string | null;
 }
 
 export interface UploadPhotoResult {

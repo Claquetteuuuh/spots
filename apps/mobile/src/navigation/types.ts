@@ -9,8 +9,9 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Map: undefined;
-  Add: undefined;
   Search: undefined;
+  Add: undefined;
+  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -19,6 +20,8 @@ export type RootStackParamList = {
   MainTabs: undefined;
   SpotDetail: { spotId: string };
   EditProfile: undefined;
+  Settings: undefined;
+  OtherProfile: { username: string };
 };
 
 // ─── Root stack ──────────────────────────────────────────────────────

@@ -1,17 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -22,13 +23,15 @@ import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
-import { uploadPhoto, reverseGeocode } from "../../lib/api";
+import { uploadPhoto, reverseGeocode, forwardGeocode } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import type { MainTabNavigationProp } from "../../navigation/types";
+import type { ForwardGeocodeResult } from "../../types";
 
 const TOTAL_STEPS = 5;
+const MAX_PHOTOS = 10;
 
 const PRESET_COLORS = [
   "#FAFAF8",
@@ -51,6 +54,11 @@ interface LocationData {
   address?: string | null;
   city?: string | null;
   country?: string | null;
+}
+
+interface PhotoItem {
+  uri: string;
+  id: string; // unique key for list rendering
 }
 
 /**
@@ -142,6 +150,66 @@ function CompositionIcon({ type, color }: { type: CompositionType; color: string
   }
 }
 
+let photoIdCounter = 0;
+function makePhotoId() {
+  return `photo_${Date.now()}_${photoIdCounter++}`;
+}
+
+// ─── Color helpers ─────────────────────────────────────────────────
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return (
+    "#" +
+    [r, g, b]
+      .map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase()
+  );
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sn = s / 100;
+  const ln = l / 100;
+  const a = sn * Math.min(ln, 1 - ln);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = ln - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`.toUpperCase();
+}
+
+function parseColorInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) return trimmed.toUpperCase();
+  const rgbMatch = trimmed.match(
+    /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i,
+  );
+  if (rgbMatch) return rgbToHex(+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]);
+  const hslMatch = trimmed.match(
+    /^hsl\(\s*(\d{1,3})\s*,\s*(\d{1,3})%?\s*,\s*(\d{1,3})%?\s*\)$/i,
+  );
+  if (hslMatch) return hslToHex(+hslMatch[1], +hslMatch[2], +hslMatch[3]);
+  return null;
+}
+
+const HUE_SAMPLES = [
+  { hue: 0, label: "Red" },
+  { hue: 30, label: "Orange" },
+  { hue: 60, label: "Yellow" },
+  { hue: 90, label: "Lime" },
+  { hue: 120, label: "Green" },
+  { hue: 160, label: "Teal" },
+  { hue: 195, label: "Cyan" },
+  { hue: 220, label: "Blue" },
+  { hue: 260, label: "Indigo" },
+  { hue: 280, label: "Purple" },
+  { hue: 320, label: "Magenta" },
+  { hue: 350, label: "Pink" },
+];
+
 export function AddSpotScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -154,7 +222,10 @@ export function AddSpotScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const cameraRef = React.useRef<CameraView | null>(null);
 
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  // Multi-photo state
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
   const [location, setLocation] = useState<LocationData | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -165,11 +236,108 @@ export function AddSpotScreen() {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [isFree, setIsFree] = useState(true);
-  const [priceInfo, setPriceInfo] = useState("");
+  const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
+  const [customComposition, setCustomComposition] = useState("");
+
+  // Advanced color picker state
+  const [colorInput, setColorInput] = useState("");
+  const [colorPreview, setColorPreview] = useState<string | null>(null);
+  const [selectedHue, setSelectedHue] = useState<number | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Address search state
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressResults, setAddressResults] = useState<ForwardGeocodeResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Manual coordinates state
+  const [manualLat, setManualLat] = useState("");
+  const [manualLng, setManualLng] = useState("");
+
+  // Debounced address search
+  useEffect(() => {
+    if (addressQuery.length < 2) {
+      setAddressResults([]);
+      setSearchDone(false);
+      return;
+    }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      setSearchDone(false);
+      try {
+        const results = await forwardGeocode(addressQuery);
+        setAddressResults(results);
+      } catch {
+        setAddressResults([]);
+      } finally {
+        setIsSearching(false);
+        setSearchDone(true);
+      }
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [addressQuery]);
+
+  /**
+   * Single source of truth for setting a location.
+   * Syncs lat/lng fields, address query, and location object.
+   */
+  const applyLocation = useCallback(async (lat: number, lng: number, opts?: {
+    address?: string | null;
+    city?: string | null;
+    country?: string | null;
+    skipReverseGeocode?: boolean;
+  }) => {
+    const loc: LocationData = { latitude: lat, longitude: lng };
+    setManualLat(String(lat));
+    setManualLng(String(lng));
+
+    if (opts?.address !== undefined) {
+      loc.address = opts.address;
+      setAddressQuery(opts.address ?? "");
+    }
+    if (opts?.city !== undefined) loc.city = opts.city;
+    if (opts?.country !== undefined) loc.country = opts.country;
+
+    if (!opts?.skipReverseGeocode) {
+      try {
+        const geo = await reverseGeocode(lat, lng);
+        loc.address = geo.address;
+        loc.city = geo.city;
+        loc.country = geo.country;
+        if (geo.address) setAddressQuery(geo.address);
+      } catch {
+        // Reverse geocoding is best-effort
+      }
+    }
+
+    setLocation(loc);
+    setAddressResults([]);
+    setSearchDone(false);
+  }, []);
+
+  const selectAddressResult = (result: ForwardGeocodeResult) => {
+    void applyLocation(result.latitude, result.longitude, {
+      address: result.displayName,
+      city: result.city,
+      country: result.country,
+      skipReverseGeocode: true,
+    });
+  };
+
+  const applyManualCoords = async () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+    await applyLocation(lat, lng);
+  };
 
   const resolveLocation = async () => {
     setIsLocating(true);
@@ -177,19 +345,7 @@ export function AddSpotScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
       const position = await Location.getCurrentPositionAsync({});
-      const coords: LocationData = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      try {
-        const geo = await reverseGeocode(coords.latitude, coords.longitude);
-        coords.address = geo.address;
-        coords.city = geo.city;
-        coords.country = geo.country;
-      } catch {
-        // Reverse geocoding is best-effort; coordinates alone are enough to proceed.
-      }
-      setLocation(coords);
+      await applyLocation(position.coords.latitude, position.coords.longitude);
     } finally {
       setIsLocating(false);
     }
@@ -206,9 +362,12 @@ export function AddSpotScreen() {
   const takePicture = async () => {
     const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
     if (photo?.uri) {
-      setPhotoUri(photo.uri);
+      setPhotos((prev) => {
+        if (prev.length >= MAX_PHOTOS) return prev;
+        return [...prev, { uri: photo.uri, id: makePhotoId() }];
+      });
       setIsCameraOpen(false);
-      void resolveLocation();
+      if (!location) void resolveLocation();
     }
   };
 
@@ -218,12 +377,47 @@ export function AddSpotScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_PHOTOS - photos.length,
     });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-      void resolveLocation();
+    if (!result.canceled && result.assets.length > 0) {
+      const newPhotos = result.assets
+        .slice(0, MAX_PHOTOS - photos.length)
+        .map((asset) => ({ uri: asset.uri, id: makePhotoId() }));
+      setPhotos((prev) => [...prev, ...newPhotos]);
+      if (!location) void resolveLocation();
     }
   };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setDragIndex(null);
+  };
+
+  const handlePhotoTap = useCallback(
+    (index: number) => {
+      if (dragIndex === null) return;
+      if (dragIndex === index) {
+        // Tap same photo — cancel drag
+        setDragIndex(null);
+        return;
+      }
+      // Swap photos
+      setPhotos((prev) => {
+        const next = [...prev];
+        const temp = next[dragIndex];
+        next[dragIndex] = next[index];
+        next[index] = temp;
+        return next;
+      });
+      setDragIndex(null);
+    },
+    [dragIndex],
+  );
+
+  const handlePhotoLongPress = useCallback((index: number) => {
+    setDragIndex(index);
+  }, []);
 
   const toggleColor = (color: string) => {
     setSelectedColors((prev) =>
@@ -235,6 +429,27 @@ export function AddSpotScreen() {
     setSelectedCompositions((prev) =>
       prev.includes(type) ? prev.filter((c) => c !== type) : prev.length < 5 ? [...prev, type] : prev
     );
+  };
+
+  const handleColorInputChange = (text: string) => {
+    setColorInput(text);
+    const parsed = parseColorInput(text);
+    setColorPreview(parsed);
+  };
+
+  const addCustomColor = () => {
+    if (!colorPreview || selectedColors.length >= 10) return;
+    if (!selectedColors.includes(colorPreview)) {
+      setSelectedColors((prev) => [...prev, colorPreview]);
+    }
+    setColorInput("");
+    setColorPreview(null);
+  };
+
+  const addShadeColor = (hex: string) => {
+    if (selectedColors.length >= 10 || selectedColors.includes(hex)) return;
+    setSelectedColors((prev) => [...prev, hex]);
+    setSelectedHue(null);
   };
 
   const addTag = () => {
@@ -250,7 +465,7 @@ export function AddSpotScreen() {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return Boolean(photoUri && location);
+        return photos.length > 0 && location !== null;
       case 1:
         return selectedColors.length > 0;
       case 2:
@@ -265,7 +480,8 @@ export function AddSpotScreen() {
 
   const resetWizard = () => {
     setStep(0);
-    setPhotoUri(null);
+    setPhotos([]);
+    setDragIndex(null);
     setLocation(null);
     setSelectedColors([]);
     setSelectedCompositions([]);
@@ -273,29 +489,85 @@ export function AddSpotScreen() {
     setDescription("");
     setTags([]);
     setTagInput("");
-    setIsFree(true);
-    setPriceInfo("");
+    setVisibility("FOLLOWERS");
+    setCustomComposition("");
+    setColorInput("");
+    setColorPreview(null);
+    setSelectedHue(null);
     setSubmitError(null);
+    setValidationErrors([]);
+    setAddressQuery("");
+    setAddressResults([]);
+    setSearchDone(false);
+    setManualLat("");
+    setManualLng("");
   };
 
+  // ── Validation ─────────────────────────────────────────────────────
+
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  function validateForm(): string[] {
+    const errors: string[] = [];
+
+    if (photos.length === 0) {
+      errors.push(t("spots.validation.photosRequired"));
+    }
+    if (!location) {
+      errors.push(t("spots.validation.locationRequired"));
+    }
+    if (title && title.length > 200) {
+      errors.push(t("spots.validation.titleTooLong"));
+    }
+    if (description && description.length > 2000) {
+      errors.push(t("spots.validation.descriptionTooLong"));
+    }
+
+    const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+    const invalidColors = selectedColors.filter((c) => !hexRegex.test(c));
+    if (invalidColors.length > 0) {
+      errors.push(t("spots.validation.invalidColors", { colors: invalidColors.join(", ") }));
+    }
+
+    if (tags.some((tag) => tag.length > 50)) {
+      errors.push(t("spots.validation.tagTooLong"));
+    }
+
+    return errors;
+  }
+
   const handleSubmit = async () => {
-    if (!photoUri || !location || !user) return;
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors([]);
+
+    if (photos.length === 0 || !location || !user) return;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const uploaded = await uploadPhoto(photoUri, `spot-${Date.now()}.jpg`);
+      // Upload all photos in parallel
+      const uploads = await Promise.all(
+        photos.map((p, i) => uploadPhoto(p.uri, `spot-${Date.now()}-${i}.jpg`))
+      );
+      const photosPayload = uploads.map((u) => ({ url: u.photoUrl, key: u.photoKey }));
+
       await createSpot({
         latitude: location.latitude,
         longitude: location.longitude,
-        photoUrl: uploaded.photoUrl,
-        photoKey: uploaded.photoKey,
+        photoUrl: uploads[0].photoUrl,
+        photoKey: uploads[0].photoKey,
+        photos: photosPayload,
         title: title.trim() || undefined,
         description: description.trim() || undefined,
-        isFree,
-        priceInfo: isFree ? undefined : priceInfo.trim() || undefined,
+        isFree: true,
         colors: selectedColors,
         compositions: selectedCompositions,
         tags,
+        visibility,
+        customComposition: customComposition.trim() || undefined,
       });
       resetWizard();
       navigation.navigate("Map");
@@ -324,6 +596,8 @@ export function AddSpotScreen() {
     );
   }
 
+  const thumbSize = (Dimensions.get("window").width - 16 * 2 - 8 * 2) / 3;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -347,12 +621,90 @@ export function AddSpotScreen() {
         >
           {step === 0 ? (
             <View style={{ gap: theme.spacing.md }}>
-              {photoUri ? (
-                <Image
-                  source={{ uri: photoUri }}
-                  style={[styles.preview, { borderRadius: theme.radius.sm }]}
-                  resizeMode="cover"
-                />
+              {/* Drag mode hint */}
+              {dragIndex !== null ? (
+                <View
+                  style={[
+                    styles.dragHint,
+                    {
+                      backgroundColor: theme.colors.accentLight,
+                      borderColor: theme.colors.accent,
+                      borderRadius: theme.radius.sm,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.colors.accent, fontSize: theme.typography.size.sm, textAlign: "center" }}>
+                    {t("spots.tapToSwap")}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Photo grid */}
+              {photos.length > 0 ? (
+                <View style={styles.photoGrid}>
+                  {photos.map((photo, index) => (
+                    <Pressable
+                      key={photo.id}
+                      onLongPress={() => handlePhotoLongPress(index)}
+                      onPress={() => handlePhotoTap(index)}
+                      style={[
+                        styles.photoThumb,
+                        {
+                          width: thumbSize,
+                          height: thumbSize,
+                          borderRadius: theme.radius.sm,
+                          borderWidth: dragIndex === index ? 2 : StyleSheet.hairlineWidth,
+                          borderColor: dragIndex === index ? theme.colors.accent : theme.colors.border,
+                          opacity: dragIndex !== null && dragIndex !== index ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: photo.uri }}
+                        style={[StyleSheet.absoluteFill, { borderRadius: theme.radius.sm - 1 }]}
+                        resizeMode="cover"
+                      />
+                      {/* Cover badge on first photo */}
+                      {index === 0 ? (
+                        <View
+                          style={[
+                            styles.coverBadge,
+                            {
+                              backgroundColor: theme.colors.accent,
+                              borderRadius: theme.radius.sm,
+                            },
+                          ]}
+                        >
+                          <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "600" }}>
+                            Cover
+                          </Text>
+                        </View>
+                      ) : null}
+                      {/* Order number */}
+                      <View
+                        style={[
+                          styles.orderBadge,
+                          {
+                            backgroundColor: "rgba(0,0,0,0.5)",
+                            borderRadius: theme.radius.sm,
+                          },
+                        ]}
+                      >
+                        <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "600" }}>
+                          {index + 1}
+                        </Text>
+                      </View>
+                      {/* Remove button */}
+                      <Pressable
+                        onPress={() => removePhoto(index)}
+                        style={[styles.removeBtn, { backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 10 }]}
+                        hitSlop={8}
+                      >
+                        <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700", lineHeight: 16 }}>×</Text>
+                      </Pressable>
+                    </Pressable>
+                  ))}
+                </View>
               ) : (
                 <View
                   style={[
@@ -365,41 +717,301 @@ export function AddSpotScreen() {
                   ]}
                 >
                   <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.base }}>
-                    {t("spots.takePhoto")}
+                    {t("spots.takePhoto")} <Text style={{ color: theme.colors.error }}>*</Text>
                   </Text>
                 </View>
               )}
 
-              <Button title={t("spots.takePhoto")} onPress={openCamera} variant="secondary" />
-              <Button title={t("spots.pickPhoto")} onPress={pickFromGallery} variant="secondary" />
+              {/* Reorder hint */}
+              {photos.length > 1 && dragIndex === null ? (
+                <Text
+                  style={{
+                    color: theme.colors.textTertiary,
+                    fontSize: theme.typography.size.xs,
+                    textAlign: "center",
+                  }}
+                >
+                  {t("spots.longPressToReorder")}
+                </Text>
+              ) : null}
 
-              <View style={{ marginTop: theme.spacing.xs }}>
-                {isLocating ? (
-                  <ActivityIndicator color={theme.colors.textSecondary} />
-                ) : location ? (
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>
-                    {[location.city, location.country].filter(Boolean).join(", ") ||
-                      `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`}
-                  </Text>
-                ) : photoUri ? (
-                  <Button title={t("map.locateMe")} onPress={resolveLocation} variant="ghost" />
+              {/* Action buttons */}
+              {photos.length < MAX_PHOTOS ? (
+                <View style={{ gap: theme.spacing.sm }}>
+                  <Button title={t("spots.takePhoto")} onPress={openCamera} variant="secondary" />
+                  <Button title={t("spots.pickPhoto")} onPress={pickFromGallery} variant="secondary" />
+                </View>
+              ) : (
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.sm,
+                    textAlign: "center",
+                  }}
+                >
+                  {t("spots.maxPhotosReached")}
+                </Text>
+              )}
+
+              <Text
+                style={{
+                  color: theme.colors.textTertiary,
+                  fontSize: theme.typography.size.xs,
+                  textAlign: "center",
+                }}
+              >
+                {photos.length}/{MAX_PHOTOS}
+              </Text>
+
+              {/* ── Location section ──────────────────────────────── */}
+              <View
+                style={{
+                  marginTop: theme.spacing.md,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: theme.colors.border,
+                  paddingTop: theme.spacing.md,
+                  gap: theme.spacing.md,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xs,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {t("map.title")} <Text style={{ color: theme.colors.error }}>*</Text>
+                </Text>
+
+                {/* Address search */}
+                <View>
+                  <TextInput
+                    value={addressQuery}
+                    onChangeText={setAddressQuery}
+                    placeholder={t("map.searchAddress")}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={{
+                      color: theme.colors.text,
+                      backgroundColor: theme.colors.bgSecondary,
+                      borderColor: theme.colors.border,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderRadius: theme.radius.sm,
+                      fontSize: theme.typography.size.sm,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.md,
+                    }}
+                  />
+
+                  {/* Search results */}
+                  {isSearching ? (
+                    <ActivityIndicator
+                      color={theme.colors.textSecondary}
+                      style={{ marginTop: theme.spacing.sm }}
+                    />
+                  ) : addressResults.length > 0 ? (
+                    <View
+                      style={{
+                        marginTop: theme.spacing.xs,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.radius.sm,
+                        backgroundColor: theme.colors.bgSecondary,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {addressResults.map((result, idx) => (
+                        <Pressable
+                          key={`${result.latitude}-${result.longitude}-${idx}`}
+                          onPress={() => selectAddressResult(result)}
+                          style={({ pressed }) => ({
+                            paddingHorizontal: theme.spacing.md,
+                            paddingVertical: theme.spacing.sm,
+                            backgroundColor: pressed
+                              ? theme.colors.bgTertiary
+                              : theme.colors.bgSecondary,
+                            borderBottomWidth:
+                              idx < addressResults.length - 1
+                                ? StyleSheet.hairlineWidth
+                                : 0,
+                            borderBottomColor: theme.colors.border,
+                          })}
+                        >
+                          <Text
+                            numberOfLines={2}
+                            style={{
+                              color: theme.colors.text,
+                              fontSize: theme.typography.size.sm,
+                            }}
+                          >
+                            {result.displayName}
+                          </Text>
+                          {result.city || result.country ? (
+                            <Text
+                              style={{
+                                color: theme.colors.textTertiary,
+                                fontSize: theme.typography.size.xs,
+                                marginTop: 2,
+                              }}
+                            >
+                              {[result.city, result.country]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : searchDone && addressQuery.length >= 2 ? (
+                    <Text
+                      style={{
+                        color: theme.colors.textTertiary,
+                        fontSize: theme.typography.size.xs,
+                        marginTop: theme.spacing.sm,
+                        textAlign: "center",
+                      }}
+                    >
+                      {t("map.noResults")}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Coordinates */}
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xs,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {t("map.orEnterCoords")}
+                </Text>
+                <View style={{ gap: theme.spacing.sm }}>
+                  <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                    <TextInput
+                      value={manualLat}
+                      onChangeText={setManualLat}
+                      onEndEditing={applyManualCoords}
+                      placeholder={t("map.latitudePlaceholder")}
+                      placeholderTextColor={theme.colors.textTertiary}
+                      keyboardType="numeric"
+                      style={{
+                        flex: 1,
+                        color: theme.colors.text,
+                        backgroundColor: theme.colors.bgSecondary,
+                        borderColor: theme.colors.border,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderRadius: theme.radius.sm,
+                        fontSize: theme.typography.size.sm,
+                        paddingHorizontal: theme.spacing.md,
+                        paddingVertical: theme.spacing.md,
+                      }}
+                    />
+                    <TextInput
+                      value={manualLng}
+                      onChangeText={setManualLng}
+                      onEndEditing={applyManualCoords}
+                      placeholder={t("map.longitudePlaceholder")}
+                      placeholderTextColor={theme.colors.textTertiary}
+                      keyboardType="numeric"
+                      style={{
+                        flex: 1,
+                        color: theme.colors.text,
+                        backgroundColor: theme.colors.bgSecondary,
+                        borderColor: theme.colors.border,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderRadius: theme.radius.sm,
+                        fontSize: theme.typography.size.sm,
+                        paddingHorizontal: theme.spacing.md,
+                        paddingVertical: theme.spacing.md,
+                      }}
+                    />
+                  </View>
+                  <Button
+                    title={t("map.setCoordinates")}
+                    onPress={applyManualCoords}
+                    variant="secondary"
+                    disabled={!manualLat.trim() || !manualLng.trim()}
+                  />
+                </View>
+
+                {/* GPS locate button */}
+                <Button
+                  title={t("map.locateMe")}
+                  onPress={resolveLocation}
+                  variant="ghost"
+                  loading={isLocating}
+                />
+
+                {/* Current location display */}
+                {location ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: theme.spacing.sm,
+                      paddingVertical: theme.spacing.xs,
+                      paddingHorizontal: theme.spacing.sm,
+                      backgroundColor: theme.colors.bgSecondary,
+                      borderRadius: theme.radius.sm,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: theme.colors.border,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: theme.colors.sage,
+                      }}
+                    />
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        flex: 1,
+                        color: theme.colors.text,
+                        fontSize: theme.typography.size.sm,
+                      }}
+                    >
+                      {[location.city, location.country].filter(Boolean).join(", ") ||
+                        `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`}
+                    </Text>
+                    <Pressable
+                      onPress={() => setLocation(null)}
+                      hitSlop={8}
+                    >
+                      <Text
+                        style={{
+                          color: theme.colors.textTertiary,
+                          fontSize: theme.typography.size.sm,
+                        }}
+                      >
+                        ×
+                      </Text>
+                    </Pressable>
+                  </View>
                 ) : null}
               </View>
             </View>
           ) : null}
 
           {step === 1 ? (
-            <View>
+            <View style={{ gap: theme.spacing.lg }}>
               <Text
                 style={{
                   color: theme.colors.text,
                   fontSize: theme.typography.size.md,
                   fontWeight: theme.typography.weight.semibold,
-                  marginBottom: theme.spacing.lg,
                 }}
               >
-                {t("spots.colors")}
+                {t("spots.colors")} <Text style={{ color: theme.colors.error }}>*</Text>
               </Text>
+
+              {/* Preset color grid */}
               <View style={styles.colorGrid}>
                 {PRESET_COLORS.map((color) => {
                   const selected = selectedColors.includes(color);
@@ -420,20 +1032,169 @@ export function AddSpotScreen() {
                   );
                 })}
               </View>
+
+              {/* Selected count */}
+              <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs }}>
+                {selectedColors.length}/10
+              </Text>
+
+              {/* ── More colors section ──────────────────────────── */}
+              <Text
+                style={{
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.size.xs,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {t("spots.moreColors")}
+              </Text>
+
+              {/* Hue samples row */}
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                {HUE_SAMPLES.map((sample) => {
+                  const sampleColor = hslToHex(sample.hue, 70, 50);
+                  const isSelected = selectedHue === sample.hue;
+                  return (
+                    <Pressable
+                      key={sample.hue}
+                      onPress={() => setSelectedHue(isSelected ? null : sample.hue)}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: sampleColor,
+                        borderWidth: isSelected ? 3 : StyleSheet.hairlineWidth,
+                        borderColor: isSelected ? theme.colors.text : theme.colors.border,
+                      }}
+                    />
+                  );
+                })}
+              </View>
+
+              {/* Shade picker for selected hue */}
+              {selectedHue !== null ? (
+                <View style={{ gap: theme.spacing.xs }}>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
+                    {t("spots.selectShade")}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {[20, 35, 50, 65, 80].map((lightness) => {
+                      const shade = hslToHex(selectedHue, 70, lightness);
+                      const alreadySelected = selectedColors.includes(shade);
+                      return (
+                        <Pressable
+                          key={lightness}
+                          onPress={() => addShadeColor(shade)}
+                          disabled={alreadySelected}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: theme.radius.sm,
+                            backgroundColor: shade,
+                            borderWidth: alreadySelected ? theme.borderWidth.thick : StyleSheet.hairlineWidth,
+                            borderColor: alreadySelected ? theme.colors.text : theme.colors.border,
+                            opacity: alreadySelected ? 0.5 : 1,
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Color code input */}
+              <View style={{ gap: theme.spacing.xs }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
+                  {t("spots.pickColor")}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
+                  <TextInput
+                    value={colorInput}
+                    onChangeText={handleColorInputChange}
+                    placeholder={t("spots.colorInputPlaceholder")}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={{
+                      flex: 1,
+                      color: theme.colors.text,
+                      backgroundColor: theme.colors.bgSecondary,
+                      borderColor: theme.colors.border,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderRadius: theme.radius.sm,
+                      fontSize: theme.typography.size.sm,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.md,
+                    }}
+                  />
+                  {/* Color preview swatch */}
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: theme.radius.sm,
+                      backgroundColor: colorPreview ?? theme.colors.bgTertiary,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: theme.colors.border,
+                    }}
+                  />
+                  <Pressable
+                    onPress={addCustomColor}
+                    disabled={!colorPreview || selectedColors.length >= 10}
+                    style={{
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.sm,
+                      backgroundColor: colorPreview ? theme.colors.accent : theme.colors.bgTertiary,
+                      borderRadius: theme.radius.sm,
+                      opacity: colorPreview && selectedColors.length < 10 ? 1 : 0.4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colorPreview ? "#FFFFFF" : theme.colors.textTertiary,
+                        fontSize: theme.typography.size.sm,
+                        fontWeight: theme.typography.weight.semibold,
+                      }}
+                    >
+                      {t("spots.addColor")}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Show selected colors below */}
+              {selectedColors.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {selectedColors.map((color) => (
+                    <Pressable
+                      key={color}
+                      onPress={() => toggleColor(color)}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: color,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderColor: theme.colors.border,
+                      }}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
           {step === 2 ? (
-            <View>
+            <View style={{ gap: theme.spacing.lg }}>
               <Text
                 style={{
                   color: theme.colors.text,
                   fontSize: theme.typography.size.md,
                   fontWeight: theme.typography.weight.semibold,
-                  marginBottom: theme.spacing.lg,
                 }}
               >
-                {t("spots.composition")}
+                {t("spots.composition")} <Text style={{ color: theme.colors.error }}>*</Text>
               </Text>
               <View style={styles.compositionGrid}>
                 {COMPOSITION_TYPES.map((type) => {
@@ -471,6 +1232,39 @@ export function AddSpotScreen() {
                   );
                 })}
               </View>
+
+              {/* Custom composition input — shown when OTHER is selected */}
+              {selectedCompositions.includes("OTHER") ? (
+                <View style={{ gap: theme.spacing.xs }}>
+                  <Text
+                    style={{
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.size.xs,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {t("spots.customComposition")}
+                  </Text>
+                  <TextInput
+                    value={customComposition}
+                    onChangeText={setCustomComposition}
+                    placeholder={t("spots.customCompositionPlaceholder")}
+                    placeholderTextColor={theme.colors.textTertiary}
+                    maxLength={100}
+                    style={{
+                      color: theme.colors.text,
+                      backgroundColor: theme.colors.bgSecondary,
+                      borderColor: theme.colors.border,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderRadius: theme.radius.sm,
+                      fontSize: theme.typography.size.sm,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.md,
+                    }}
+                  />
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -548,44 +1342,125 @@ export function AddSpotScreen() {
                 </View>
               </View>
 
-              <View style={styles.freeToggleRow}>
+              {/* Visibility selector */}
+              <View style={{ gap: theme.spacing.sm }}>
                 <Text
                   style={{
-                    color: theme.colors.text,
-                    fontSize: theme.typography.size.base,
-                    fontWeight: theme.typography.weight.medium,
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xs,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
                   }}
                 >
-                  {isFree ? t("common.free") : t("common.paid")}
+                  {t("spots.visibilityTitle")}
                 </Text>
-                <Switch
-                  value={!isFree}
-                  onValueChange={(paid) => setIsFree(!paid)}
-                  trackColor={{ false: theme.colors.border, true: theme.colors.accentLight }}
-                  thumbColor={theme.colors.accent}
-                />
+                <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                  <Pressable
+                    onPress={() => setVisibility("FOLLOWERS")}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: theme.spacing.sm,
+                      paddingVertical: theme.spacing.md,
+                      borderWidth: visibility === "FOLLOWERS" ? theme.borderWidth.thick : StyleSheet.hairlineWidth,
+                      borderColor: visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.border,
+                      borderRadius: theme.radius.sm,
+                      backgroundColor: visibility === "FOLLOWERS" ? `${theme.colors.sage}15` : theme.colors.bg,
+                    }}
+                  >
+                    <Ionicons
+                      name="people-outline"
+                      size={16}
+                      color={visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.textSecondary}
+                    />
+                    <Text
+                      style={{
+                        color: visibility === "FOLLOWERS" ? theme.colors.sage : theme.colors.textSecondary,
+                        fontSize: theme.typography.size.sm,
+                        fontWeight: theme.typography.weight.medium,
+                      }}
+                    >
+                      {t("spots.visibilityFollowers")}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setVisibility("PRIVATE")}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: theme.spacing.sm,
+                      paddingVertical: theme.spacing.md,
+                      borderWidth: visibility === "PRIVATE" ? theme.borderWidth.thick : StyleSheet.hairlineWidth,
+                      borderColor: visibility === "PRIVATE" ? theme.colors.accent : theme.colors.border,
+                      borderRadius: theme.radius.sm,
+                      backgroundColor: visibility === "PRIVATE" ? `${theme.colors.accent}15` : theme.colors.bg,
+                    }}
+                  >
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={16}
+                      color={visibility === "PRIVATE" ? theme.colors.accent : theme.colors.textSecondary}
+                    />
+                    <Text
+                      style={{
+                        color: visibility === "PRIVATE" ? theme.colors.accent : theme.colors.textSecondary,
+                        fontSize: theme.typography.size.sm,
+                        fontWeight: theme.typography.weight.medium,
+                      }}
+                    >
+                      {t("spots.visibilityPrivate")}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-
-              {!isFree ? (
-                <Input
-                  label={t("spots.priceInfo")}
-                  value={priceInfo}
-                  onChangeText={setPriceInfo}
-                  placeholder={t("spots.priceInfo")}
-                />
-              ) : null}
             </View>
           ) : null}
 
           {step === 4 ? (
             <View style={{ gap: theme.spacing.md }}>
-              {photoUri ? (
+              {/* Main cover photo */}
+              {photos.length > 0 ? (
                 <Image
-                  source={{ uri: photoUri }}
+                  source={{ uri: photos[0].uri }}
                   style={[styles.preview, { borderRadius: theme.radius.sm }]}
                   resizeMode="cover"
                 />
               ) : null}
+              {/* Thumbnail strip for additional photos */}
+              {photos.length > 1 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: theme.spacing.sm }}
+                >
+                  {photos.slice(1).map((photo, index) => (
+                    <Image
+                      key={photo.id}
+                      source={{ uri: photo.uri }}
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: theme.radius.sm,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderColor: theme.colors.border,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </ScrollView>
+              ) : null}
+              <Text
+                style={{
+                  color: theme.colors.textTertiary,
+                  fontSize: theme.typography.size.xs,
+                }}
+              >
+                {photos.length} {photos.length === 1 ? "photo" : "photos"}
+              </Text>
               <Text
                 style={{
                   color: theme.colors.text,
@@ -607,7 +1482,42 @@ export function AddSpotScreen() {
               </View>
               <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>
                 {selectedCompositions.map((c) => t(`compositions.${c}`)).join(" · ")}
+                {customComposition ? ` — ${customComposition}` : ""}
               </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.xs }}>
+                <Ionicons
+                  name={visibility === "PRIVATE" ? "lock-closed-outline" : "people-outline"}
+                  size={14}
+                  color={theme.colors.textSecondary}
+                />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>
+                  {visibility === "PRIVATE" ? t("spots.visibilityPrivate") : t("spots.visibilityFollowers")}
+                </Text>
+              </View>
+              {validationErrors.length > 0 ? (
+                <View
+                  style={{
+                    backgroundColor: `${theme.colors.error}10`,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: `${theme.colors.error}40`,
+                    borderRadius: theme.radius.sm,
+                    padding: theme.spacing.md,
+                    gap: theme.spacing.xs,
+                  }}
+                >
+                  {validationErrors.map((msg, i) => (
+                    <Text
+                      key={i}
+                      style={{
+                        color: theme.colors.error,
+                        fontSize: theme.typography.size.sm,
+                      }}
+                    >
+                      ⚠ {msg}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
               {submitError ? (
                 <Text style={{ color: theme.colors.error, fontSize: theme.typography.size.sm }}>
                   {submitError}
@@ -678,6 +1588,42 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  photoThumb: {
+    overflow: "hidden",
+  },
+  coverBadge: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  orderBadge: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  removeBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dragHint: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
   },
   colorGrid: {
     flexDirection: "row",

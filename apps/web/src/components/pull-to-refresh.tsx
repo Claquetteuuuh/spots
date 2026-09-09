@@ -24,7 +24,11 @@ export function PullToRefresh({
   const showIndicator = pullProgress > 0 || isRefreshing;
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative ${className}`}
+      style={{ overscrollBehavior: "contain" }}
+    >
       {/* Pull indicator */}
       {showIndicator ? (
         <div

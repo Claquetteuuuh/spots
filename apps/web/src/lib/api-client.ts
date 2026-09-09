@@ -138,6 +138,21 @@ async function request<T>(
   const json = (await res.json()) as ApiResponse<T>;
 
   if (!res.ok || json.error) {
+    // Extract field-level validation details from Zod flatten output
+    const details = (json as ApiError).details as
+      | { fieldErrors?: Record<string, string[]>; formErrors?: string[] }
+      | undefined;
+    if (details?.fieldErrors) {
+      const messages = Object.entries(details.fieldErrors)
+        .filter(([, msgs]) => msgs && msgs.length > 0)
+        .map(([field, msgs]) => `${field}: ${(msgs as string[])[0]}`);
+      if (messages.length > 0) {
+        throw new Error(messages.join("\n"));
+      }
+    }
+    if (details?.formErrors && details.formErrors.length > 0) {
+      throw new Error(details.formErrors.join("\n"));
+    }
     throw new Error(json.error ?? `Request failed (${res.status})`);
   }
 
@@ -169,6 +184,24 @@ export interface User {
   };
 }
 
+export interface FollowRequest {
+  id: string;
+  follower: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  createdAt: string;
+}
+
+export interface SpotImage {
+  id: string;
+  photoUrl: string;
+  photoKey: string;
+  order: number;
+}
+
 export interface Spot {
   id: string;
   userId: string;
@@ -182,9 +215,12 @@ export interface Spot {
   description: string | null;
   isFree: boolean;
   priceInfo: string | null;
+  visibility: "PRIVATE" | "FOLLOWERS";
+  customComposition: string | null;
   colors: string[];
   compositions: string[];
   tags: string[];
+  images?: SpotImage[];
   createdAt: string;
   updatedAt: string;
   user?: User;
@@ -204,6 +240,14 @@ export interface SpotPhoto {
     name: string;
     avatarUrl: string | null;
   };
+}
+
+export interface ForwardGeocodeResult {
+  latitude: number;
+  longitude: number;
+  displayName: string;
+  city: string | null;
+  country: string | null;
 }
 
 interface PaginatedResponse<T> {
@@ -262,6 +306,13 @@ export const apiClient = {
       });
     },
 
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+      await request<{ changed: boolean }>(API_ROUTES.auth.changePassword, {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    },
+
     async me(): Promise<User> {
       return request<User>(API_ROUTES.auth.me);
     },
@@ -293,7 +344,7 @@ export const apiClient = {
       );
     },
 
-    async create(data: CreateSpotInput & { photoUrl: string; photoKey: string }): Promise<Spot> {
+    async create(data: Partial<CreateSpotInput> & { latitude: number; longitude: number; photoUrl: string; photoKey: string; photos?: { url: string; key: string }[]; compositions?: CreateSpotInput["compositions"]; colors?: string[]; tags?: string[] }): Promise<Spot> {
       return request<Spot>(API_ROUTES.spots.create, {
         method: "POST",
         body: JSON.stringify(data),
@@ -393,28 +444,61 @@ export const apiClient = {
     },
   },
 
+  followRequests: {
+    async list(): Promise<FollowRequest[]> {
+      return request<FollowRequest[]>(API_ROUTES.followRequests.list);
+    },
+
+    async count(): Promise<number> {
+      const res = await request<{ count: number }>(API_ROUTES.followRequests.count);
+      return res.count;
+    },
+
+    async accept(id: string): Promise<void> {
+      await request<void>(API_ROUTES.followRequests.accept(id), {
+        method: "POST",
+      });
+    },
+
+    async reject(id: string): Promise<void> {
+      await request<void>(API_ROUTES.followRequests.reject(id), {
+        method: "POST",
+      });
+    },
+  },
+
   upload: {
     async photo(file: File): Promise<{ url: string; key: string }> {
       const formData = new FormData();
       formData.append("photo", file);
-      return request<{ url: string; key: string }>(
+      const res = await request<{ photoUrl: string; photoKey: string }>(
         API_ROUTES.upload.photo,
         {
           method: "POST",
           body: formData,
         },
       );
+      return { url: res.photoUrl, key: res.photoKey };
     },
 
     async avatar(file: File): Promise<{ url: string; key: string }> {
       const formData = new FormData();
       formData.append("avatar", file);
-      return request<{ url: string; key: string }>(
+      const res = await request<{ photoUrl: string; photoKey: string }>(
         API_ROUTES.upload.avatar,
         {
           method: "POST",
           body: formData,
         },
+      );
+      return { url: res.photoUrl, key: res.photoKey };
+    },
+  },
+
+  geocoding: {
+    async forward(q: string): Promise<ForwardGeocodeResult[]> {
+      return request<ForwardGeocodeResult[]>(
+        `${API_ROUTES.geocoding.forward}?q=${encodeURIComponent(q)}`,
       );
     },
   },

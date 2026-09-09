@@ -15,27 +15,32 @@ export type PrismaPromise<T> = $Public.PrismaPromise<T>
 
 /**
  * Model User
- * 
+ *
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
  * Model Follow
- * 
+ *
  */
 export type Follow = $Result.DefaultSelection<Prisma.$FollowPayload>
 /**
  * Model PasswordResetToken
- * 
+ *
  */
 export type PasswordResetToken = $Result.DefaultSelection<Prisma.$PasswordResetTokenPayload>
 /**
  * Model Spot
- * 
+ *
  */
 export type Spot = $Result.DefaultSelection<Prisma.$SpotPayload>
 /**
+ * Model SpotImage
+ *
+ */
+export type SpotImage = $Result.DefaultSelection<Prisma.$SpotImagePayload>
+/**
  * Model SpotPhoto
- * 
+ *
  */
 export type SpotPhoto = $Result.DefaultSelection<Prisma.$SpotPhotoPayload>
 
@@ -51,6 +56,14 @@ export namespace $Enums {
 export type AuthProvider = (typeof AuthProvider)[keyof typeof AuthProvider]
 
 
+export const FollowStatus: {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED'
+};
+
+export type FollowStatus = (typeof FollowStatus)[keyof typeof FollowStatus]
+
+
 export const CompositionType: {
   SYMMETRY: 'SYMMETRY',
   ASYMMETRY: 'ASYMMETRY',
@@ -61,10 +74,19 @@ export const CompositionType: {
   DIAGONAL: 'DIAGONAL',
   CENTERED: 'CENTERED',
   MINIMALIST: 'MINIMALIST',
-  PATTERN: 'PATTERN'
+  PATTERN: 'PATTERN',
+  OTHER: 'OTHER'
 };
 
 export type CompositionType = (typeof CompositionType)[keyof typeof CompositionType]
+
+
+export const SpotVisibility: {
+  PRIVATE: 'PRIVATE',
+  FOLLOWERS: 'FOLLOWERS'
+};
+
+export type SpotVisibility = (typeof SpotVisibility)[keyof typeof SpotVisibility]
 
 }
 
@@ -72,9 +94,17 @@ export type AuthProvider = $Enums.AuthProvider
 
 export const AuthProvider: typeof $Enums.AuthProvider
 
+export type FollowStatus = $Enums.FollowStatus
+
+export const FollowStatus: typeof $Enums.FollowStatus
+
 export type CompositionType = $Enums.CompositionType
 
 export const CompositionType: typeof $Enums.CompositionType
+
+export type SpotVisibility = $Enums.SpotVisibility
+
+export const SpotVisibility: typeof $Enums.SpotVisibility
 
 /**
  * ##  Prisma Client ʲˢ
@@ -182,7 +212,7 @@ export class PrismaClient<
    *   prisma.user.create({ data: { name: 'Alice' } }),
    * ])
    * ```
-   * 
+   *
    * Read more in our [docs](https://www.prisma.io/docs/concepts/components/prisma-client/transactions).
    */
   $transaction<P extends Prisma.PrismaPromise<any>[]>(arg: [...P], options?: { isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<runtime.Types.Utils.UnwrapTuple<P>>
@@ -233,6 +263,16 @@ export class PrismaClient<
     * ```
     */
   get spot(): Prisma.SpotDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.spotImage`: Exposes CRUD operations for the **SpotImage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SpotImages
+    * const spotImages = await prisma.spotImage.findMany()
+    * ```
+    */
+  get spotImage(): Prisma.SpotImageDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.spotPhoto`: Exposes CRUD operations for the **SpotPhoto** model.
@@ -688,6 +728,7 @@ export namespace Prisma {
     Follow: 'Follow',
     PasswordResetToken: 'PasswordResetToken',
     Spot: 'Spot',
+    SpotImage: 'SpotImage',
     SpotPhoto: 'SpotPhoto'
   };
 
@@ -707,7 +748,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "follow" | "passwordResetToken" | "spot" | "spotPhoto"
+      modelProps: "user" | "follow" | "passwordResetToken" | "spot" | "spotImage" | "spotPhoto"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1007,6 +1048,80 @@ export namespace Prisma {
           }
         }
       }
+      SpotImage: {
+        payload: Prisma.$SpotImagePayload<ExtArgs>
+        fields: Prisma.SpotImageFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SpotImageFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SpotImageFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          findFirst: {
+            args: Prisma.SpotImageFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SpotImageFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          findMany: {
+            args: Prisma.SpotImageFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>[]
+          }
+          create: {
+            args: Prisma.SpotImageCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          createMany: {
+            args: Prisma.SpotImageCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SpotImageCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>[]
+          }
+          delete: {
+            args: Prisma.SpotImageDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          update: {
+            args: Prisma.SpotImageUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          deleteMany: {
+            args: Prisma.SpotImageDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SpotImageUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.SpotImageUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>[]
+          }
+          upsert: {
+            args: Prisma.SpotImageUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SpotImagePayload>
+          }
+          aggregate: {
+            args: Prisma.SpotImageAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSpotImage>
+          }
+          groupBy: {
+            args: Prisma.SpotImageGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SpotImageGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SpotImageCountArgs<ExtArgs>
+            result: $Utils.Optional<SpotImageCountAggregateOutputType> | number
+          }
+        }
+      }
       SpotPhoto: {
         payload: Prisma.$SpotPhotoPayload<ExtArgs>
         fields: Prisma.SpotPhotoFieldRefs
@@ -1126,7 +1241,7 @@ export namespace Prisma {
      * ```
      * // Shorthand for `emit: 'stdout'`
      * log: ['query', 'info', 'warn', 'error']
-     * 
+     *
      * // Emit as events only
      * log: [
      *   { emit: 'event', level: 'query' },
@@ -1134,14 +1249,14 @@ export namespace Prisma {
      *   { emit: 'event', level: 'warn' }
      *   { emit: 'event', level: 'error' }
      * ]
-     * 
+     *
      * / Emit as events and log to stdout
      * og: [
      *  { emit: 'stdout', level: 'query' },
      *  { emit: 'stdout', level: 'info' },
      *  { emit: 'stdout', level: 'warn' }
      *  { emit: 'stdout', level: 'error' }
-     * 
+     *
      * ```
      * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/logging#the-log-option).
      */
@@ -1162,7 +1277,7 @@ export namespace Prisma {
     adapter?: runtime.SqlDriverAdapterFactory | null
     /**
      * Global configuration for omitting model fields by default.
-     * 
+     *
      * @example
      * ```
      * const prisma = new PrismaClient({
@@ -1181,6 +1296,7 @@ export namespace Prisma {
     follow?: FollowOmit
     passwordResetToken?: PasswordResetTokenOmit
     spot?: SpotOmit
+    spotImage?: SpotImageOmit
     spotPhoto?: SpotPhotoOmit
   }
 
@@ -1330,10 +1446,12 @@ export namespace Prisma {
 
   export type SpotCountOutputType = {
     spotPhotos: number
+    images: number
   }
 
   export type SpotCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     spotPhotos?: boolean | SpotCountOutputTypeCountSpotPhotosArgs
+    images?: boolean | SpotCountOutputTypeCountImagesArgs
   }
 
   // Custom InputTypes
@@ -1352,6 +1470,13 @@ export namespace Prisma {
    */
   export type SpotCountOutputTypeCountSpotPhotosArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SpotPhotoWhereInput
+  }
+
+  /**
+   * SpotCountOutputType without action
+   */
+  export type SpotCountOutputTypeCountImagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SpotImageWhereInput
   }
 
 
@@ -1469,43 +1594,43 @@ export namespace Prisma {
     where?: UserWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Users to fetch.
      */
     orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the start position
      */
     cursor?: UserWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Users from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Users.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Count returned Users
     **/
     _count?: true | UserCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the minimum value
     **/
     _min?: UserMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the maximum value
     **/
     _max?: UserMaxAggregateInputType
@@ -1745,13 +1870,13 @@ export namespace Prisma {
      * @example
      * // Get all Users
      * const users = await prisma.user.findMany()
-     * 
+     *
      * // Get first 10 Users
      * const users = await prisma.user.findMany({ take: 10 })
-     * 
+     *
      * // Only select the `id`
      * const userWithIdOnly = await prisma.user.findMany({ select: { id: true } })
-     * 
+     *
      */
     findMany<T extends UserFindManyArgs>(args?: SelectSubset<T, UserFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
@@ -1765,7 +1890,7 @@ export namespace Prisma {
      *     // ... data to create a User
      *   }
      * })
-     * 
+     *
      */
     create<T extends UserCreateArgs>(args: SelectSubset<T, UserCreateArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -1779,7 +1904,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     *     
+     *
      */
     createMany<T extends UserCreateManyArgs>(args?: SelectSubset<T, UserCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -1793,7 +1918,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Create many Users and only return the `id`
      * const userWithIdOnly = await prisma.user.createManyAndReturn({
      *   select: { id: true },
@@ -1803,7 +1928,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     createManyAndReturn<T extends UserCreateManyAndReturnArgs>(args?: SelectSubset<T, UserCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
@@ -1817,7 +1942,7 @@ export namespace Prisma {
      *     // ... filter to delete one User
      *   }
      * })
-     * 
+     *
      */
     delete<T extends UserDeleteArgs>(args: SelectSubset<T, UserDeleteArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -1834,7 +1959,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     update<T extends UserUpdateArgs>(args: SelectSubset<T, UserUpdateArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -1848,7 +1973,7 @@ export namespace Prisma {
      *     // ... provide filter here
      *   }
      * })
-     * 
+     *
      */
     deleteMany<T extends UserDeleteManyArgs>(args?: SelectSubset<T, UserDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -1867,7 +1992,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     updateMany<T extends UserUpdateManyArgs>(args: SelectSubset<T, UserUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -1884,7 +2009,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Update zero or more Users and only return the `id`
      * const userWithIdOnly = await prisma.user.updateManyAndReturn({
      *   select: { id: true },
@@ -1897,7 +2022,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     updateManyAndReturn<T extends UserUpdateManyAndReturnArgs>(args: SelectSubset<T, UserUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
@@ -1986,7 +2111,7 @@ export namespace Prisma {
      *     _all: true
      *   },
      * })
-     * 
+     *
     **/
     groupBy<
       T extends UserGroupByArgs,
@@ -2107,7 +2232,7 @@ export namespace Prisma {
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
   }
-    
+
 
   // Custom InputTypes
   /**
@@ -2176,31 +2301,31 @@ export namespace Prisma {
     where?: UserWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Users to fetch.
      */
     orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Users.
      */
     cursor?: UserWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Users from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Users.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Users.
      */
     distinct?: UserScalarFieldEnum | UserScalarFieldEnum[]
@@ -2228,31 +2353,31 @@ export namespace Prisma {
     where?: UserWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Users to fetch.
      */
     orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Users.
      */
     cursor?: UserWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Users from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Users.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Users.
      */
     distinct?: UserScalarFieldEnum | UserScalarFieldEnum[]
@@ -2280,25 +2405,25 @@ export namespace Prisma {
     where?: UserWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Users to fetch.
      */
     orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for listing Users.
      */
     cursor?: UserWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Users from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Users.
      */
     skip?: number
@@ -2646,6 +2771,7 @@ export namespace Prisma {
     id: string | null
     followerId: string | null
     followingId: string | null
+    status: $Enums.FollowStatus | null
     createdAt: Date | null
   }
 
@@ -2653,6 +2779,7 @@ export namespace Prisma {
     id: string | null
     followerId: string | null
     followingId: string | null
+    status: $Enums.FollowStatus | null
     createdAt: Date | null
   }
 
@@ -2660,6 +2787,7 @@ export namespace Prisma {
     id: number
     followerId: number
     followingId: number
+    status: number
     createdAt: number
     _all: number
   }
@@ -2669,6 +2797,7 @@ export namespace Prisma {
     id?: true
     followerId?: true
     followingId?: true
+    status?: true
     createdAt?: true
   }
 
@@ -2676,6 +2805,7 @@ export namespace Prisma {
     id?: true
     followerId?: true
     followingId?: true
+    status?: true
     createdAt?: true
   }
 
@@ -2683,6 +2813,7 @@ export namespace Prisma {
     id?: true
     followerId?: true
     followingId?: true
+    status?: true
     createdAt?: true
     _all?: true
   }
@@ -2694,43 +2825,43 @@ export namespace Prisma {
     where?: FollowWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Follows to fetch.
      */
     orderBy?: FollowOrderByWithRelationInput | FollowOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the start position
      */
     cursor?: FollowWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Follows from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Follows.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Count returned Follows
     **/
     _count?: true | FollowCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the minimum value
     **/
     _min?: FollowMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the maximum value
     **/
     _max?: FollowMaxAggregateInputType
@@ -2763,6 +2894,7 @@ export namespace Prisma {
     id: string
     followerId: string
     followingId: string
+    status: $Enums.FollowStatus
     createdAt: Date
     _count: FollowCountAggregateOutputType | null
     _min: FollowMinAggregateOutputType | null
@@ -2787,6 +2919,7 @@ export namespace Prisma {
     id?: boolean
     followerId?: boolean
     followingId?: boolean
+    status?: boolean
     createdAt?: boolean
     follower?: boolean | UserDefaultArgs<ExtArgs>
     following?: boolean | UserDefaultArgs<ExtArgs>
@@ -2796,6 +2929,7 @@ export namespace Prisma {
     id?: boolean
     followerId?: boolean
     followingId?: boolean
+    status?: boolean
     createdAt?: boolean
     follower?: boolean | UserDefaultArgs<ExtArgs>
     following?: boolean | UserDefaultArgs<ExtArgs>
@@ -2805,6 +2939,7 @@ export namespace Prisma {
     id?: boolean
     followerId?: boolean
     followingId?: boolean
+    status?: boolean
     createdAt?: boolean
     follower?: boolean | UserDefaultArgs<ExtArgs>
     following?: boolean | UserDefaultArgs<ExtArgs>
@@ -2814,10 +2949,11 @@ export namespace Prisma {
     id?: boolean
     followerId?: boolean
     followingId?: boolean
+    status?: boolean
     createdAt?: boolean
   }
 
-  export type FollowOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "followerId" | "followingId" | "createdAt", ExtArgs["result"]["follow"]>
+  export type FollowOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "followerId" | "followingId" | "status" | "createdAt", ExtArgs["result"]["follow"]>
   export type FollowInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     follower?: boolean | UserDefaultArgs<ExtArgs>
     following?: boolean | UserDefaultArgs<ExtArgs>
@@ -2841,6 +2977,7 @@ export namespace Prisma {
       id: string
       followerId: string
       followingId: string
+      status: $Enums.FollowStatus
       createdAt: Date
     }, ExtArgs["result"]["follow"]>
     composites: {}
@@ -2921,13 +3058,13 @@ export namespace Prisma {
      * @example
      * // Get all Follows
      * const follows = await prisma.follow.findMany()
-     * 
+     *
      * // Get first 10 Follows
      * const follows = await prisma.follow.findMany({ take: 10 })
-     * 
+     *
      * // Only select the `id`
      * const followWithIdOnly = await prisma.follow.findMany({ select: { id: true } })
-     * 
+     *
      */
     findMany<T extends FollowFindManyArgs>(args?: SelectSubset<T, FollowFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
@@ -2941,7 +3078,7 @@ export namespace Prisma {
      *     // ... data to create a Follow
      *   }
      * })
-     * 
+     *
      */
     create<T extends FollowCreateArgs>(args: SelectSubset<T, FollowCreateArgs<ExtArgs>>): Prisma__FollowClient<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -2955,7 +3092,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     *     
+     *
      */
     createMany<T extends FollowCreateManyArgs>(args?: SelectSubset<T, FollowCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -2969,7 +3106,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Create many Follows and only return the `id`
      * const followWithIdOnly = await prisma.follow.createManyAndReturn({
      *   select: { id: true },
@@ -2979,7 +3116,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     createManyAndReturn<T extends FollowCreateManyAndReturnArgs>(args?: SelectSubset<T, FollowCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
@@ -2993,7 +3130,7 @@ export namespace Prisma {
      *     // ... filter to delete one Follow
      *   }
      * })
-     * 
+     *
      */
     delete<T extends FollowDeleteArgs>(args: SelectSubset<T, FollowDeleteArgs<ExtArgs>>): Prisma__FollowClient<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -3010,7 +3147,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     update<T extends FollowUpdateArgs>(args: SelectSubset<T, FollowUpdateArgs<ExtArgs>>): Prisma__FollowClient<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -3024,7 +3161,7 @@ export namespace Prisma {
      *     // ... provide filter here
      *   }
      * })
-     * 
+     *
      */
     deleteMany<T extends FollowDeleteManyArgs>(args?: SelectSubset<T, FollowDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -3043,7 +3180,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     updateMany<T extends FollowUpdateManyArgs>(args: SelectSubset<T, FollowUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -3060,7 +3197,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Update zero or more Follows and only return the `id`
      * const followWithIdOnly = await prisma.follow.updateManyAndReturn({
      *   select: { id: true },
@@ -3073,7 +3210,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     updateManyAndReturn<T extends FollowUpdateManyAndReturnArgs>(args: SelectSubset<T, FollowUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
@@ -3162,7 +3299,7 @@ export namespace Prisma {
      *     _all: true
      *   },
      * })
-     * 
+     *
     **/
     groupBy<
       T extends FollowGroupByArgs,
@@ -3270,9 +3407,10 @@ export namespace Prisma {
     readonly id: FieldRef<"Follow", 'String'>
     readonly followerId: FieldRef<"Follow", 'String'>
     readonly followingId: FieldRef<"Follow", 'String'>
+    readonly status: FieldRef<"Follow", 'FollowStatus'>
     readonly createdAt: FieldRef<"Follow", 'DateTime'>
   }
-    
+
 
   // Custom InputTypes
   /**
@@ -3341,31 +3479,31 @@ export namespace Prisma {
     where?: FollowWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Follows to fetch.
      */
     orderBy?: FollowOrderByWithRelationInput | FollowOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Follows.
      */
     cursor?: FollowWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Follows from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Follows.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Follows.
      */
     distinct?: FollowScalarFieldEnum | FollowScalarFieldEnum[]
@@ -3393,31 +3531,31 @@ export namespace Prisma {
     where?: FollowWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Follows to fetch.
      */
     orderBy?: FollowOrderByWithRelationInput | FollowOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Follows.
      */
     cursor?: FollowWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Follows from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Follows.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Follows.
      */
     distinct?: FollowScalarFieldEnum | FollowScalarFieldEnum[]
@@ -3445,25 +3583,25 @@ export namespace Prisma {
     where?: FollowWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Follows to fetch.
      */
     orderBy?: FollowOrderByWithRelationInput | FollowOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for listing Follows.
      */
     cursor?: FollowWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Follows from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Follows.
      */
     skip?: number
@@ -3753,43 +3891,43 @@ export namespace Prisma {
     where?: PasswordResetTokenWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of PasswordResetTokens to fetch.
      */
     orderBy?: PasswordResetTokenOrderByWithRelationInput | PasswordResetTokenOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the start position
      */
     cursor?: PasswordResetTokenWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` PasswordResetTokens from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` PasswordResetTokens.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Count returned PasswordResetTokens
     **/
     _count?: true | PasswordResetTokenCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the minimum value
     **/
     _min?: PasswordResetTokenMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the maximum value
     **/
     _max?: PasswordResetTokenMaxAggregateInputType
@@ -3979,13 +4117,13 @@ export namespace Prisma {
      * @example
      * // Get all PasswordResetTokens
      * const passwordResetTokens = await prisma.passwordResetToken.findMany()
-     * 
+     *
      * // Get first 10 PasswordResetTokens
      * const passwordResetTokens = await prisma.passwordResetToken.findMany({ take: 10 })
-     * 
+     *
      * // Only select the `id`
      * const passwordResetTokenWithIdOnly = await prisma.passwordResetToken.findMany({ select: { id: true } })
-     * 
+     *
      */
     findMany<T extends PasswordResetTokenFindManyArgs>(args?: SelectSubset<T, PasswordResetTokenFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
@@ -3999,7 +4137,7 @@ export namespace Prisma {
      *     // ... data to create a PasswordResetToken
      *   }
      * })
-     * 
+     *
      */
     create<T extends PasswordResetTokenCreateArgs>(args: SelectSubset<T, PasswordResetTokenCreateArgs<ExtArgs>>): Prisma__PasswordResetTokenClient<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -4013,7 +4151,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     *     
+     *
      */
     createMany<T extends PasswordResetTokenCreateManyArgs>(args?: SelectSubset<T, PasswordResetTokenCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -4027,7 +4165,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Create many PasswordResetTokens and only return the `id`
      * const passwordResetTokenWithIdOnly = await prisma.passwordResetToken.createManyAndReturn({
      *   select: { id: true },
@@ -4037,7 +4175,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     createManyAndReturn<T extends PasswordResetTokenCreateManyAndReturnArgs>(args?: SelectSubset<T, PasswordResetTokenCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
@@ -4051,7 +4189,7 @@ export namespace Prisma {
      *     // ... filter to delete one PasswordResetToken
      *   }
      * })
-     * 
+     *
      */
     delete<T extends PasswordResetTokenDeleteArgs>(args: SelectSubset<T, PasswordResetTokenDeleteArgs<ExtArgs>>): Prisma__PasswordResetTokenClient<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -4068,7 +4206,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     update<T extends PasswordResetTokenUpdateArgs>(args: SelectSubset<T, PasswordResetTokenUpdateArgs<ExtArgs>>): Prisma__PasswordResetTokenClient<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -4082,7 +4220,7 @@ export namespace Prisma {
      *     // ... provide filter here
      *   }
      * })
-     * 
+     *
      */
     deleteMany<T extends PasswordResetTokenDeleteManyArgs>(args?: SelectSubset<T, PasswordResetTokenDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -4101,7 +4239,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     updateMany<T extends PasswordResetTokenUpdateManyArgs>(args: SelectSubset<T, PasswordResetTokenUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -4118,7 +4256,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Update zero or more PasswordResetTokens and only return the `id`
      * const passwordResetTokenWithIdOnly = await prisma.passwordResetToken.updateManyAndReturn({
      *   select: { id: true },
@@ -4131,7 +4269,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     updateManyAndReturn<T extends PasswordResetTokenUpdateManyAndReturnArgs>(args: SelectSubset<T, PasswordResetTokenUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PasswordResetTokenPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
@@ -4220,7 +4358,7 @@ export namespace Prisma {
      *     _all: true
      *   },
      * })
-     * 
+     *
     **/
     groupBy<
       T extends PasswordResetTokenGroupByArgs,
@@ -4330,7 +4468,7 @@ export namespace Prisma {
     readonly expiresAt: FieldRef<"PasswordResetToken", 'DateTime'>
     readonly createdAt: FieldRef<"PasswordResetToken", 'DateTime'>
   }
-    
+
 
   // Custom InputTypes
   /**
@@ -4399,31 +4537,31 @@ export namespace Prisma {
     where?: PasswordResetTokenWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of PasswordResetTokens to fetch.
      */
     orderBy?: PasswordResetTokenOrderByWithRelationInput | PasswordResetTokenOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for PasswordResetTokens.
      */
     cursor?: PasswordResetTokenWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` PasswordResetTokens from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` PasswordResetTokens.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of PasswordResetTokens.
      */
     distinct?: PasswordResetTokenScalarFieldEnum | PasswordResetTokenScalarFieldEnum[]
@@ -4451,31 +4589,31 @@ export namespace Prisma {
     where?: PasswordResetTokenWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of PasswordResetTokens to fetch.
      */
     orderBy?: PasswordResetTokenOrderByWithRelationInput | PasswordResetTokenOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for PasswordResetTokens.
      */
     cursor?: PasswordResetTokenWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` PasswordResetTokens from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` PasswordResetTokens.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of PasswordResetTokens.
      */
     distinct?: PasswordResetTokenScalarFieldEnum | PasswordResetTokenScalarFieldEnum[]
@@ -4503,25 +4641,25 @@ export namespace Prisma {
     where?: PasswordResetTokenWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of PasswordResetTokens to fetch.
      */
     orderBy?: PasswordResetTokenOrderByWithRelationInput | PasswordResetTokenOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for listing PasswordResetTokens.
      */
     cursor?: PasswordResetTokenWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` PasswordResetTokens from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` PasswordResetTokens.
      */
     skip?: number
@@ -4779,6 +4917,8 @@ export namespace Prisma {
     description: string | null
     isFree: boolean | null
     priceInfo: string | null
+    visibility: $Enums.SpotVisibility | null
+    customComposition: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4797,6 +4937,8 @@ export namespace Prisma {
     description: string | null
     isFree: boolean | null
     priceInfo: string | null
+    visibility: $Enums.SpotVisibility | null
+    customComposition: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4815,6 +4957,8 @@ export namespace Prisma {
     description: number
     isFree: number
     priceInfo: number
+    visibility: number
+    customComposition: number
     colors: number
     compositions: number
     tags: number
@@ -4848,6 +4992,8 @@ export namespace Prisma {
     description?: true
     isFree?: true
     priceInfo?: true
+    visibility?: true
+    customComposition?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4866,6 +5012,8 @@ export namespace Prisma {
     description?: true
     isFree?: true
     priceInfo?: true
+    visibility?: true
+    customComposition?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4884,6 +5032,8 @@ export namespace Prisma {
     description?: true
     isFree?: true
     priceInfo?: true
+    visibility?: true
+    customComposition?: true
     colors?: true
     compositions?: true
     tags?: true
@@ -4899,55 +5049,55 @@ export namespace Prisma {
     where?: SpotWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Spots to fetch.
      */
     orderBy?: SpotOrderByWithRelationInput | SpotOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the start position
      */
     cursor?: SpotWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Spots from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Spots.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Count returned Spots
     **/
     _count?: true | SpotCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to average
     **/
     _avg?: SpotAvgAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to sum
     **/
     _sum?: SpotSumAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the minimum value
     **/
     _min?: SpotMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the maximum value
     **/
     _max?: SpotMaxAggregateInputType
@@ -4992,6 +5142,8 @@ export namespace Prisma {
     description: string | null
     isFree: boolean
     priceInfo: string | null
+    visibility: $Enums.SpotVisibility
+    customComposition: string | null
     colors: string[]
     compositions: $Enums.CompositionType[]
     tags: string[]
@@ -5032,6 +5184,8 @@ export namespace Prisma {
     description?: boolean
     isFree?: boolean
     priceInfo?: boolean
+    visibility?: boolean
+    customComposition?: boolean
     colors?: boolean
     compositions?: boolean
     tags?: boolean
@@ -5039,6 +5193,7 @@ export namespace Prisma {
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     spotPhotos?: boolean | Spot$spotPhotosArgs<ExtArgs>
+    images?: boolean | Spot$imagesArgs<ExtArgs>
     _count?: boolean | SpotCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["spot"]>
 
@@ -5056,6 +5211,8 @@ export namespace Prisma {
     description?: boolean
     isFree?: boolean
     priceInfo?: boolean
+    visibility?: boolean
+    customComposition?: boolean
     colors?: boolean
     compositions?: boolean
     tags?: boolean
@@ -5078,6 +5235,8 @@ export namespace Prisma {
     description?: boolean
     isFree?: boolean
     priceInfo?: boolean
+    visibility?: boolean
+    customComposition?: boolean
     colors?: boolean
     compositions?: boolean
     tags?: boolean
@@ -5100,6 +5259,8 @@ export namespace Prisma {
     description?: boolean
     isFree?: boolean
     priceInfo?: boolean
+    visibility?: boolean
+    customComposition?: boolean
     colors?: boolean
     compositions?: boolean
     tags?: boolean
@@ -5107,10 +5268,11 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SpotOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "latitude" | "longitude" | "address" | "city" | "country" | "photoUrl" | "photoKey" | "title" | "description" | "isFree" | "priceInfo" | "colors" | "compositions" | "tags" | "createdAt" | "updatedAt", ExtArgs["result"]["spot"]>
+  export type SpotOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "latitude" | "longitude" | "address" | "city" | "country" | "photoUrl" | "photoKey" | "title" | "description" | "isFree" | "priceInfo" | "visibility" | "customComposition" | "colors" | "compositions" | "tags" | "createdAt" | "updatedAt", ExtArgs["result"]["spot"]>
   export type SpotInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     spotPhotos?: boolean | Spot$spotPhotosArgs<ExtArgs>
+    images?: boolean | Spot$imagesArgs<ExtArgs>
     _count?: boolean | SpotCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SpotIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5125,6 +5287,7 @@ export namespace Prisma {
     objects: {
       user: Prisma.$UserPayload<ExtArgs>
       spotPhotos: Prisma.$SpotPhotoPayload<ExtArgs>[]
+      images: Prisma.$SpotImagePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -5140,6 +5303,8 @@ export namespace Prisma {
       description: string | null
       isFree: boolean
       priceInfo: string | null
+      visibility: $Enums.SpotVisibility
+      customComposition: string | null
       colors: string[]
       compositions: $Enums.CompositionType[]
       tags: string[]
@@ -5224,13 +5389,13 @@ export namespace Prisma {
      * @example
      * // Get all Spots
      * const spots = await prisma.spot.findMany()
-     * 
+     *
      * // Get first 10 Spots
      * const spots = await prisma.spot.findMany({ take: 10 })
-     * 
+     *
      * // Only select the `id`
      * const spotWithIdOnly = await prisma.spot.findMany({ select: { id: true } })
-     * 
+     *
      */
     findMany<T extends SpotFindManyArgs>(args?: SelectSubset<T, SpotFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
@@ -5244,7 +5409,7 @@ export namespace Prisma {
      *     // ... data to create a Spot
      *   }
      * })
-     * 
+     *
      */
     create<T extends SpotCreateArgs>(args: SelectSubset<T, SpotCreateArgs<ExtArgs>>): Prisma__SpotClient<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -5258,7 +5423,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     *     
+     *
      */
     createMany<T extends SpotCreateManyArgs>(args?: SelectSubset<T, SpotCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -5272,7 +5437,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Create many Spots and only return the `id`
      * const spotWithIdOnly = await prisma.spot.createManyAndReturn({
      *   select: { id: true },
@@ -5282,7 +5447,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     createManyAndReturn<T extends SpotCreateManyAndReturnArgs>(args?: SelectSubset<T, SpotCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
@@ -5296,7 +5461,7 @@ export namespace Prisma {
      *     // ... filter to delete one Spot
      *   }
      * })
-     * 
+     *
      */
     delete<T extends SpotDeleteArgs>(args: SelectSubset<T, SpotDeleteArgs<ExtArgs>>): Prisma__SpotClient<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -5313,7 +5478,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     update<T extends SpotUpdateArgs>(args: SelectSubset<T, SpotUpdateArgs<ExtArgs>>): Prisma__SpotClient<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -5327,7 +5492,7 @@ export namespace Prisma {
      *     // ... provide filter here
      *   }
      * })
-     * 
+     *
      */
     deleteMany<T extends SpotDeleteManyArgs>(args?: SelectSubset<T, SpotDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -5346,7 +5511,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     updateMany<T extends SpotUpdateManyArgs>(args: SelectSubset<T, SpotUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -5363,7 +5528,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Update zero or more Spots and only return the `id`
      * const spotWithIdOnly = await prisma.spot.updateManyAndReturn({
      *   select: { id: true },
@@ -5376,7 +5541,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     updateManyAndReturn<T extends SpotUpdateManyAndReturnArgs>(args: SelectSubset<T, SpotUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
@@ -5465,7 +5630,7 @@ export namespace Prisma {
      *     _all: true
      *   },
      * })
-     * 
+     *
     **/
     groupBy<
       T extends SpotGroupByArgs,
@@ -5541,6 +5706,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     spotPhotos<T extends Spot$spotPhotosArgs<ExtArgs> = {}>(args?: Subset<T, Spot$spotPhotosArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    images<T extends Spot$imagesArgs<ExtArgs> = {}>(args?: Subset<T, Spot$imagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5583,13 +5749,15 @@ export namespace Prisma {
     readonly description: FieldRef<"Spot", 'String'>
     readonly isFree: FieldRef<"Spot", 'Boolean'>
     readonly priceInfo: FieldRef<"Spot", 'String'>
+    readonly visibility: FieldRef<"Spot", 'SpotVisibility'>
+    readonly customComposition: FieldRef<"Spot", 'String'>
     readonly colors: FieldRef<"Spot", 'String[]'>
     readonly compositions: FieldRef<"Spot", 'CompositionType[]'>
     readonly tags: FieldRef<"Spot", 'String[]'>
     readonly createdAt: FieldRef<"Spot", 'DateTime'>
     readonly updatedAt: FieldRef<"Spot", 'DateTime'>
   }
-    
+
 
   // Custom InputTypes
   /**
@@ -5658,31 +5826,31 @@ export namespace Prisma {
     where?: SpotWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Spots to fetch.
      */
     orderBy?: SpotOrderByWithRelationInput | SpotOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Spots.
      */
     cursor?: SpotWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Spots from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Spots.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Spots.
      */
     distinct?: SpotScalarFieldEnum | SpotScalarFieldEnum[]
@@ -5710,31 +5878,31 @@ export namespace Prisma {
     where?: SpotWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Spots to fetch.
      */
     orderBy?: SpotOrderByWithRelationInput | SpotOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for Spots.
      */
     cursor?: SpotWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Spots from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Spots.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of Spots.
      */
     distinct?: SpotScalarFieldEnum | SpotScalarFieldEnum[]
@@ -5762,25 +5930,25 @@ export namespace Prisma {
     where?: SpotWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of Spots to fetch.
      */
     orderBy?: SpotOrderByWithRelationInput | SpotOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for listing Spots.
      */
     cursor?: SpotWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` Spots from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` Spots.
      */
     skip?: number
@@ -6008,6 +6176,30 @@ export namespace Prisma {
   }
 
   /**
+   * Spot.images
+   */
+  export type Spot$imagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    where?: SpotImageWhereInput
+    orderBy?: SpotImageOrderByWithRelationInput | SpotImageOrderByWithRelationInput[]
+    cursor?: SpotImageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SpotImageScalarFieldEnum | SpotImageScalarFieldEnum[]
+  }
+
+  /**
    * Spot without action
    */
   export type SpotDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -6023,6 +6215,1098 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SpotInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SpotImage
+   */
+
+  export type AggregateSpotImage = {
+    _count: SpotImageCountAggregateOutputType | null
+    _avg: SpotImageAvgAggregateOutputType | null
+    _sum: SpotImageSumAggregateOutputType | null
+    _min: SpotImageMinAggregateOutputType | null
+    _max: SpotImageMaxAggregateOutputType | null
+  }
+
+  export type SpotImageAvgAggregateOutputType = {
+    order: number | null
+  }
+
+  export type SpotImageSumAggregateOutputType = {
+    order: number | null
+  }
+
+  export type SpotImageMinAggregateOutputType = {
+    id: string | null
+    spotId: string | null
+    photoUrl: string | null
+    photoKey: string | null
+    order: number | null
+  }
+
+  export type SpotImageMaxAggregateOutputType = {
+    id: string | null
+    spotId: string | null
+    photoUrl: string | null
+    photoKey: string | null
+    order: number | null
+  }
+
+  export type SpotImageCountAggregateOutputType = {
+    id: number
+    spotId: number
+    photoUrl: number
+    photoKey: number
+    order: number
+    _all: number
+  }
+
+
+  export type SpotImageAvgAggregateInputType = {
+    order?: true
+  }
+
+  export type SpotImageSumAggregateInputType = {
+    order?: true
+  }
+
+  export type SpotImageMinAggregateInputType = {
+    id?: true
+    spotId?: true
+    photoUrl?: true
+    photoKey?: true
+    order?: true
+  }
+
+  export type SpotImageMaxAggregateInputType = {
+    id?: true
+    spotId?: true
+    photoUrl?: true
+    photoKey?: true
+    order?: true
+  }
+
+  export type SpotImageCountAggregateInputType = {
+    id?: true
+    spotId?: true
+    photoUrl?: true
+    photoKey?: true
+    order?: true
+    _all?: true
+  }
+
+  export type SpotImageAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SpotImage to aggregate.
+     */
+    where?: SpotImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     *
+     * Determine the order of SpotImages to fetch.
+     */
+    orderBy?: SpotImageOrderByWithRelationInput | SpotImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     *
+     * Sets the start position
+     */
+    cursor?: SpotImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Take `±n` SpotImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Skip the first `n` SpotImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     *
+     * Count returned SpotImages
+    **/
+    _count?: true | SpotImageCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     *
+     * Select which fields to average
+    **/
+    _avg?: SpotImageAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     *
+     * Select which fields to sum
+    **/
+    _sum?: SpotImageSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     *
+     * Select which fields to find the minimum value
+    **/
+    _min?: SpotImageMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     *
+     * Select which fields to find the maximum value
+    **/
+    _max?: SpotImageMaxAggregateInputType
+  }
+
+  export type GetSpotImageAggregateType<T extends SpotImageAggregateArgs> = {
+        [P in keyof T & keyof AggregateSpotImage]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSpotImage[P]>
+      : GetScalarType<T[P], AggregateSpotImage[P]>
+  }
+
+
+
+
+  export type SpotImageGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SpotImageWhereInput
+    orderBy?: SpotImageOrderByWithAggregationInput | SpotImageOrderByWithAggregationInput[]
+    by: SpotImageScalarFieldEnum[] | SpotImageScalarFieldEnum
+    having?: SpotImageScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SpotImageCountAggregateInputType | true
+    _avg?: SpotImageAvgAggregateInputType
+    _sum?: SpotImageSumAggregateInputType
+    _min?: SpotImageMinAggregateInputType
+    _max?: SpotImageMaxAggregateInputType
+  }
+
+  export type SpotImageGroupByOutputType = {
+    id: string
+    spotId: string
+    photoUrl: string
+    photoKey: string
+    order: number
+    _count: SpotImageCountAggregateOutputType | null
+    _avg: SpotImageAvgAggregateOutputType | null
+    _sum: SpotImageSumAggregateOutputType | null
+    _min: SpotImageMinAggregateOutputType | null
+    _max: SpotImageMaxAggregateOutputType | null
+  }
+
+  type GetSpotImageGroupByPayload<T extends SpotImageGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SpotImageGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SpotImageGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SpotImageGroupByOutputType[P]>
+            : GetScalarType<T[P], SpotImageGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SpotImageSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    spotId?: boolean
+    photoUrl?: boolean
+    photoKey?: boolean
+    order?: boolean
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["spotImage"]>
+
+  export type SpotImageSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    spotId?: boolean
+    photoUrl?: boolean
+    photoKey?: boolean
+    order?: boolean
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["spotImage"]>
+
+  export type SpotImageSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    spotId?: boolean
+    photoUrl?: boolean
+    photoKey?: boolean
+    order?: boolean
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["spotImage"]>
+
+  export type SpotImageSelectScalar = {
+    id?: boolean
+    spotId?: boolean
+    photoUrl?: boolean
+    photoKey?: boolean
+    order?: boolean
+  }
+
+  export type SpotImageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "spotId" | "photoUrl" | "photoKey" | "order", ExtArgs["result"]["spotImage"]>
+  export type SpotImageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }
+  export type SpotImageIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }
+  export type SpotImageIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    spot?: boolean | SpotDefaultArgs<ExtArgs>
+  }
+
+  export type $SpotImagePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SpotImage"
+    objects: {
+      spot: Prisma.$SpotPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      spotId: string
+      photoUrl: string
+      photoKey: string
+      order: number
+    }, ExtArgs["result"]["spotImage"]>
+    composites: {}
+  }
+
+  type SpotImageGetPayload<S extends boolean | null | undefined | SpotImageDefaultArgs> = $Result.GetResult<Prisma.$SpotImagePayload, S>
+
+  type SpotImageCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<SpotImageFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: SpotImageCountAggregateInputType | true
+    }
+
+  export interface SpotImageDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SpotImage'], meta: { name: 'SpotImage' } }
+    /**
+     * Find zero or one SpotImage that matches the filter.
+     * @param {SpotImageFindUniqueArgs} args - Arguments to find a SpotImage
+     * @example
+     * // Get one SpotImage
+     * const spotImage = await prisma.spotImage.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SpotImageFindUniqueArgs>(args: SelectSubset<T, SpotImageFindUniqueArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one SpotImage that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {SpotImageFindUniqueOrThrowArgs} args - Arguments to find a SpotImage
+     * @example
+     * // Get one SpotImage
+     * const spotImage = await prisma.spotImage.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SpotImageFindUniqueOrThrowArgs>(args: SelectSubset<T, SpotImageFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SpotImage that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageFindFirstArgs} args - Arguments to find a SpotImage
+     * @example
+     * // Get one SpotImage
+     * const spotImage = await prisma.spotImage.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SpotImageFindFirstArgs>(args?: SelectSubset<T, SpotImageFindFirstArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SpotImage that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageFindFirstOrThrowArgs} args - Arguments to find a SpotImage
+     * @example
+     * // Get one SpotImage
+     * const spotImage = await prisma.spotImage.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SpotImageFindFirstOrThrowArgs>(args?: SelectSubset<T, SpotImageFindFirstOrThrowArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more SpotImages that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SpotImages
+     * const spotImages = await prisma.spotImage.findMany()
+     *
+     * // Get first 10 SpotImages
+     * const spotImages = await prisma.spotImage.findMany({ take: 10 })
+     *
+     * // Only select the `id`
+     * const spotImageWithIdOnly = await prisma.spotImage.findMany({ select: { id: true } })
+     *
+     */
+    findMany<T extends SpotImageFindManyArgs>(args?: SelectSubset<T, SpotImageFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a SpotImage.
+     * @param {SpotImageCreateArgs} args - Arguments to create a SpotImage.
+     * @example
+     * // Create one SpotImage
+     * const SpotImage = await prisma.spotImage.create({
+     *   data: {
+     *     // ... data to create a SpotImage
+     *   }
+     * })
+     *
+     */
+    create<T extends SpotImageCreateArgs>(args: SelectSubset<T, SpotImageCreateArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many SpotImages.
+     * @param {SpotImageCreateManyArgs} args - Arguments to create many SpotImages.
+     * @example
+     * // Create many SpotImages
+     * const spotImage = await prisma.spotImage.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *
+     */
+    createMany<T extends SpotImageCreateManyArgs>(args?: SelectSubset<T, SpotImageCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SpotImages and returns the data saved in the database.
+     * @param {SpotImageCreateManyAndReturnArgs} args - Arguments to create many SpotImages.
+     * @example
+     * // Create many SpotImages
+     * const spotImage = await prisma.spotImage.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *
+     * // Create many SpotImages and only return the `id`
+     * const spotImageWithIdOnly = await prisma.spotImage.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     *
+     */
+    createManyAndReturn<T extends SpotImageCreateManyAndReturnArgs>(args?: SelectSubset<T, SpotImageCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a SpotImage.
+     * @param {SpotImageDeleteArgs} args - Arguments to delete one SpotImage.
+     * @example
+     * // Delete one SpotImage
+     * const SpotImage = await prisma.spotImage.delete({
+     *   where: {
+     *     // ... filter to delete one SpotImage
+     *   }
+     * })
+     *
+     */
+    delete<T extends SpotImageDeleteArgs>(args: SelectSubset<T, SpotImageDeleteArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one SpotImage.
+     * @param {SpotImageUpdateArgs} args - Arguments to update one SpotImage.
+     * @example
+     * // Update one SpotImage
+     * const spotImage = await prisma.spotImage.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     *
+     */
+    update<T extends SpotImageUpdateArgs>(args: SelectSubset<T, SpotImageUpdateArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more SpotImages.
+     * @param {SpotImageDeleteManyArgs} args - Arguments to filter SpotImages to delete.
+     * @example
+     * // Delete a few SpotImages
+     * const { count } = await prisma.spotImage.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     *
+     */
+    deleteMany<T extends SpotImageDeleteManyArgs>(args?: SelectSubset<T, SpotImageDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SpotImages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SpotImages
+     * const spotImage = await prisma.spotImage.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     *
+     */
+    updateMany<T extends SpotImageUpdateManyArgs>(args: SelectSubset<T, SpotImageUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SpotImages and returns the data updated in the database.
+     * @param {SpotImageUpdateManyAndReturnArgs} args - Arguments to update many SpotImages.
+     * @example
+     * // Update many SpotImages
+     * const spotImage = await prisma.spotImage.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *
+     * // Update zero or more SpotImages and only return the `id`
+     * const spotImageWithIdOnly = await prisma.spotImage.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     *
+     */
+    updateManyAndReturn<T extends SpotImageUpdateManyAndReturnArgs>(args: SelectSubset<T, SpotImageUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one SpotImage.
+     * @param {SpotImageUpsertArgs} args - Arguments to update or create a SpotImage.
+     * @example
+     * // Update or create a SpotImage
+     * const spotImage = await prisma.spotImage.upsert({
+     *   create: {
+     *     // ... data to create a SpotImage
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SpotImage we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SpotImageUpsertArgs>(args: SelectSubset<T, SpotImageUpsertArgs<ExtArgs>>): Prisma__SpotImageClient<$Result.GetResult<Prisma.$SpotImagePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of SpotImages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageCountArgs} args - Arguments to filter SpotImages to count.
+     * @example
+     * // Count the number of SpotImages
+     * const count = await prisma.spotImage.count({
+     *   where: {
+     *     // ... the filter for the SpotImages we want to count
+     *   }
+     * })
+    **/
+    count<T extends SpotImageCountArgs>(
+      args?: Subset<T, SpotImageCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SpotImageCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SpotImage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SpotImageAggregateArgs>(args: Subset<T, SpotImageAggregateArgs>): Prisma.PrismaPromise<GetSpotImageAggregateType<T>>
+
+    /**
+     * Group by SpotImage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SpotImageGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     *
+    **/
+    groupBy<
+      T extends SpotImageGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SpotImageGroupByArgs['orderBy'] }
+        : { orderBy?: SpotImageGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SpotImageGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSpotImageGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SpotImage model
+   */
+  readonly fields: SpotImageFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SpotImage.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SpotImageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    spot<T extends SpotDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SpotDefaultArgs<ExtArgs>>): Prisma__SpotClient<$Result.GetResult<Prisma.$SpotPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SpotImage model
+   */
+  interface SpotImageFieldRefs {
+    readonly id: FieldRef<"SpotImage", 'String'>
+    readonly spotId: FieldRef<"SpotImage", 'String'>
+    readonly photoUrl: FieldRef<"SpotImage", 'String'>
+    readonly photoKey: FieldRef<"SpotImage", 'String'>
+    readonly order: FieldRef<"SpotImage", 'Int'>
+  }
+
+
+  // Custom InputTypes
+  /**
+   * SpotImage findUnique
+   */
+  export type SpotImageFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter, which SpotImage to fetch.
+     */
+    where: SpotImageWhereUniqueInput
+  }
+
+  /**
+   * SpotImage findUniqueOrThrow
+   */
+  export type SpotImageFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter, which SpotImage to fetch.
+     */
+    where: SpotImageWhereUniqueInput
+  }
+
+  /**
+   * SpotImage findFirst
+   */
+  export type SpotImageFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter, which SpotImage to fetch.
+     */
+    where?: SpotImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     *
+     * Determine the order of SpotImages to fetch.
+     */
+    orderBy?: SpotImageOrderByWithRelationInput | SpotImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     *
+     * Sets the position for searching for SpotImages.
+     */
+    cursor?: SpotImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Take `±n` SpotImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Skip the first `n` SpotImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     *
+     * Filter by unique combinations of SpotImages.
+     */
+    distinct?: SpotImageScalarFieldEnum | SpotImageScalarFieldEnum[]
+  }
+
+  /**
+   * SpotImage findFirstOrThrow
+   */
+  export type SpotImageFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter, which SpotImage to fetch.
+     */
+    where?: SpotImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     *
+     * Determine the order of SpotImages to fetch.
+     */
+    orderBy?: SpotImageOrderByWithRelationInput | SpotImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     *
+     * Sets the position for searching for SpotImages.
+     */
+    cursor?: SpotImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Take `±n` SpotImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Skip the first `n` SpotImages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     *
+     * Filter by unique combinations of SpotImages.
+     */
+    distinct?: SpotImageScalarFieldEnum | SpotImageScalarFieldEnum[]
+  }
+
+  /**
+   * SpotImage findMany
+   */
+  export type SpotImageFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter, which SpotImages to fetch.
+     */
+    where?: SpotImageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     *
+     * Determine the order of SpotImages to fetch.
+     */
+    orderBy?: SpotImageOrderByWithRelationInput | SpotImageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     *
+     * Sets the position for listing SpotImages.
+     */
+    cursor?: SpotImageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Take `±n` SpotImages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     *
+     * Skip the first `n` SpotImages.
+     */
+    skip?: number
+    distinct?: SpotImageScalarFieldEnum | SpotImageScalarFieldEnum[]
+  }
+
+  /**
+   * SpotImage create
+   */
+  export type SpotImageCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * The data needed to create a SpotImage.
+     */
+    data: XOR<SpotImageCreateInput, SpotImageUncheckedCreateInput>
+  }
+
+  /**
+   * SpotImage createMany
+   */
+  export type SpotImageCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SpotImages.
+     */
+    data: SpotImageCreateManyInput | SpotImageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SpotImage createManyAndReturn
+   */
+  export type SpotImageCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * The data used to create many SpotImages.
+     */
+    data: SpotImageCreateManyInput | SpotImageCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SpotImage update
+   */
+  export type SpotImageUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * The data needed to update a SpotImage.
+     */
+    data: XOR<SpotImageUpdateInput, SpotImageUncheckedUpdateInput>
+    /**
+     * Choose, which SpotImage to update.
+     */
+    where: SpotImageWhereUniqueInput
+  }
+
+  /**
+   * SpotImage updateMany
+   */
+  export type SpotImageUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SpotImages.
+     */
+    data: XOR<SpotImageUpdateManyMutationInput, SpotImageUncheckedUpdateManyInput>
+    /**
+     * Filter which SpotImages to update
+     */
+    where?: SpotImageWhereInput
+    /**
+     * Limit how many SpotImages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SpotImage updateManyAndReturn
+   */
+  export type SpotImageUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * The data used to update SpotImages.
+     */
+    data: XOR<SpotImageUpdateManyMutationInput, SpotImageUncheckedUpdateManyInput>
+    /**
+     * Filter which SpotImages to update
+     */
+    where?: SpotImageWhereInput
+    /**
+     * Limit how many SpotImages to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SpotImage upsert
+   */
+  export type SpotImageUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * The filter to search for the SpotImage to update in case it exists.
+     */
+    where: SpotImageWhereUniqueInput
+    /**
+     * In case the SpotImage found by the `where` argument doesn't exist, create a new SpotImage with this data.
+     */
+    create: XOR<SpotImageCreateInput, SpotImageUncheckedCreateInput>
+    /**
+     * In case the SpotImage was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SpotImageUpdateInput, SpotImageUncheckedUpdateInput>
+  }
+
+  /**
+   * SpotImage delete
+   */
+  export type SpotImageDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
+    /**
+     * Filter which SpotImage to delete.
+     */
+    where: SpotImageWhereUniqueInput
+  }
+
+  /**
+   * SpotImage deleteMany
+   */
+  export type SpotImageDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SpotImages to delete
+     */
+    where?: SpotImageWhereInput
+    /**
+     * Limit how many SpotImages to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * SpotImage without action
+   */
+  export type SpotImageDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SpotImage
+     */
+    select?: SpotImageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SpotImage
+     */
+    omit?: SpotImageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SpotImageInclude<ExtArgs> | null
   }
 
 
@@ -6106,43 +7390,43 @@ export namespace Prisma {
     where?: SpotPhotoWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of SpotPhotos to fetch.
      */
     orderBy?: SpotPhotoOrderByWithRelationInput | SpotPhotoOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the start position
      */
     cursor?: SpotPhotoWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` SpotPhotos from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` SpotPhotos.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Count returned SpotPhotos
     **/
     _count?: true | SpotPhotoCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the minimum value
     **/
     _min?: SpotPhotoMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
+     *
      * Select which fields to find the maximum value
     **/
     _max?: SpotPhotoMaxAggregateInputType
@@ -6351,13 +7635,13 @@ export namespace Prisma {
      * @example
      * // Get all SpotPhotos
      * const spotPhotos = await prisma.spotPhoto.findMany()
-     * 
+     *
      * // Get first 10 SpotPhotos
      * const spotPhotos = await prisma.spotPhoto.findMany({ take: 10 })
-     * 
+     *
      * // Only select the `id`
      * const spotPhotoWithIdOnly = await prisma.spotPhoto.findMany({ select: { id: true } })
-     * 
+     *
      */
     findMany<T extends SpotPhotoFindManyArgs>(args?: SelectSubset<T, SpotPhotoFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
@@ -6371,7 +7655,7 @@ export namespace Prisma {
      *     // ... data to create a SpotPhoto
      *   }
      * })
-     * 
+     *
      */
     create<T extends SpotPhotoCreateArgs>(args: SelectSubset<T, SpotPhotoCreateArgs<ExtArgs>>): Prisma__SpotPhotoClient<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -6385,7 +7669,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     *     
+     *
      */
     createMany<T extends SpotPhotoCreateManyArgs>(args?: SelectSubset<T, SpotPhotoCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -6399,7 +7683,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Create many SpotPhotos and only return the `id`
      * const spotPhotoWithIdOnly = await prisma.spotPhoto.createManyAndReturn({
      *   select: { id: true },
@@ -6409,7 +7693,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     createManyAndReturn<T extends SpotPhotoCreateManyAndReturnArgs>(args?: SelectSubset<T, SpotPhotoCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
@@ -6423,7 +7707,7 @@ export namespace Prisma {
      *     // ... filter to delete one SpotPhoto
      *   }
      * })
-     * 
+     *
      */
     delete<T extends SpotPhotoDeleteArgs>(args: SelectSubset<T, SpotPhotoDeleteArgs<ExtArgs>>): Prisma__SpotPhotoClient<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -6440,7 +7724,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     update<T extends SpotPhotoUpdateArgs>(args: SelectSubset<T, SpotPhotoUpdateArgs<ExtArgs>>): Prisma__SpotPhotoClient<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
@@ -6454,7 +7738,7 @@ export namespace Prisma {
      *     // ... provide filter here
      *   }
      * })
-     * 
+     *
      */
     deleteMany<T extends SpotPhotoDeleteManyArgs>(args?: SelectSubset<T, SpotPhotoDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -6473,7 +7757,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   }
      * })
-     * 
+     *
      */
     updateMany<T extends SpotPhotoUpdateManyArgs>(args: SelectSubset<T, SpotPhotoUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
@@ -6490,7 +7774,7 @@ export namespace Prisma {
      *     // ... provide data here
      *   ]
      * })
-     * 
+     *
      * // Update zero or more SpotPhotos and only return the `id`
      * const spotPhotoWithIdOnly = await prisma.spotPhoto.updateManyAndReturn({
      *   select: { id: true },
@@ -6503,7 +7787,7 @@ export namespace Prisma {
      * })
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * 
+     *
      */
     updateManyAndReturn<T extends SpotPhotoUpdateManyAndReturnArgs>(args: SelectSubset<T, SpotPhotoUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SpotPhotoPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
@@ -6592,7 +7876,7 @@ export namespace Prisma {
      *     _all: true
      *   },
      * })
-     * 
+     *
     **/
     groupBy<
       T extends SpotPhotoGroupByArgs,
@@ -6705,7 +7989,7 @@ export namespace Prisma {
     readonly caption: FieldRef<"SpotPhoto", 'String'>
     readonly createdAt: FieldRef<"SpotPhoto", 'DateTime'>
   }
-    
+
 
   // Custom InputTypes
   /**
@@ -6774,31 +8058,31 @@ export namespace Prisma {
     where?: SpotPhotoWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of SpotPhotos to fetch.
      */
     orderBy?: SpotPhotoOrderByWithRelationInput | SpotPhotoOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for SpotPhotos.
      */
     cursor?: SpotPhotoWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` SpotPhotos from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` SpotPhotos.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of SpotPhotos.
      */
     distinct?: SpotPhotoScalarFieldEnum | SpotPhotoScalarFieldEnum[]
@@ -6826,31 +8110,31 @@ export namespace Prisma {
     where?: SpotPhotoWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of SpotPhotos to fetch.
      */
     orderBy?: SpotPhotoOrderByWithRelationInput | SpotPhotoOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for searching for SpotPhotos.
      */
     cursor?: SpotPhotoWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` SpotPhotos from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` SpotPhotos.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
+     *
      * Filter by unique combinations of SpotPhotos.
      */
     distinct?: SpotPhotoScalarFieldEnum | SpotPhotoScalarFieldEnum[]
@@ -6878,25 +8162,25 @@ export namespace Prisma {
     where?: SpotPhotoWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
+     *
      * Determine the order of SpotPhotos to fetch.
      */
     orderBy?: SpotPhotoOrderByWithRelationInput | SpotPhotoOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
+     *
      * Sets the position for listing SpotPhotos.
      */
     cursor?: SpotPhotoWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Take `±n` SpotPhotos from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
+     *
      * Skip the first `n` SpotPhotos.
      */
     skip?: number
@@ -7154,6 +8438,7 @@ export namespace Prisma {
     id: 'id',
     followerId: 'followerId',
     followingId: 'followingId',
+    status: 'status',
     createdAt: 'createdAt'
   };
 
@@ -7185,6 +8470,8 @@ export namespace Prisma {
     description: 'description',
     isFree: 'isFree',
     priceInfo: 'priceInfo',
+    visibility: 'visibility',
+    customComposition: 'customComposition',
     colors: 'colors',
     compositions: 'compositions',
     tags: 'tags',
@@ -7193,6 +8480,17 @@ export namespace Prisma {
   };
 
   export type SpotScalarFieldEnum = (typeof SpotScalarFieldEnum)[keyof typeof SpotScalarFieldEnum]
+
+
+  export const SpotImageScalarFieldEnum: {
+    id: 'id',
+    spotId: 'spotId',
+    photoUrl: 'photoUrl',
+    photoKey: 'photoKey',
+    order: 'order'
+  };
+
+  export type SpotImageScalarFieldEnum = (typeof SpotImageScalarFieldEnum)[keyof typeof SpotImageScalarFieldEnum]
 
 
   export const SpotPhotoScalarFieldEnum: {
@@ -7241,91 +8539,119 @@ export namespace Prisma {
    * Reference to a field of type 'String'
    */
   export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>
-    
+
 
 
   /**
    * Reference to a field of type 'String[]'
    */
   export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
-    
+
 
 
   /**
    * Reference to a field of type 'AuthProvider'
    */
   export type EnumAuthProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AuthProvider'>
-    
+
 
 
   /**
    * Reference to a field of type 'AuthProvider[]'
    */
   export type ListEnumAuthProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AuthProvider[]'>
-    
+
 
 
   /**
    * Reference to a field of type 'DateTime'
    */
   export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
-    
+
 
 
   /**
    * Reference to a field of type 'DateTime[]'
    */
   export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
-    
+
+
+
+  /**
+   * Reference to a field of type 'FollowStatus'
+   */
+  export type EnumFollowStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FollowStatus'>
+
+
+
+  /**
+   * Reference to a field of type 'FollowStatus[]'
+   */
+  export type ListEnumFollowStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FollowStatus[]'>
+
 
 
   /**
    * Reference to a field of type 'Float'
    */
   export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
+
 
 
   /**
    * Reference to a field of type 'Float[]'
    */
   export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
-    
+
 
 
   /**
    * Reference to a field of type 'Boolean'
    */
   export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
-    
+
+
+
+  /**
+   * Reference to a field of type 'SpotVisibility'
+   */
+  export type EnumSpotVisibilityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SpotVisibility'>
+
+
+
+  /**
+   * Reference to a field of type 'SpotVisibility[]'
+   */
+  export type ListEnumSpotVisibilityFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SpotVisibility[]'>
+
 
 
   /**
    * Reference to a field of type 'CompositionType[]'
    */
   export type ListEnumCompositionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CompositionType[]'>
-    
+
 
 
   /**
    * Reference to a field of type 'CompositionType'
    */
   export type EnumCompositionTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CompositionType'>
-    
+
 
 
   /**
    * Reference to a field of type 'Int'
    */
   export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
+
 
 
   /**
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
-    
+
   /**
    * Deep Input Types
    */
@@ -7440,6 +8766,7 @@ export namespace Prisma {
     id?: StringFilter<"Follow"> | string
     followerId?: StringFilter<"Follow"> | string
     followingId?: StringFilter<"Follow"> | string
+    status?: EnumFollowStatusFilter<"Follow"> | $Enums.FollowStatus
     createdAt?: DateTimeFilter<"Follow"> | Date | string
     follower?: XOR<UserScalarRelationFilter, UserWhereInput>
     following?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -7449,6 +8776,7 @@ export namespace Prisma {
     id?: SortOrder
     followerId?: SortOrder
     followingId?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     follower?: UserOrderByWithRelationInput
     following?: UserOrderByWithRelationInput
@@ -7462,6 +8790,7 @@ export namespace Prisma {
     NOT?: FollowWhereInput | FollowWhereInput[]
     followerId?: StringFilter<"Follow"> | string
     followingId?: StringFilter<"Follow"> | string
+    status?: EnumFollowStatusFilter<"Follow"> | $Enums.FollowStatus
     createdAt?: DateTimeFilter<"Follow"> | Date | string
     follower?: XOR<UserScalarRelationFilter, UserWhereInput>
     following?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -7471,6 +8800,7 @@ export namespace Prisma {
     id?: SortOrder
     followerId?: SortOrder
     followingId?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     _count?: FollowCountOrderByAggregateInput
     _max?: FollowMaxOrderByAggregateInput
@@ -7484,6 +8814,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Follow"> | string
     followerId?: StringWithAggregatesFilter<"Follow"> | string
     followingId?: StringWithAggregatesFilter<"Follow"> | string
+    status?: EnumFollowStatusWithAggregatesFilter<"Follow"> | $Enums.FollowStatus
     createdAt?: DateTimeWithAggregatesFilter<"Follow"> | Date | string
   }
 
@@ -7559,6 +8890,8 @@ export namespace Prisma {
     description?: StringNullableFilter<"Spot"> | string | null
     isFree?: BoolFilter<"Spot"> | boolean
     priceInfo?: StringNullableFilter<"Spot"> | string | null
+    visibility?: EnumSpotVisibilityFilter<"Spot"> | $Enums.SpotVisibility
+    customComposition?: StringNullableFilter<"Spot"> | string | null
     colors?: StringNullableListFilter<"Spot">
     compositions?: EnumCompositionTypeNullableListFilter<"Spot">
     tags?: StringNullableListFilter<"Spot">
@@ -7566,6 +8899,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Spot"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     spotPhotos?: SpotPhotoListRelationFilter
+    images?: SpotImageListRelationFilter
   }
 
   export type SpotOrderByWithRelationInput = {
@@ -7582,6 +8916,8 @@ export namespace Prisma {
     description?: SortOrderInput | SortOrder
     isFree?: SortOrder
     priceInfo?: SortOrderInput | SortOrder
+    visibility?: SortOrder
+    customComposition?: SortOrderInput | SortOrder
     colors?: SortOrder
     compositions?: SortOrder
     tags?: SortOrder
@@ -7589,6 +8925,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
     spotPhotos?: SpotPhotoOrderByRelationAggregateInput
+    images?: SpotImageOrderByRelationAggregateInput
   }
 
   export type SpotWhereUniqueInput = Prisma.AtLeast<{
@@ -7608,6 +8945,8 @@ export namespace Prisma {
     description?: StringNullableFilter<"Spot"> | string | null
     isFree?: BoolFilter<"Spot"> | boolean
     priceInfo?: StringNullableFilter<"Spot"> | string | null
+    visibility?: EnumSpotVisibilityFilter<"Spot"> | $Enums.SpotVisibility
+    customComposition?: StringNullableFilter<"Spot"> | string | null
     colors?: StringNullableListFilter<"Spot">
     compositions?: EnumCompositionTypeNullableListFilter<"Spot">
     tags?: StringNullableListFilter<"Spot">
@@ -7615,6 +8954,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Spot"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     spotPhotos?: SpotPhotoListRelationFilter
+    images?: SpotImageListRelationFilter
   }, "id">
 
   export type SpotOrderByWithAggregationInput = {
@@ -7631,6 +8971,8 @@ export namespace Prisma {
     description?: SortOrderInput | SortOrder
     isFree?: SortOrder
     priceInfo?: SortOrderInput | SortOrder
+    visibility?: SortOrder
+    customComposition?: SortOrderInput | SortOrder
     colors?: SortOrder
     compositions?: SortOrder
     tags?: SortOrder
@@ -7660,11 +9002,70 @@ export namespace Prisma {
     description?: StringNullableWithAggregatesFilter<"Spot"> | string | null
     isFree?: BoolWithAggregatesFilter<"Spot"> | boolean
     priceInfo?: StringNullableWithAggregatesFilter<"Spot"> | string | null
+    visibility?: EnumSpotVisibilityWithAggregatesFilter<"Spot"> | $Enums.SpotVisibility
+    customComposition?: StringNullableWithAggregatesFilter<"Spot"> | string | null
     colors?: StringNullableListFilter<"Spot">
     compositions?: EnumCompositionTypeNullableListFilter<"Spot">
     tags?: StringNullableListFilter<"Spot">
     createdAt?: DateTimeWithAggregatesFilter<"Spot"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Spot"> | Date | string
+  }
+
+  export type SpotImageWhereInput = {
+    AND?: SpotImageWhereInput | SpotImageWhereInput[]
+    OR?: SpotImageWhereInput[]
+    NOT?: SpotImageWhereInput | SpotImageWhereInput[]
+    id?: StringFilter<"SpotImage"> | string
+    spotId?: StringFilter<"SpotImage"> | string
+    photoUrl?: StringFilter<"SpotImage"> | string
+    photoKey?: StringFilter<"SpotImage"> | string
+    order?: IntFilter<"SpotImage"> | number
+    spot?: XOR<SpotScalarRelationFilter, SpotWhereInput>
+  }
+
+  export type SpotImageOrderByWithRelationInput = {
+    id?: SortOrder
+    spotId?: SortOrder
+    photoUrl?: SortOrder
+    photoKey?: SortOrder
+    order?: SortOrder
+    spot?: SpotOrderByWithRelationInput
+  }
+
+  export type SpotImageWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: SpotImageWhereInput | SpotImageWhereInput[]
+    OR?: SpotImageWhereInput[]
+    NOT?: SpotImageWhereInput | SpotImageWhereInput[]
+    spotId?: StringFilter<"SpotImage"> | string
+    photoUrl?: StringFilter<"SpotImage"> | string
+    photoKey?: StringFilter<"SpotImage"> | string
+    order?: IntFilter<"SpotImage"> | number
+    spot?: XOR<SpotScalarRelationFilter, SpotWhereInput>
+  }, "id">
+
+  export type SpotImageOrderByWithAggregationInput = {
+    id?: SortOrder
+    spotId?: SortOrder
+    photoUrl?: SortOrder
+    photoKey?: SortOrder
+    order?: SortOrder
+    _count?: SpotImageCountOrderByAggregateInput
+    _avg?: SpotImageAvgOrderByAggregateInput
+    _max?: SpotImageMaxOrderByAggregateInput
+    _min?: SpotImageMinOrderByAggregateInput
+    _sum?: SpotImageSumOrderByAggregateInput
+  }
+
+  export type SpotImageScalarWhereWithAggregatesInput = {
+    AND?: SpotImageScalarWhereWithAggregatesInput | SpotImageScalarWhereWithAggregatesInput[]
+    OR?: SpotImageScalarWhereWithAggregatesInput[]
+    NOT?: SpotImageScalarWhereWithAggregatesInput | SpotImageScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"SpotImage"> | string
+    spotId?: StringWithAggregatesFilter<"SpotImage"> | string
+    photoUrl?: StringWithAggregatesFilter<"SpotImage"> | string
+    photoKey?: StringWithAggregatesFilter<"SpotImage"> | string
+    order?: IntWithAggregatesFilter<"SpotImage"> | number
   }
 
   export type SpotPhotoWhereInput = {
@@ -7862,6 +9263,7 @@ export namespace Prisma {
 
   export type FollowCreateInput = {
     id?: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
     follower: UserCreateNestedOneWithoutFollowingInput
     following: UserCreateNestedOneWithoutFollowersInput
@@ -7871,11 +9273,13 @@ export namespace Prisma {
     id?: string
     followerId: string
     followingId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
   export type FollowUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     follower?: UserUpdateOneRequiredWithoutFollowingNestedInput
     following?: UserUpdateOneRequiredWithoutFollowersNestedInput
@@ -7885,6 +9289,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     followerId?: StringFieldUpdateOperationsInput | string
     followingId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7892,11 +9297,13 @@ export namespace Prisma {
     id?: string
     followerId: string
     followingId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
   export type FollowUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7904,6 +9311,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     followerId?: StringFieldUpdateOperationsInput | string
     followingId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7975,6 +9383,8 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
@@ -7982,6 +9392,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutSpotsInput
     spotPhotos?: SpotPhotoCreateNestedManyWithoutSpotInput
+    images?: SpotImageCreateNestedManyWithoutSpotInput
   }
 
   export type SpotUncheckedCreateInput = {
@@ -7998,12 +9409,15 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
     createdAt?: Date | string
     updatedAt?: Date | string
     spotPhotos?: SpotPhotoUncheckedCreateNestedManyWithoutSpotInput
+    images?: SpotImageUncheckedCreateNestedManyWithoutSpotInput
   }
 
   export type SpotUpdateInput = {
@@ -8019,6 +9433,8 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
@@ -8026,6 +9442,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutSpotsNestedInput
     spotPhotos?: SpotPhotoUpdateManyWithoutSpotNestedInput
+    images?: SpotImageUpdateManyWithoutSpotNestedInput
   }
 
   export type SpotUncheckedUpdateInput = {
@@ -8042,12 +9459,15 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spotPhotos?: SpotPhotoUncheckedUpdateManyWithoutSpotNestedInput
+    images?: SpotImageUncheckedUpdateManyWithoutSpotNestedInput
   }
 
   export type SpotCreateManyInput = {
@@ -8064,6 +9484,8 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
@@ -8084,6 +9506,8 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
@@ -8105,11 +9529,68 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SpotImageCreateInput = {
+    id?: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+    spot: SpotCreateNestedOneWithoutImagesInput
+  }
+
+  export type SpotImageUncheckedCreateInput = {
+    id?: string
+    spotId: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+  }
+
+  export type SpotImageUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    spot?: SpotUpdateOneRequiredWithoutImagesNestedInput
+  }
+
+  export type SpotImageUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    spotId?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type SpotImageCreateManyInput = {
+    id?: string
+    spotId: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+  }
+
+  export type SpotImageUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type SpotImageUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    spotId?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
   }
 
   export type SpotPhotoCreateInput = {
@@ -8378,6 +9859,13 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type EnumFollowStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.FollowStatus | EnumFollowStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumFollowStatusFilter<$PrismaModel> | $Enums.FollowStatus
+  }
+
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
@@ -8392,6 +9880,7 @@ export namespace Prisma {
     id?: SortOrder
     followerId?: SortOrder
     followingId?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -8399,6 +9888,7 @@ export namespace Prisma {
     id?: SortOrder
     followerId?: SortOrder
     followingId?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -8406,7 +9896,18 @@ export namespace Prisma {
     id?: SortOrder
     followerId?: SortOrder
     followingId?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
+  }
+
+  export type EnumFollowStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.FollowStatus | EnumFollowStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumFollowStatusWithAggregatesFilter<$PrismaModel> | $Enums.FollowStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumFollowStatusFilter<$PrismaModel>
+    _max?: NestedEnumFollowStatusFilter<$PrismaModel>
   }
 
   export type PasswordResetTokenCountOrderByAggregateInput = {
@@ -8449,6 +9950,13 @@ export namespace Prisma {
     not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
+  export type EnumSpotVisibilityFilter<$PrismaModel = never> = {
+    equals?: $Enums.SpotVisibility | EnumSpotVisibilityFieldRefInput<$PrismaModel>
+    in?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    not?: NestedEnumSpotVisibilityFilter<$PrismaModel> | $Enums.SpotVisibility
+  }
+
   export type StringNullableListFilter<$PrismaModel = never> = {
     equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null
     has?: string | StringFieldRefInput<$PrismaModel> | null
@@ -8465,6 +9973,16 @@ export namespace Prisma {
     isEmpty?: boolean
   }
 
+  export type SpotImageListRelationFilter = {
+    every?: SpotImageWhereInput
+    some?: SpotImageWhereInput
+    none?: SpotImageWhereInput
+  }
+
+  export type SpotImageOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type SpotCountOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
@@ -8479,6 +9997,8 @@ export namespace Prisma {
     description?: SortOrder
     isFree?: SortOrder
     priceInfo?: SortOrder
+    visibility?: SortOrder
+    customComposition?: SortOrder
     colors?: SortOrder
     compositions?: SortOrder
     tags?: SortOrder
@@ -8505,6 +10025,8 @@ export namespace Prisma {
     description?: SortOrder
     isFree?: SortOrder
     priceInfo?: SortOrder
+    visibility?: SortOrder
+    customComposition?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -8523,6 +10045,8 @@ export namespace Prisma {
     description?: SortOrder
     isFree?: SortOrder
     priceInfo?: SortOrder
+    visibility?: SortOrder
+    customComposition?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -8556,9 +10080,78 @@ export namespace Prisma {
     _max?: NestedBoolFilter<$PrismaModel>
   }
 
+  export type EnumSpotVisibilityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SpotVisibility | EnumSpotVisibilityFieldRefInput<$PrismaModel>
+    in?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    not?: NestedEnumSpotVisibilityWithAggregatesFilter<$PrismaModel> | $Enums.SpotVisibility
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumSpotVisibilityFilter<$PrismaModel>
+    _max?: NestedEnumSpotVisibilityFilter<$PrismaModel>
+  }
+
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type SpotScalarRelationFilter = {
     is?: SpotWhereInput
     isNot?: SpotWhereInput
+  }
+
+  export type SpotImageCountOrderByAggregateInput = {
+    id?: SortOrder
+    spotId?: SortOrder
+    photoUrl?: SortOrder
+    photoKey?: SortOrder
+    order?: SortOrder
+  }
+
+  export type SpotImageAvgOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
+  export type SpotImageMaxOrderByAggregateInput = {
+    id?: SortOrder
+    spotId?: SortOrder
+    photoUrl?: SortOrder
+    photoKey?: SortOrder
+    order?: SortOrder
+  }
+
+  export type SpotImageMinOrderByAggregateInput = {
+    id?: SortOrder
+    spotId?: SortOrder
+    photoUrl?: SortOrder
+    photoKey?: SortOrder
+    order?: SortOrder
+  }
+
+  export type SpotImageSumOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type SpotPhotoCountOrderByAggregateInput = {
@@ -8829,6 +10422,10 @@ export namespace Prisma {
     connect?: UserWhereUniqueInput
   }
 
+  export type EnumFollowStatusFieldUpdateOperationsInput = {
+    set?: $Enums.FollowStatus
+  }
+
   export type UserUpdateOneRequiredWithoutFollowingNestedInput = {
     create?: XOR<UserCreateWithoutFollowingInput, UserUncheckedCreateWithoutFollowingInput>
     connectOrCreate?: UserCreateOrConnectWithoutFollowingInput
@@ -8884,11 +10481,25 @@ export namespace Prisma {
     connect?: SpotPhotoWhereUniqueInput | SpotPhotoWhereUniqueInput[]
   }
 
+  export type SpotImageCreateNestedManyWithoutSpotInput = {
+    create?: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput> | SpotImageCreateWithoutSpotInput[] | SpotImageUncheckedCreateWithoutSpotInput[]
+    connectOrCreate?: SpotImageCreateOrConnectWithoutSpotInput | SpotImageCreateOrConnectWithoutSpotInput[]
+    createMany?: SpotImageCreateManySpotInputEnvelope
+    connect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+  }
+
   export type SpotPhotoUncheckedCreateNestedManyWithoutSpotInput = {
     create?: XOR<SpotPhotoCreateWithoutSpotInput, SpotPhotoUncheckedCreateWithoutSpotInput> | SpotPhotoCreateWithoutSpotInput[] | SpotPhotoUncheckedCreateWithoutSpotInput[]
     connectOrCreate?: SpotPhotoCreateOrConnectWithoutSpotInput | SpotPhotoCreateOrConnectWithoutSpotInput[]
     createMany?: SpotPhotoCreateManySpotInputEnvelope
     connect?: SpotPhotoWhereUniqueInput | SpotPhotoWhereUniqueInput[]
+  }
+
+  export type SpotImageUncheckedCreateNestedManyWithoutSpotInput = {
+    create?: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput> | SpotImageCreateWithoutSpotInput[] | SpotImageUncheckedCreateWithoutSpotInput[]
+    connectOrCreate?: SpotImageCreateOrConnectWithoutSpotInput | SpotImageCreateOrConnectWithoutSpotInput[]
+    createMany?: SpotImageCreateManySpotInputEnvelope
+    connect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
   }
 
   export type FloatFieldUpdateOperationsInput = {
@@ -8901,6 +10512,10 @@ export namespace Prisma {
 
   export type BoolFieldUpdateOperationsInput = {
     set?: boolean
+  }
+
+  export type EnumSpotVisibilityFieldUpdateOperationsInput = {
+    set?: $Enums.SpotVisibility
   }
 
   export type SpotUpdatecolorsInput = {
@@ -8940,6 +10555,20 @@ export namespace Prisma {
     deleteMany?: SpotPhotoScalarWhereInput | SpotPhotoScalarWhereInput[]
   }
 
+  export type SpotImageUpdateManyWithoutSpotNestedInput = {
+    create?: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput> | SpotImageCreateWithoutSpotInput[] | SpotImageUncheckedCreateWithoutSpotInput[]
+    connectOrCreate?: SpotImageCreateOrConnectWithoutSpotInput | SpotImageCreateOrConnectWithoutSpotInput[]
+    upsert?: SpotImageUpsertWithWhereUniqueWithoutSpotInput | SpotImageUpsertWithWhereUniqueWithoutSpotInput[]
+    createMany?: SpotImageCreateManySpotInputEnvelope
+    set?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    disconnect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    delete?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    connect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    update?: SpotImageUpdateWithWhereUniqueWithoutSpotInput | SpotImageUpdateWithWhereUniqueWithoutSpotInput[]
+    updateMany?: SpotImageUpdateManyWithWhereWithoutSpotInput | SpotImageUpdateManyWithWhereWithoutSpotInput[]
+    deleteMany?: SpotImageScalarWhereInput | SpotImageScalarWhereInput[]
+  }
+
   export type SpotPhotoUncheckedUpdateManyWithoutSpotNestedInput = {
     create?: XOR<SpotPhotoCreateWithoutSpotInput, SpotPhotoUncheckedCreateWithoutSpotInput> | SpotPhotoCreateWithoutSpotInput[] | SpotPhotoUncheckedCreateWithoutSpotInput[]
     connectOrCreate?: SpotPhotoCreateOrConnectWithoutSpotInput | SpotPhotoCreateOrConnectWithoutSpotInput[]
@@ -8952,6 +10581,42 @@ export namespace Prisma {
     update?: SpotPhotoUpdateWithWhereUniqueWithoutSpotInput | SpotPhotoUpdateWithWhereUniqueWithoutSpotInput[]
     updateMany?: SpotPhotoUpdateManyWithWhereWithoutSpotInput | SpotPhotoUpdateManyWithWhereWithoutSpotInput[]
     deleteMany?: SpotPhotoScalarWhereInput | SpotPhotoScalarWhereInput[]
+  }
+
+  export type SpotImageUncheckedUpdateManyWithoutSpotNestedInput = {
+    create?: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput> | SpotImageCreateWithoutSpotInput[] | SpotImageUncheckedCreateWithoutSpotInput[]
+    connectOrCreate?: SpotImageCreateOrConnectWithoutSpotInput | SpotImageCreateOrConnectWithoutSpotInput[]
+    upsert?: SpotImageUpsertWithWhereUniqueWithoutSpotInput | SpotImageUpsertWithWhereUniqueWithoutSpotInput[]
+    createMany?: SpotImageCreateManySpotInputEnvelope
+    set?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    disconnect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    delete?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    connect?: SpotImageWhereUniqueInput | SpotImageWhereUniqueInput[]
+    update?: SpotImageUpdateWithWhereUniqueWithoutSpotInput | SpotImageUpdateWithWhereUniqueWithoutSpotInput[]
+    updateMany?: SpotImageUpdateManyWithWhereWithoutSpotInput | SpotImageUpdateManyWithWhereWithoutSpotInput[]
+    deleteMany?: SpotImageScalarWhereInput | SpotImageScalarWhereInput[]
+  }
+
+  export type SpotCreateNestedOneWithoutImagesInput = {
+    create?: XOR<SpotCreateWithoutImagesInput, SpotUncheckedCreateWithoutImagesInput>
+    connectOrCreate?: SpotCreateOrConnectWithoutImagesInput
+    connect?: SpotWhereUniqueInput
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type SpotUpdateOneRequiredWithoutImagesNestedInput = {
+    create?: XOR<SpotCreateWithoutImagesInput, SpotUncheckedCreateWithoutImagesInput>
+    connectOrCreate?: SpotCreateOrConnectWithoutImagesInput
+    upsert?: SpotUpsertWithoutImagesInput
+    connect?: SpotWhereUniqueInput
+    update?: XOR<XOR<SpotUpdateToOneWithWhereWithoutImagesInput, SpotUpdateWithoutImagesInput>, SpotUncheckedUpdateWithoutImagesInput>
   }
 
   export type SpotCreateNestedOneWithoutSpotPhotosInput = {
@@ -9108,6 +10773,23 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type NestedEnumFollowStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.FollowStatus | EnumFollowStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumFollowStatusFilter<$PrismaModel> | $Enums.FollowStatus
+  }
+
+  export type NestedEnumFollowStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.FollowStatus | EnumFollowStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FollowStatus[] | ListEnumFollowStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumFollowStatusWithAggregatesFilter<$PrismaModel> | $Enums.FollowStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumFollowStatusFilter<$PrismaModel>
+    _max?: NestedEnumFollowStatusFilter<$PrismaModel>
+  }
+
   export type NestedFloatFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel>
     in?: number[] | ListFloatFieldRefInput<$PrismaModel>
@@ -9122,6 +10804,13 @@ export namespace Prisma {
   export type NestedBoolFilter<$PrismaModel = never> = {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
+  export type NestedEnumSpotVisibilityFilter<$PrismaModel = never> = {
+    equals?: $Enums.SpotVisibility | EnumSpotVisibilityFieldRefInput<$PrismaModel>
+    in?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    not?: NestedEnumSpotVisibilityFilter<$PrismaModel> | $Enums.SpotVisibility
   }
 
   export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
@@ -9148,6 +10837,32 @@ export namespace Prisma {
     _max?: NestedBoolFilter<$PrismaModel>
   }
 
+  export type NestedEnumSpotVisibilityWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SpotVisibility | EnumSpotVisibilityFieldRefInput<$PrismaModel>
+    in?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SpotVisibility[] | ListEnumSpotVisibilityFieldRefInput<$PrismaModel>
+    not?: NestedEnumSpotVisibilityWithAggregatesFilter<$PrismaModel> | $Enums.SpotVisibility
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumSpotVisibilityFilter<$PrismaModel>
+    _max?: NestedEnumSpotVisibilityFilter<$PrismaModel>
+  }
+
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
   export type SpotCreateWithoutUserInput = {
     id?: string
     latitude: number
@@ -9161,12 +10876,15 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
     createdAt?: Date | string
     updatedAt?: Date | string
     spotPhotos?: SpotPhotoCreateNestedManyWithoutSpotInput
+    images?: SpotImageCreateNestedManyWithoutSpotInput
   }
 
   export type SpotUncheckedCreateWithoutUserInput = {
@@ -9182,12 +10900,15 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
     createdAt?: Date | string
     updatedAt?: Date | string
     spotPhotos?: SpotPhotoUncheckedCreateNestedManyWithoutSpotInput
+    images?: SpotImageUncheckedCreateNestedManyWithoutSpotInput
   }
 
   export type SpotCreateOrConnectWithoutUserInput = {
@@ -9230,6 +10951,7 @@ export namespace Prisma {
 
   export type FollowCreateWithoutFollowingInput = {
     id?: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
     follower: UserCreateNestedOneWithoutFollowingInput
   }
@@ -9237,6 +10959,7 @@ export namespace Prisma {
   export type FollowUncheckedCreateWithoutFollowingInput = {
     id?: string
     followerId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
@@ -9252,6 +10975,7 @@ export namespace Prisma {
 
   export type FollowCreateWithoutFollowerInput = {
     id?: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
     following: UserCreateNestedOneWithoutFollowersInput
   }
@@ -9259,6 +10983,7 @@ export namespace Prisma {
   export type FollowUncheckedCreateWithoutFollowerInput = {
     id?: string
     followingId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
@@ -9329,6 +11054,8 @@ export namespace Prisma {
     description?: StringNullableFilter<"Spot"> | string | null
     isFree?: BoolFilter<"Spot"> | boolean
     priceInfo?: StringNullableFilter<"Spot"> | string | null
+    visibility?: EnumSpotVisibilityFilter<"Spot"> | $Enums.SpotVisibility
+    customComposition?: StringNullableFilter<"Spot"> | string | null
     colors?: StringNullableListFilter<"Spot">
     compositions?: EnumCompositionTypeNullableListFilter<"Spot">
     tags?: StringNullableListFilter<"Spot">
@@ -9388,6 +11115,7 @@ export namespace Prisma {
     id?: StringFilter<"Follow"> | string
     followerId?: StringFilter<"Follow"> | string
     followingId?: StringFilter<"Follow"> | string
+    status?: EnumFollowStatusFilter<"Follow"> | $Enums.FollowStatus
     createdAt?: DateTimeFilter<"Follow"> | Date | string
   }
 
@@ -9781,6 +11509,30 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type SpotImageCreateWithoutSpotInput = {
+    id?: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+  }
+
+  export type SpotImageUncheckedCreateWithoutSpotInput = {
+    id?: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+  }
+
+  export type SpotImageCreateOrConnectWithoutSpotInput = {
+    where: SpotImageWhereUniqueInput
+    create: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput>
+  }
+
+  export type SpotImageCreateManySpotInputEnvelope = {
+    data: SpotImageCreateManySpotInput | SpotImageCreateManySpotInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserUpsertWithoutSpotsInput = {
     update: XOR<UserUpdateWithoutSpotsInput, UserUncheckedUpdateWithoutSpotsInput>
     create: XOR<UserCreateWithoutSpotsInput, UserUncheckedCreateWithoutSpotsInput>
@@ -9846,6 +11598,145 @@ export namespace Prisma {
     data: XOR<SpotPhotoUpdateManyMutationInput, SpotPhotoUncheckedUpdateManyWithoutSpotInput>
   }
 
+  export type SpotImageUpsertWithWhereUniqueWithoutSpotInput = {
+    where: SpotImageWhereUniqueInput
+    update: XOR<SpotImageUpdateWithoutSpotInput, SpotImageUncheckedUpdateWithoutSpotInput>
+    create: XOR<SpotImageCreateWithoutSpotInput, SpotImageUncheckedCreateWithoutSpotInput>
+  }
+
+  export type SpotImageUpdateWithWhereUniqueWithoutSpotInput = {
+    where: SpotImageWhereUniqueInput
+    data: XOR<SpotImageUpdateWithoutSpotInput, SpotImageUncheckedUpdateWithoutSpotInput>
+  }
+
+  export type SpotImageUpdateManyWithWhereWithoutSpotInput = {
+    where: SpotImageScalarWhereInput
+    data: XOR<SpotImageUpdateManyMutationInput, SpotImageUncheckedUpdateManyWithoutSpotInput>
+  }
+
+  export type SpotImageScalarWhereInput = {
+    AND?: SpotImageScalarWhereInput | SpotImageScalarWhereInput[]
+    OR?: SpotImageScalarWhereInput[]
+    NOT?: SpotImageScalarWhereInput | SpotImageScalarWhereInput[]
+    id?: StringFilter<"SpotImage"> | string
+    spotId?: StringFilter<"SpotImage"> | string
+    photoUrl?: StringFilter<"SpotImage"> | string
+    photoKey?: StringFilter<"SpotImage"> | string
+    order?: IntFilter<"SpotImage"> | number
+  }
+
+  export type SpotCreateWithoutImagesInput = {
+    id?: string
+    latitude: number
+    longitude: number
+    address?: string | null
+    city?: string | null
+    country?: string | null
+    photoUrl: string
+    photoKey: string
+    title?: string | null
+    description?: string | null
+    isFree?: boolean
+    priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
+    colors?: SpotCreatecolorsInput | string[]
+    compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
+    tags?: SpotCreatetagsInput | string[]
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutSpotsInput
+    spotPhotos?: SpotPhotoCreateNestedManyWithoutSpotInput
+  }
+
+  export type SpotUncheckedCreateWithoutImagesInput = {
+    id?: string
+    userId: string
+    latitude: number
+    longitude: number
+    address?: string | null
+    city?: string | null
+    country?: string | null
+    photoUrl: string
+    photoKey: string
+    title?: string | null
+    description?: string | null
+    isFree?: boolean
+    priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
+    colors?: SpotCreatecolorsInput | string[]
+    compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
+    tags?: SpotCreatetagsInput | string[]
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    spotPhotos?: SpotPhotoUncheckedCreateNestedManyWithoutSpotInput
+  }
+
+  export type SpotCreateOrConnectWithoutImagesInput = {
+    where: SpotWhereUniqueInput
+    create: XOR<SpotCreateWithoutImagesInput, SpotUncheckedCreateWithoutImagesInput>
+  }
+
+  export type SpotUpsertWithoutImagesInput = {
+    update: XOR<SpotUpdateWithoutImagesInput, SpotUncheckedUpdateWithoutImagesInput>
+    create: XOR<SpotCreateWithoutImagesInput, SpotUncheckedCreateWithoutImagesInput>
+    where?: SpotWhereInput
+  }
+
+  export type SpotUpdateToOneWithWhereWithoutImagesInput = {
+    where?: SpotWhereInput
+    data: XOR<SpotUpdateWithoutImagesInput, SpotUncheckedUpdateWithoutImagesInput>
+  }
+
+  export type SpotUpdateWithoutImagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    latitude?: FloatFieldUpdateOperationsInput | number
+    longitude?: FloatFieldUpdateOperationsInput | number
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    city?: NullableStringFieldUpdateOperationsInput | string | null
+    country?: NullableStringFieldUpdateOperationsInput | string | null
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isFree?: BoolFieldUpdateOperationsInput | boolean
+    priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
+    colors?: SpotUpdatecolorsInput | string[]
+    compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
+    tags?: SpotUpdatetagsInput | string[]
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutSpotsNestedInput
+    spotPhotos?: SpotPhotoUpdateManyWithoutSpotNestedInput
+  }
+
+  export type SpotUncheckedUpdateWithoutImagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    latitude?: FloatFieldUpdateOperationsInput | number
+    longitude?: FloatFieldUpdateOperationsInput | number
+    address?: NullableStringFieldUpdateOperationsInput | string | null
+    city?: NullableStringFieldUpdateOperationsInput | string | null
+    country?: NullableStringFieldUpdateOperationsInput | string | null
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    title?: NullableStringFieldUpdateOperationsInput | string | null
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isFree?: BoolFieldUpdateOperationsInput | boolean
+    priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
+    colors?: SpotUpdatecolorsInput | string[]
+    compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
+    tags?: SpotUpdatetagsInput | string[]
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    spotPhotos?: SpotPhotoUncheckedUpdateManyWithoutSpotNestedInput
+  }
+
   export type SpotCreateWithoutSpotPhotosInput = {
     id?: string
     latitude: number
@@ -9859,12 +11750,15 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
     createdAt?: Date | string
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutSpotsInput
+    images?: SpotImageCreateNestedManyWithoutSpotInput
   }
 
   export type SpotUncheckedCreateWithoutSpotPhotosInput = {
@@ -9881,11 +11775,14 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
     createdAt?: Date | string
     updatedAt?: Date | string
+    images?: SpotImageUncheckedCreateNestedManyWithoutSpotInput
   }
 
   export type SpotCreateOrConnectWithoutSpotPhotosInput = {
@@ -9960,12 +11857,15 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutSpotsNestedInput
+    images?: SpotImageUpdateManyWithoutSpotNestedInput
   }
 
   export type SpotUncheckedUpdateWithoutSpotPhotosInput = {
@@ -9982,11 +11882,14 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    images?: SpotImageUncheckedUpdateManyWithoutSpotNestedInput
   }
 
   export type UserUpsertWithoutSpotPhotosInput = {
@@ -10051,6 +11954,8 @@ export namespace Prisma {
     description?: string | null
     isFree?: boolean
     priceInfo?: string | null
+    visibility?: $Enums.SpotVisibility
+    customComposition?: string | null
     colors?: SpotCreatecolorsInput | string[]
     compositions?: SpotCreatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotCreatetagsInput | string[]
@@ -10070,12 +11975,14 @@ export namespace Prisma {
   export type FollowCreateManyFollowingInput = {
     id?: string
     followerId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
   export type FollowCreateManyFollowerInput = {
     id?: string
     followingId: string
+    status?: $Enums.FollowStatus
     createdAt?: Date | string
   }
 
@@ -10099,12 +12006,15 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spotPhotos?: SpotPhotoUpdateManyWithoutSpotNestedInput
+    images?: SpotImageUpdateManyWithoutSpotNestedInput
   }
 
   export type SpotUncheckedUpdateWithoutUserInput = {
@@ -10120,12 +12030,15 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     spotPhotos?: SpotPhotoUncheckedUpdateManyWithoutSpotNestedInput
+    images?: SpotImageUncheckedUpdateManyWithoutSpotNestedInput
   }
 
   export type SpotUncheckedUpdateManyWithoutUserInput = {
@@ -10141,6 +12054,8 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isFree?: BoolFieldUpdateOperationsInput | boolean
     priceInfo?: NullableStringFieldUpdateOperationsInput | string | null
+    visibility?: EnumSpotVisibilityFieldUpdateOperationsInput | $Enums.SpotVisibility
+    customComposition?: NullableStringFieldUpdateOperationsInput | string | null
     colors?: SpotUpdatecolorsInput | string[]
     compositions?: SpotUpdatecompositionsInput | $Enums.CompositionType[]
     tags?: SpotUpdatetagsInput | string[]
@@ -10177,6 +12092,7 @@ export namespace Prisma {
 
   export type FollowUpdateWithoutFollowingInput = {
     id?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     follower?: UserUpdateOneRequiredWithoutFollowingNestedInput
   }
@@ -10184,17 +12100,20 @@ export namespace Prisma {
   export type FollowUncheckedUpdateWithoutFollowingInput = {
     id?: StringFieldUpdateOperationsInput | string
     followerId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FollowUncheckedUpdateManyWithoutFollowingInput = {
     id?: StringFieldUpdateOperationsInput | string
     followerId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FollowUpdateWithoutFollowerInput = {
     id?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     following?: UserUpdateOneRequiredWithoutFollowersNestedInput
   }
@@ -10202,12 +12121,14 @@ export namespace Prisma {
   export type FollowUncheckedUpdateWithoutFollowerInput = {
     id?: StringFieldUpdateOperationsInput | string
     followingId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FollowUncheckedUpdateManyWithoutFollowerInput = {
     id?: StringFieldUpdateOperationsInput | string
     followingId?: StringFieldUpdateOperationsInput | string
+    status?: EnumFollowStatusFieldUpdateOperationsInput | $Enums.FollowStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -10241,6 +12162,13 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type SpotImageCreateManySpotInput = {
+    id?: string
+    photoUrl: string
+    photoKey: string
+    order?: number
+  }
+
   export type SpotPhotoUpdateWithoutSpotInput = {
     id?: StringFieldUpdateOperationsInput | string
     photoUrl?: StringFieldUpdateOperationsInput | string
@@ -10266,6 +12194,27 @@ export namespace Prisma {
     photoKey?: StringFieldUpdateOperationsInput | string
     caption?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SpotImageUpdateWithoutSpotInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type SpotImageUncheckedUpdateWithoutSpotInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type SpotImageUncheckedUpdateManyWithoutSpotInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    photoUrl?: StringFieldUpdateOperationsInput | string
+    photoKey?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
   }
 
 

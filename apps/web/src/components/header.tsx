@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { apiClient } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
 
 export function Header() {
@@ -13,6 +14,7 @@ export function Header() {
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -24,6 +26,30 @@ export function Header() {
     if (menuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  // Poll pending follow requests count
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let cancelled = false;
+
+    async function fetchCount() {
+      try {
+        const count = await apiClient.followRequests.count();
+        if (!cancelled) setPendingCount(count);
+      } catch {
+        // Silently fail
+      }
+    }
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isAuthenticated]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -109,6 +135,24 @@ export function Header() {
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/search") ? 2 : 1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
+              </Link>
+
+              {/* Notifications bell */}
+              <Link
+                href="/notifications"
+                className={`relative p-2.5 rounded-md transition-colors ${
+                  isActive("/notifications") ? "text-text" : "text-text-secondary hover:text-text"
+                }`}
+                title={t("notifications.title")}
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/notifications") ? 2 : 1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                {pendingCount > 0 ? (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white">
+                    {pendingCount > 9 ? "9+" : pendingCount}
+                  </span>
+                ) : null}
               </Link>
 
               {/* User menu */}
@@ -239,16 +283,21 @@ export function Header() {
               </svg>
             </Link>
 
-            {/* Explore */}
+            {/* Notifications */}
             <Link
-              href="/explore"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive("/explore") ? "text-text" : "text-text-tertiary"
+              href="/notifications"
+              className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                isActive("/notifications") ? "text-text" : "text-text-tertiary"
               }`}
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/explore") ? 2 : 1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/notifications") ? 2 : 1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
               </svg>
+              {pendingCount > 0 ? (
+                <span className="absolute top-1.5 left-1/2 ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              ) : null}
             </Link>
 
             {/* Profile */}

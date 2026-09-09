@@ -30,9 +30,27 @@ export async function GET(
 
     const profile = toUserProfile(user);
 
-    // If the viewer is authenticated, check if they follow this user
+    // Count only accepted followers/following (not pending requests)
+    const [acceptedFollowersCount, acceptedFollowingCount] = await Promise.all([
+      prisma.follow.count({
+        where: { followingId: user.id, status: "ACCEPTED" },
+      }),
+      prisma.follow.count({
+        where: { followerId: user.id, status: "ACCEPTED" },
+      }),
+    ]);
+
+    // Override counts with accepted-only
+    const profileWithCounts = {
+      ...profile,
+      followerCount: acceptedFollowersCount,
+      followingCount: acceptedFollowingCount,
+    };
+
+    // If the viewer is authenticated, check follow status
     const viewer = await getUserFromRequest(request);
     let isFollowing = false;
+    let followStatus: "ACCEPTED" | "PENDING" | null = null;
 
     if (viewer && viewer.userId !== user.id) {
       const follow = await prisma.follow.findUnique({
@@ -42,12 +60,13 @@ export async function GET(
             followingId: user.id,
           },
         },
-        select: { id: true },
+        select: { status: true },
       });
-      isFollowing = !!follow;
+      followStatus = follow ? (follow.status as "ACCEPTED" | "PENDING") : null;
+      isFollowing = follow?.status === "ACCEPTED";
     }
 
-    return successResponse({ ...profile, isFollowing });
+    return successResponse({ ...profileWithCounts, isFollowing, followStatus });
   } catch (error) {
     return handleApiError(error);
   }

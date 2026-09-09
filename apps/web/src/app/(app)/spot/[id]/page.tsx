@@ -5,7 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import type { Spot, SpotPhoto } from "@/lib/api-client";
+import type { Spot, SpotPhoto, SpotImage } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,126 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/use-t";
 
 const MiniMap = dynamic(() => import("@/components/mini-map"), { ssr: false });
+
+// ─── Image Carousel ─────────────────────────────────────────────────
+
+function ImageCarousel({
+  images,
+  fallbackUrl,
+  alt,
+  aspectClass,
+}: {
+  images: SpotImage[];
+  fallbackUrl: string;
+  alt: string;
+  aspectClass?: string;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const hasMultiple = images.length > 1;
+
+  useEffect(() => {
+    if (!hasMultiple) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") {
+        setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+      } else if (e.key === "ArrowRight") {
+        setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+      }
+    }
+
+    const container = containerRef.current;
+    container?.addEventListener("keydown", handleKeyDown);
+    return () => container?.removeEventListener("keydown", handleKeyDown);
+  }, [hasMultiple, images.length]);
+
+  if (images.length === 0) {
+    return (
+      <div className={`${aspectClass ?? "aspect-square sm:aspect-[4/3]"} bg-bg-secondary overflow-hidden`}>
+        <img src={fallbackUrl} alt={alt} className="h-full w-full object-cover" />
+      </div>
+    );
+  }
+
+  if (!hasMultiple) {
+    return (
+      <div className={`${aspectClass ?? "aspect-square sm:aspect-[4/3]"} bg-bg-secondary overflow-hidden`}>
+        <img src={images[0].photoUrl} alt={alt} className="h-full w-full object-cover" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className={`relative ${aspectClass ?? "aspect-square sm:aspect-[4/3]"} bg-bg-secondary overflow-hidden group focus:outline-none`}
+    >
+      <img
+        src={images[currentIndex].photoUrl}
+        alt={alt}
+        className="h-full w-full object-cover transition-opacity duration-200"
+      />
+
+      {/* Left arrow */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+        }}
+        className="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+
+      {/* Right arrow */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+        }}
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-sm bg-bg/60 backdrop-blur-sm text-text hover:bg-bg/80 transition-all opacity-0 group-hover:opacity-100 cursor-pointer border border-border/40"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
+
+      {/* Counter badge */}
+      <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-medium bg-bg/60 backdrop-blur-sm text-text rounded-sm border border-border/40">
+        {currentIndex + 1}/{images.length}
+      </span>
+
+      {/* Dots indicator */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+        {images.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setCurrentIndex(i);
+            }}
+            className={`rounded-full transition-all cursor-pointer ${
+              i === currentIndex
+                ? "h-2 w-2 bg-white"
+                : "h-1.5 w-1.5 bg-white/50 hover:bg-white/80"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SpotDetailPage({
   params,
@@ -159,6 +279,12 @@ export default function SpotDetailPage({
 
   const isOwner = user?.id === spot.userId;
 
+  // Build images array for the carousel
+  const carouselImages: SpotImage[] =
+    spot.images && spot.images.length > 0
+      ? spot.images
+      : [{ id: "cover", photoUrl: spot.photoUrl, photoKey: "", order: 0 }];
+
   return (
     <div className="mx-auto max-w-5xl px-0 sm:px-4 py-0 sm:py-6">
       {/* Instagram-style post layout */}
@@ -207,14 +333,12 @@ export default function SpotDetailPage({
           ) : null}
         </div>
 
-        {/* Photo — full width */}
-        <div className="aspect-square sm:aspect-[4/3] bg-bg-secondary overflow-hidden">
-          <img
-            src={spot.photoUrl}
-            alt={spot.title ?? ""}
-            className="h-full w-full object-cover"
-          />
-        </div>
+        {/* Photo carousel */}
+        <ImageCarousel
+          images={carouselImages}
+          fallbackUrl={spot.photoUrl}
+          alt={spot.title ?? ""}
+        />
 
         {/* Details below photo */}
         <div className="px-4 py-4 space-y-4">
@@ -246,6 +370,11 @@ export default function SpotDetailPage({
                   {t(`compositions.${c}`)}
                 </span>
               ))}
+              {spot.customComposition ? (
+                <span className="inline-block px-2.5 py-1 text-xs bg-bg-secondary text-text-secondary border border-border rounded-sm italic">
+                  {spot.customComposition}
+                </span>
+              ) : null}
             </div>
           ) : null}
 
@@ -277,18 +406,24 @@ export default function SpotDetailPage({
             </div>
           ) : null}
 
-          {/* Access */}
+          {/* Visibility */}
           <div className="flex items-center gap-2 text-sm">
-            <span className={`px-2 py-0.5 rounded-sm text-xs font-medium ${
-              spot.isFree
-                ? "bg-sage/10 text-sage border border-sage/20"
-                : "bg-accent/10 text-accent border border-accent/20"
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-xs font-medium ${
+              spot.visibility === "PRIVATE"
+                ? "bg-accent/10 text-accent border border-accent/20"
+                : "bg-sage/10 text-sage border border-sage/20"
             }`}>
-              {spot.isFree ? t("common.free") : t("common.paid")}
+              {spot.visibility === "PRIVATE" ? (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+              ) : (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                </svg>
+              )}
+              {spot.visibility === "PRIVATE" ? t("spots.visibilityPrivate") : t("spots.visibilityFollowers")}
             </span>
-            {spot.priceInfo ? (
-              <span className="text-text-secondary">{spot.priceInfo}</span>
-            ) : null}
           </div>
         </div>
 

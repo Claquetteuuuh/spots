@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
+import * as SecureStore from "expo-secure-store";
 import { COLORS } from "@trs/shared/constants";
 
 /**
@@ -10,6 +11,12 @@ import { COLORS } from "@trs/shared/constants";
  * and borders instead of shadows. Photos are the visual focus — the
  * chrome around them should stay quiet.
  */
+
+// ─── Theme mode ─────────────────────────────────────────────────────
+
+export type ThemeMode = "system" | "light" | "dark";
+
+const THEME_KEY = "trs.themeMode";
 
 // ─── Color schemes ───────────────────────────────────────────────────
 
@@ -195,14 +202,60 @@ export const darkTheme = buildTheme(true);
 
 // ─── Provider / hook ─────────────────────────────────────────────────
 
-const ThemeContext = createContext<Theme>(lightTheme);
+interface ThemeContextValue {
+  theme: Theme;
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode) => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
+  theme: lightTheme,
+  mode: "system",
+  setMode: () => {},
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const scheme = useColorScheme();
-  const theme = useMemo(() => buildTheme(scheme === "dark"), [scheme]);
-  return React.createElement(ThemeContext.Provider, { value: theme }, children);
+  const systemScheme = useColorScheme();
+  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [loaded, setLoaded] = useState(false);
+
+  // Load persisted preference on mount
+  useEffect(() => {
+    void SecureStore.getItemAsync(THEME_KEY).then((stored) => {
+      if (stored === "light" || stored === "dark" || stored === "system") {
+        setModeState(stored);
+      }
+      setLoaded(true);
+    });
+  }, []);
+
+  const setMode = (next: ThemeMode) => {
+    setModeState(next);
+    void SecureStore.setItemAsync(THEME_KEY, next);
+  };
+
+  const isDark = useMemo(() => {
+    if (mode === "light") return false;
+    if (mode === "dark") return true;
+    return systemScheme === "dark";
+  }, [mode, systemScheme]);
+
+  const theme = useMemo(() => buildTheme(isDark), [isDark]);
+
+  const value = useMemo(() => ({ theme, mode, setMode }), [theme, mode]);
+
+  // Don't render children until we've loaded the stored preference,
+  // otherwise there's a flash of the wrong theme.
+  if (!loaded) return null;
+
+  return React.createElement(ThemeContext.Provider, { value }, children);
 }
 
 export function useTheme(): Theme {
-  return useContext(ThemeContext);
+  return useContext(ThemeContext).theme;
+}
+
+export function useThemeMode(): { mode: ThemeMode; setMode: (mode: ThemeMode) => void } {
+  const { mode, setMode } = useContext(ThemeContext);
+  return { mode, setMode };
 }

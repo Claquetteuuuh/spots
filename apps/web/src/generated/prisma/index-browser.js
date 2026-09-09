@@ -140,6 +140,7 @@ exports.Prisma.FollowScalarFieldEnum = {
   id: 'id',
   followerId: 'followerId',
   followingId: 'followingId',
+  status: 'status',
   createdAt: 'createdAt'
 };
 
@@ -165,11 +166,21 @@ exports.Prisma.SpotScalarFieldEnum = {
   description: 'description',
   isFree: 'isFree',
   priceInfo: 'priceInfo',
+  visibility: 'visibility',
+  customComposition: 'customComposition',
   colors: 'colors',
   compositions: 'compositions',
   tags: 'tags',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SpotImageScalarFieldEnum = {
+  id: 'id',
+  spotId: 'spotId',
+  photoUrl: 'photoUrl',
+  photoKey: 'photoKey',
+  order: 'order'
 };
 
 exports.Prisma.SpotPhotoScalarFieldEnum = {
@@ -201,6 +212,16 @@ exports.AuthProvider = exports.$Enums.AuthProvider = {
   GOOGLE: 'GOOGLE'
 };
 
+exports.FollowStatus = exports.$Enums.FollowStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED'
+};
+
+exports.SpotVisibility = exports.$Enums.SpotVisibility = {
+  PRIVATE: 'PRIVATE',
+  FOLLOWERS: 'FOLLOWERS'
+};
+
 exports.CompositionType = exports.$Enums.CompositionType = {
   SYMMETRY: 'SYMMETRY',
   ASYMMETRY: 'ASYMMETRY',
@@ -211,7 +232,8 @@ exports.CompositionType = exports.$Enums.CompositionType = {
   DIAGONAL: 'DIAGONAL',
   CENTERED: 'CENTERED',
   MINIMALIST: 'MINIMALIST',
-  PATTERN: 'PATTERN'
+  PATTERN: 'PATTERN',
+  OTHER: 'OTHER'
 };
 
 exports.Prisma.ModelName = {
@@ -219,6 +241,7 @@ exports.Prisma.ModelName = {
   Follow: 'Follow',
   PasswordResetToken: 'PasswordResetToken',
   Spot: 'Spot',
+  SpotImage: 'SpotImage',
   SpotPhoto: 'SpotPhoto'
 };
 
