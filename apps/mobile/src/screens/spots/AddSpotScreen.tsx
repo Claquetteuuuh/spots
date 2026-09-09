@@ -22,7 +22,6 @@ import { WebView } from "react-native-webview";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
-import ColorPicker, { Panel1, HueSlider, OpacitySlider, Preview } from "reanimated-color-picker";
 import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
@@ -1667,7 +1666,7 @@ export function AddSpotScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* ── Color Wheel Modal ─────────────────────────────── */}
+      {/* ── Color Wheel Modal (WebView-based) ────────────── */}
       <Modal visible={showColorWheel} animationType="slide" transparent onRequestClose={() => setShowColorWheel(false)}>
         <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
           <View
@@ -1675,12 +1674,12 @@ export function AddSpotScreen() {
               backgroundColor: theme.colors.bg,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
-              paddingHorizontal: theme.spacing.lg,
               paddingTop: theme.spacing.lg,
               paddingBottom: 40,
+              height: 480,
             }}
           >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.lg }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.lg, marginBottom: theme.spacing.sm }}>
               <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.md, fontWeight: theme.typography.weight.semibold }}>
                 {t("spots.pickColor")}
               </Text>
@@ -1689,28 +1688,57 @@ export function AddSpotScreen() {
               </Pressable>
             </View>
 
-            <ColorPicker
-              value={wheelColor}
-              onComplete={(color) => setWheelColor(color.hex)}
-              style={{ gap: theme.spacing.md }}
-            >
-              <Preview hideInitialColor />
-              <Panel1 />
-              <HueSlider />
-              <OpacitySlider />
-            </ColorPicker>
-
-            <Button
-              title={t("spots.addColor")}
-              variant="primary"
-              onPress={() => {
-                const hex = wheelColor.substring(0, 7).toUpperCase();
-                if (!selectedColors.includes(hex) && selectedColors.length < 10) {
+            <WebView
+              originWhitelist={["*"]}
+              source={{
+                html: `<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;padding:16px;background:${theme.colors.bg};color:${theme.colors.text}}
+.wheel{position:relative;width:240px;height:240px;margin:0 auto 16px;border-radius:50%;background:conic-gradient(hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%));cursor:crosshair}
+.wheel::after{content:'';position:absolute;inset:30%;border-radius:50%;background:radial-gradient(circle,#fff 0%,transparent 70%)}
+.sl{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.sl label{font-size:12px;width:80px;color:${theme.colors.textSecondary}}
+.sl input{flex:1;accent-color:${theme.colors.accent}}
+.preview-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.swatch{width:48px;height:48px;border-radius:8px;border:1px solid ${theme.colors.border}}
+.hex{font-family:monospace;font-size:16px;font-weight:600}
+.btn{display:block;width:100%;padding:12px;background:${theme.colors.accent};color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+</style></head><body>
+<div class="wheel" id="wheel"></div>
+<div class="sl"><label>Saturation</label><input type="range" id="sat" min="0" max="100" value="70"></div>
+<div class="sl"><label>Lightness</label><input type="range" id="lit" min="0" max="100" value="50"></div>
+<div class="preview-row"><div class="swatch" id="sw"></div><span class="hex" id="hx">#8B7355</span></div>
+<button class="btn" id="add">${t("spots.addColor")}</button>
+<script>
+let h=30,s=70,l=50;
+function upd(){const c='hsl('+h+','+s+'%,'+l+'%)';document.getElementById('sw').style.background=c;
+const cv=document.createElement('canvas');cv.width=1;cv.height=1;const cx=cv.getContext('2d');
+cx.fillStyle=c;cx.fillRect(0,0,1,1);const p=cx.getImageData(0,0,1,1).data;
+const hex='#'+[p[0],p[1],p[2]].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+document.getElementById('hx').textContent=hex}
+upd();
+document.getElementById('wheel').addEventListener('click',function(e){
+const r=this.getBoundingClientRect();const cx=r.left+r.width/2;const cy=r.top+r.height/2;
+const angle=Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI;
+h=((angle+360)%360)|0;upd()});
+document.getElementById('sat').addEventListener('input',function(){s=+this.value;upd()});
+document.getElementById('lit').addEventListener('input',function(){l=+this.value;upd()});
+document.getElementById('add').addEventListener('click',function(){
+window.ReactNativeWebView.postMessage(document.getElementById('hx').textContent)});
+</script></body></html>`,
+              }}
+              onMessage={(event) => {
+                const hex = event.nativeEvent.data;
+                if (/^#[0-9A-F]{6}$/.test(hex) && !selectedColors.includes(hex) && selectedColors.length < 10) {
                   setSelectedColors((prev) => [...prev, hex]);
                 }
                 setShowColorWheel(false);
               }}
-              style={{ marginTop: theme.spacing.lg }}
+              style={{ flex: 1, backgroundColor: "transparent" }}
+              javaScriptEnabled
+              scrollEnabled={false}
             />
           </View>
         </View>
