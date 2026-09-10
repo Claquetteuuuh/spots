@@ -579,13 +579,15 @@ function AddSpotForm() {
     lCtx.arc(LSIZE / 2, LSIZE / 2, 5, 0, Math.PI * 2);
     lCtx.stroke();
 
+    // Always above the cursor; clamped inside the wrapper near the edges rather
+    // than flipping below, where it would be much harder to read.
     const wrapRect = wrap.getBoundingClientRect();
-    const relX = e.clientX - wrapRect.left;
-    const relY = e.clientY - wrapRect.top;
-    const inTopHalf = relY < wrapRect.height / 2;
+    const half = loupe.offsetWidth / 2;
+    const relX = Math.max(half, Math.min(wrapRect.width - half, e.clientX - wrapRect.left));
+    const relY = Math.max(0, e.clientY - wrapRect.top - loupe.offsetHeight - 20);
     loupe.style.opacity = "1";
     loupe.style.left = `${relX}px`;
-    loupe.style.top = `${relY + (inTopHalf ? 30 : -110)}px`;
+    loupe.style.top = `${relY}px`;
   }
 
   function handleEyedropperClick(e: React.MouseEvent<HTMLCanvasElement>) {

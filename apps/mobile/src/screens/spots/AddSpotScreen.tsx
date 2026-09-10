@@ -1760,11 +1760,14 @@ function toImageCoords(ex,ey){
 }
 
 function showLoupe(ex,ey,ix,iy){
-  var midY=window.innerHeight/2;
-  var offsetY=ey<midY?80:-130;
+  /* Always above the finger (below it, the hand hides it). Near the edges it is
+     clamped inside the viewport instead of flipping, so it never gets cut off. */
+  var vw=window.innerWidth;
+  var left=Math.max(4,Math.min(vw-LSIZE-4,ex-LSIZE/2));
+  var top=Math.max(4,ey-LSIZE-24);
   loupe.style.display='block';
-  loupe.style.left=(ex-LSIZE/2)+'px';
-  loupe.style.top=(ey+offsetY)+'px';
+  loupe.style.left=left+'px';
+  loupe.style.top=top+'px';
   lCtx.clearRect(0,0,LSIZE,LSIZE);
   var srcR=LSIZE/LZOOM*(canvas.width/(baseW*scale));
   lCtx.save();
