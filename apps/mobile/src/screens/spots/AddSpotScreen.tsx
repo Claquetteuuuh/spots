@@ -1613,38 +1613,6 @@ upd();
             <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm, fontWeight: theme.typography.weight.semibold }}>
               {t("spots.pickFromPhoto")}
             </Text>
-
-            {/* Tool toggle: hand (pan) / eyedropper (pick) */}
-            <View style={{ flexDirection: "row", backgroundColor: theme.colors.bgSecondary, borderRadius: 999, padding: 3 }}>
-              {(["pan", "pick"] as const).map((tool) => {
-                const active = eyedropperTool === tool;
-                return (
-                  <Pressable
-                    key={tool}
-                    accessibilityRole="button"
-                    accessibilityLabel={t(tool === "pan" ? "spots.toolPan" : "spots.toolPick")}
-                    accessibilityState={{ selected: active }}
-                    onPress={() => {
-                      setEyedropperTool(tool);
-                      eyedropperWebViewRef.current?.injectJavaScript(`window.setMode('${tool}');true;`);
-                    }}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: active ? theme.colors.accent : "transparent",
-                    }}
-                  >
-                    <Ionicons
-                      name={tool === "pan" ? "hand-left-outline" : "eyedrop-outline"}
-                      size={18}
-                      color={active ? theme.colors.onAccent : theme.colors.textSecondary}
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
-
             <Pressable
               onPress={() => setShowEyedropper(false)}
               hitSlop={16}
@@ -1659,7 +1627,9 @@ upd();
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: theme.spacing.md, gap: 6, marginBottom: theme.spacing.xs }}
+              // ScrollView defaults to flexGrow: 1 — without this it eats the photo's height.
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{ paddingHorizontal: theme.spacing.md, gap: 6 }}
             >
               {photos.map((photo, idx) => (
                 <Pressable
@@ -1684,8 +1654,42 @@ upd();
             </ScrollView>
           ) : null}
 
-          {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.xs, borderRadius: theme.radius.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
+          {/* Tool toggle: hand (pan) / eyedropper (pick) — sits right on top of the photo it controls */}
+          <View style={{ alignItems: "center", paddingTop: theme.spacing.sm, paddingBottom: theme.spacing.xs }}>
+            <View style={{ flexDirection: "row", backgroundColor: theme.colors.bgSecondary, borderRadius: 999, padding: 3 }}>
+              {(["pan", "pick"] as const).map((tool) => {
+                const active = eyedropperTool === tool;
+                return (
+                  <Pressable
+                    key={tool}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(tool === "pan" ? "spots.toolPan" : "spots.toolPick")}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => {
+                      setEyedropperTool(tool);
+                      eyedropperWebViewRef.current?.injectJavaScript(`window.setMode('${tool}');true;`);
+                    }}
+                    style={{
+                      paddingHorizontal: 18,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: active ? theme.colors.accent : "transparent",
+                    }}
+                  >
+                    <Ionicons
+                      name={tool === "pan" ? "hand-left-outline" : "eyedrop-outline"}
+                      size={18}
+                      color={active ? theme.colors.onAccent : theme.colors.textSecondary}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML).
+              Edge to edge, no frame: the photo gets every pixel the header and bottom bar leave. */}
+          <View style={{ flex: 1, backgroundColor: theme.colors.bgSecondary }}>
             {eyedropperDataUri ? (
               <WebView
                 key={eyedropperPhotoIndex}
@@ -1697,8 +1701,10 @@ upd();
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden;touch-action:none}
 body{position:relative}
-#viewport{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
-canvas{display:block;transform-origin:0 0}
+/* The canvas is placed purely by its transform (see centerCanvas). Flex-centering
+   it as well would shift it by (vw-w)/2 a second time and skew the sampling. */
+#viewport{position:relative;width:100%;height:100%;overflow:hidden}
+#c{position:absolute;left:0;top:0;display:block;transform-origin:0 0}
 #loupe{position:fixed;width:110px;height:110px;border-radius:50%;border:3px solid #fff;
   box-shadow:0 2px 16px rgba(0,0,0,0.45);overflow:hidden;pointer-events:none;
   display:none;z-index:10}
