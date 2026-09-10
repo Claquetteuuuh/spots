@@ -1654,7 +1654,7 @@ upd();
           ) : null}
 
           {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, borderRadius: theme.radius.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
             {eyedropperDataUri ? (
               <WebView
                 key={eyedropperPhotoIndex}
@@ -1664,12 +1664,12 @@ upd();
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden;touch-action:none}
+html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:visible;touch-action:none}
 body{display:flex;align-items:center;justify-content:center;position:relative}
 canvas{max-width:100%;max-height:100%;display:block}
 #loupe{position:fixed;width:100px;height:100px;border-radius:50%;border:3px solid #fff;
   box-shadow:0 2px 12px rgba(0,0,0,0.4);overflow:hidden;pointer-events:none;
-  display:none;z-index:10;transform:translate(-50%,-120px)}
+  display:none;z-index:10}
 #loupe canvas{position:absolute;top:0;left:0}
 #crosshair{position:absolute;top:50%;left:50%;width:12px;height:12px;
   border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);
@@ -1696,10 +1696,12 @@ function sample(ex,ey){
   x=Math.max(0,Math.min(canvas.width-1,x));
   y=Math.max(0,Math.min(canvas.height-1,y));
 
-  /* Draw loupe */
+  /* Position loupe: above finger in bottom half, below in top half */
+  var midY=window.innerHeight/2;
+  var offsetY=ey<midY?80:-120;
   loupe.style.display='block';
-  loupe.style.left=ex+'px';
-  loupe.style.top=ey+'px';
+  loupe.style.left=(ex-50)+'px';
+  loupe.style.top=(ey+offsetY)+'px';
   lCtx.clearRect(0,0,LSIZE,LSIZE);
   var srcSize=LSIZE/ZOOM*(canvas.width/rect.width);
   lCtx.save();

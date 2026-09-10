@@ -507,9 +507,12 @@ function AddSpotForm() {
     lCtx.arc(LSIZE / 2, LSIZE / 2, 5, 0, Math.PI * 2);
     lCtx.stroke();
 
+    const relX = e.clientX - rect.left;
+    const relY = e.clientY - rect.top;
+    const inTopHalf = relY < rect.height / 2;
     loupe.style.opacity = "1";
-    loupe.style.left = `${e.clientX - rect.left}px`;
-    loupe.style.top = `${e.clientY - rect.top - 60}px`;
+    loupe.style.left = `${relX}px`;
+    loupe.style.top = `${relY + (inTopHalf ? 30 : -110)}px`;
   }
 
   function handleEyedropperClick(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -1244,7 +1247,7 @@ function AddSpotForm() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="relative">
+                  <div className="relative overflow-visible">
                     {!eyedropperReady ? (
                       <div className="absolute inset-0 rounded-lg border border-border bg-bg-secondary animate-pulse" />
                     ) : null}
@@ -1262,7 +1265,7 @@ function AddSpotForm() {
                       width={100}
                       height={100}
                       className="absolute pointer-events-none rounded-full border-[3px] border-white shadow-lg transition-opacity duration-100"
-                      style={{ opacity: 0, transform: "translate(-50%, 0)", width: 80, height: 80 }}
+                      style={{ opacity: 0, transform: "translateX(-50%)", width: 80, height: 80 }}
                     />
                   </div>
 
