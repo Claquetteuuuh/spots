@@ -100,8 +100,10 @@ The defaults work for local dev. The `.env.example` contains:
 | `R2_SECRET_ACCESS_KEY` | R2 secret key | Required for photo uploads |
 | `R2_BUCKET_NAME` | R2 bucket name | `the-right-spot` |
 | `R2_PUBLIC_URL` | Public URL for stored photos | Required for photo display |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Optional |
+| `GOOGLE_CLIENT_ID` | Google OAuth Web client ID | Optional |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth (client-side) | Optional |
+| `GOOGLE_IOS_CLIENT_ID` | Google OAuth iOS client ID — lets the API accept tokens from the mobile app | Optional |
+| `GOOGLE_ANDROID_CLIENT_ID` | Google OAuth Android client ID — same, for Android | Optional |
 | `RESEND_API_KEY` | Resend email API key | Optional |
 | `EMAIL_FROM` | Sender email address | `noreply@therightspot.app` |
 | `NEXT_PUBLIC_APP_URL` | Web app URL | `http://localhost:3000` |
@@ -218,7 +220,29 @@ The mobile app uses [Expo Application Services](https://expo.dev/eas) for buildi
    EXPO_PUBLIC_API_URL=https://therightspot.app/api
    ```
 
-4. **Build for stores**:
+4. **Google sign-in** (optional) — the mobile app uses Google's native flow,
+   which needs its own OAuth clients on top of the Web one the site uses.
+   In the Google Cloud project, create an **iOS** client (bundle ID
+   `com.trs.therightspot`) and an **Android** client (package
+   `com.trs.therightspot` + the SHA-1 from `eas credentials`), then:
+
+   ```bash
+   # apps/mobile/.env — the button only shows when the web ID and the
+   # current platform's ID are both set
+   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...      # same as GOOGLE_CLIENT_ID on the web
+   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...
+   EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=...
+
+   # apps/web/.env — so the API accepts the tokens those clients issue
+   GOOGLE_IOS_CLIENT_ID=...
+   GOOGLE_ANDROID_CLIENT_ID=...
+   ```
+
+   Native Google sign-in does not work in Expo Go (Google rejects its
+   `exp://` redirect) — use a development build: `npx expo run:ios`,
+   `npx expo run:android`, or `eas build --profile development`.
+
+5. **Build for stores**:
 
    ```bash
    # iOS
@@ -228,7 +252,7 @@ The mobile app uses [Expo Application Services](https://expo.dev/eas) for buildi
    eas build --platform android --profile production
    ```
 
-5. **Submit to stores**:
+6. **Submit to stores**:
 
    ```bash
    eas submit --platform ios

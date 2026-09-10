@@ -12,6 +12,24 @@ function getClient(): OAuth2Client {
   return _client;
 }
 
+/**
+ * Every OAuth client that may have minted the ID token we are handed.
+ *
+ * The web app signs in through the Web client, but the mobile app goes
+ * through Google's native flow, and an ID token obtained that way carries
+ * the iOS or Android client ID as its `aud`. Verifying against the Web ID
+ * alone would reject every mobile sign-in with "invalid token".
+ */
+export function getGoogleAudiences(): string[] {
+  const webClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!webClientId) {
+    throw new Error("Missing GOOGLE_CLIENT_ID environment variable");
+  }
+  return [webClientId, process.env.GOOGLE_IOS_CLIENT_ID, process.env.GOOGLE_ANDROID_CLIENT_ID].filter(
+    (id): id is string => Boolean(id),
+  );
+}
+
 export interface GoogleUserInfo {
   sub: string; // Google user ID
   email: string;
@@ -22,15 +40,15 @@ export interface GoogleUserInfo {
 
 /**
  * Verify a Google ID token and return the user info payload.
- * Throws if the token is invalid, expired, or not issued for our app.
+ * Throws if the token is invalid, expired, or not issued for one of our
+ * OAuth clients (web, iOS or Android).
  */
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleUserInfo> {
   const client = getClient();
-  const clientId = process.env.GOOGLE_CLIENT_ID!;
 
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: clientId,
+    audience: getGoogleAudiences(),
   });
 
   const payload = ticket.getPayload();

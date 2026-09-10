@@ -34,6 +34,20 @@ function hasRequiredClientIds(): boolean {
 
 export const isGoogleAuthAvailable = hasRequiredClientIds();
 
+// The sign-in button is simply absent when a client ID is missing, which is
+// easy to mistake for the feature not existing. Say why, once, in dev builds.
+if (__DEV__ && !isGoogleAuthAvailable) {
+  const missing = !WEB_CLIENT_ID
+    ? "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"
+    : Platform.OS === "ios"
+      ? "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID"
+      : "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID";
+  console.warn(
+    `[google-auth] "Continue with Google" is hidden: ${missing} is not set in apps/mobile/.env. ` +
+      "Native Google sign-in also needs a development build — it does not work in Expo Go.",
+  );
+}
+
 /**
  * Build the config object for Google.useAuthRequest.
  *
