@@ -59,6 +59,24 @@ interface PhotoItem {
   preview: string;
 }
 
+interface EyedropperView {
+  zoom: number;
+  x: number;
+  y: number;
+}
+
+/** Keep the scaled photo covering its box: no empty gaps once zoomed in, centred when it fits. */
+function clampView(v: EyedropperView, canvas: HTMLCanvasElement | null, box: HTMLDivElement | null): EyedropperView {
+  if (!canvas || !box) return v;
+  const maxX = Math.max(0, (canvas.offsetWidth * v.zoom - box.clientWidth) / 2);
+  const maxY = Math.max(0, (canvas.offsetHeight * v.zoom - box.clientHeight) / 2);
+  return {
+    zoom: v.zoom,
+    x: Math.max(-maxX, Math.min(maxX, v.x)),
+    y: Math.max(-maxY, Math.min(maxY, v.y)),
+  };
+}
+
 function AddSpotForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,10 +143,34 @@ function AddSpotForm() {
   const [showPhotoEyedropper, setShowPhotoEyedropper] = useState(false);
   const [eyedropperReady, setEyedropperReady] = useState(false);
   const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
-  const [eyedropperZoom, setEyedropperZoom] = useState(1);
+  // "pick" samples colors under the cursor; "pan" drags the (zoomed) photo around.
+  const [eyedropperTool, setEyedropperTool] = useState<"pick" | "pan">("pick");
+  // Zoom and pan live together so a zoom change can re-clamp the pan in one update.
+  const [eyedropperView, setEyedropperView] = useState({ zoom: 1, x: 0, y: 0 });
   const eyedropperCanvasRef = useRef<HTMLCanvasElement>(null);
   const eyedropperLoupeRef = useRef<HTMLCanvasElement>(null);
   const eyedropperWrapRef = useRef<HTMLDivElement>(null);
+  const eyedropperBoxRef = useRef<HTMLDivElement>(null);
+  const eyedropperDragRef = useRef<{ startX: number; startY: number; x0: number; y0: number } | null>(null);
+
+  // React registers `wheel` as passive, so preventDefault (to stop the page
+  // scrolling while zooming the photo) needs a native listener.
+  useEffect(() => {
+    const wrap = eyedropperWrapRef.current;
+    if (!wrap || !showPhotoEyedropper) return;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      setEyedropperView((v) =>
+        clampView(
+          { ...v, zoom: Math.max(1, Math.min(6, v.zoom - e.deltaY * 0.005)) },
+          eyedropperCanvasRef.current,
+          eyedropperBoxRef.current,
+        ),
+      );
+    }
+    wrap.addEventListener("wheel", onWheel, { passive: false });
+    return () => wrap.removeEventListener("wheel", onWheel);
+  }, [showPhotoEyedropper]);
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
   // Submit
@@ -485,7 +527,30 @@ function AddSpotForm() {
     return { x, y, hex: rgbToHex(pixel[0], pixel[1], pixel[2]), rect };
   }
 
+  function clampEyedropperView(v: EyedropperView) {
+    return clampView(v, eyedropperCanvasRef.current, eyedropperBoxRef.current);
+  }
+
+  function handleEyedropperMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (eyedropperTool !== "pan") return;
+    e.preventDefault();
+    eyedropperDragRef.current = { startX: e.clientX, startY: e.clientY, x0: eyedropperView.x, y0: eyedropperView.y };
+  }
+
+  function handleEyedropperMouseUp() {
+    eyedropperDragRef.current = null;
+  }
+
   function handleEyedropperMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const drag = eyedropperDragRef.current;
+    if (drag) {
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      setEyedropperView((v) => clampEyedropperView({ ...v, x: drag.x0 + dx, y: drag.y0 + dy }));
+      return;
+    }
+    if (eyedropperTool !== "pick") return;
+
     const canvas = eyedropperCanvasRef.current;
     const loupe = eyedropperLoupeRef.current;
     const wrap = eyedropperWrapRef.current;
@@ -524,6 +589,7 @@ function AddSpotForm() {
   }
 
   function handleEyedropperClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (eyedropperTool !== "pick") return;
     const canvas = eyedropperCanvasRef.current;
     if (!canvas) return;
     const s = eyedropperSample(canvas, e.clientX, e.clientY);
@@ -531,18 +597,14 @@ function AddSpotForm() {
   }
 
   function handleEyedropperLeave() {
+    eyedropperDragRef.current = null;
     const loupe = eyedropperLoupeRef.current;
     if (loupe) loupe.style.opacity = "0";
   }
 
-  function handleEyedropperWheel(e: React.WheelEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setEyedropperZoom((z) => Math.max(1, Math.min(6, z - e.deltaY * 0.005)));
-  }
-
   function drawPhotoOnCanvas(src: string) {
     setEyedropperReady(false);
-    setEyedropperZoom(1);
+    setEyedropperView({ zoom: 1, x: 0, y: 0 });
     setTimeout(() => {
       const canvas = eyedropperCanvasRef.current;
       if (!canvas) return;
@@ -1228,10 +1290,44 @@ function AddSpotForm() {
               {/* Photo eyedropper overlay */}
               {showPhotoEyedropper ? (
                 <div className="mt-3 rounded-lg border border-accent bg-bg-secondary p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-text-secondary font-medium">
-                      {t("spots.clickPhotoToPickColor")}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-xs text-text-secondary font-medium truncate">
+                      {t(eyedropperTool === "pan" ? "spots.panHint" : "spots.clickPhotoToPickColor")}
                     </p>
+
+                    {/* Tool toggle: hand (pan) / eyedropper (pick) */}
+                    <div className="flex bg-bg rounded-full p-0.5 border border-border shrink-0">
+                      {(["pan", "pick"] as const).map((tool) => {
+                        const active = eyedropperTool === tool;
+                        return (
+                          <button
+                            key={tool}
+                            type="button"
+                            aria-label={t(tool === "pan" ? "spots.toolPan" : "spots.toolPick")}
+                            aria-pressed={active}
+                            onClick={() => {
+                              setEyedropperTool(tool);
+                              eyedropperDragRef.current = null;
+                              handleEyedropperLeave();
+                            }}
+                            className={`px-3 py-1 rounded-full transition-colors cursor-pointer ${
+                              active ? "bg-accent text-on-accent" : "text-text-secondary hover:text-text"
+                            }`}
+                          >
+                            {tool === "pan" ? (
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.05 4.575a1.575 1.575 0 1 0-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 0 1 3.15 0v1.5m-3.15 0 .075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 0 1 3.15 0V15M6.9 7.575a1.575 1.575 0 1 0-3.15 0v8.175a6.75 6.75 0 0 0 6.75 6.75h2.018a5.25 5.25 0 0 0 3.712-1.538l1.732-1.732a5.25 5.25 0 0 0 1.538-3.712l.003-2.024a.668.668 0 0 1 .198-.471 1.575 1.575 0 1 0-2.228-2.228 3.818 3.818 0 0 0-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0 1 16.35 15m.002 0h-.002" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m15 11.25 1.5 1.5.75-.75V8.758l2.276-.61a1.5 1.5 0 1 0-1.06-1.06l-.61 2.276H15l-1.5-1.5-.75.75L14.25 12 7.5 18.75a1.5 1.5 0 0 0 0 2.12l-.19.19a1.5 1.5 0 0 0 2.12 0l6.82-6.81L15 11.25Z" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => setShowPhotoEyedropper(false)}
@@ -1255,26 +1351,35 @@ function AddSpotForm() {
                       ))}
                     </div>
                   ) : null}
-                  <div ref={eyedropperWrapRef} className="relative overflow-visible" onWheel={handleEyedropperWheel}>
+                  <div ref={eyedropperWrapRef} className="relative overflow-visible">
                     {!eyedropperReady ? (
-                      <div className="w-full h-[400px] rounded-lg border border-border bg-bg-secondary animate-pulse" />
+                      <div className="w-full h-[60vh] max-h-[640px] rounded-lg border border-border bg-bg-secondary animate-pulse" />
                     ) : null}
                     <div
-                      className="overflow-hidden rounded-lg border border-border"
-                      style={{ maxHeight: 400, display: eyedropperReady ? undefined : "none" }}
+                      ref={eyedropperBoxRef}
+                      className="h-[60vh] max-h-[640px] flex items-center justify-center overflow-hidden rounded-lg border border-border bg-bg"
+                      style={{ display: eyedropperReady ? undefined : "none" }}
                     >
                       <canvas
                         ref={eyedropperCanvasRef}
+                        onMouseDown={handleEyedropperMouseDown}
+                        onMouseUp={handleEyedropperMouseUp}
                         onMouseMove={handleEyedropperMove}
                         onMouseLeave={handleEyedropperLeave}
                         onClick={handleEyedropperClick}
-                        className="w-full cursor-crosshair"
-                        style={{ imageRendering: "auto", transform: `scale(${eyedropperZoom})`, transformOrigin: "center center" }}
+                        className={`max-w-full max-h-full ${
+                          eyedropperTool === "pan" ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"
+                        }`}
+                        style={{
+                          imageRendering: "auto",
+                          transform: `translate(${eyedropperView.x}px, ${eyedropperView.y}px) scale(${eyedropperView.zoom})`,
+                          transformOrigin: "center center",
+                        }}
                       />
                     </div>
-                    {eyedropperReady && eyedropperZoom > 1 ? (
+                    {eyedropperReady && eyedropperView.zoom > 1 ? (
                       <p className="text-[10px] text-text-tertiary text-center mt-1">
-                        {Math.round(eyedropperZoom * 100)}%
+                        {Math.round(eyedropperView.zoom * 100)}%
                       </p>
                     ) : null}
                     {/* Loupe */}

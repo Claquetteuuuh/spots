@@ -115,6 +115,9 @@ export const fr = {
     pickFromPhoto: "Pipette sur photo",
     clickPhotoToPickColor: "Glissez sur la photo pour récupérer une couleur",
     dragToPickColor: "Glissez votre doigt sur la photo",
+    panHint: "Glissez pour déplacer, pincez pour zoomer",
+    toolPan: "Déplacer",
+    toolPick: "Pipette",
     selectedColors: "Couleurs sélectionnées",
     validation: {
       photosRequired: "Au moins une photo est requise",

@@ -115,6 +115,9 @@ export const en = {
     pickFromPhoto: "Pick from photo",
     clickPhotoToPickColor: "Drag on the photo to pick a color",
     dragToPickColor: "Drag your finger on the photo",
+    panHint: "Drag to move, pinch to zoom",
+    toolPan: "Move",
+    toolPick: "Eyedropper",
     selectedColors: "Selected colors",
     validation: {
       photosRequired: "At least one photo is required",

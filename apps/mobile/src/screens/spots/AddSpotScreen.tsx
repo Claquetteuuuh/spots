@@ -203,6 +203,9 @@ export function AddSpotScreen() {
   const [eyedropperDataUri, setEyedropperDataUri] = useState<string | null>(null);
   const [eyedropperLoading, setEyedropperLoading] = useState(false);
   const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
+  // "pick" samples colors under the finger; "pan" drags the (zoomed) photo around.
+  const [eyedropperTool, setEyedropperTool] = useState<"pick" | "pan">("pick");
+  const eyedropperWebViewRef = useRef<WebView>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1610,9 +1613,38 @@ upd();
             <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm, fontWeight: theme.typography.weight.semibold }}>
               {t("spots.pickFromPhoto")}
             </Text>
-            <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs, flex: 1, textAlign: "center" }}>
-              {t("spots.clickPhotoToPickColor")}
-            </Text>
+
+            {/* Tool toggle: hand (pan) / eyedropper (pick) */}
+            <View style={{ flexDirection: "row", backgroundColor: theme.colors.bgSecondary, borderRadius: 999, padding: 3 }}>
+              {(["pan", "pick"] as const).map((tool) => {
+                const active = eyedropperTool === tool;
+                return (
+                  <Pressable
+                    key={tool}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(tool === "pan" ? "spots.toolPan" : "spots.toolPick")}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => {
+                      setEyedropperTool(tool);
+                      eyedropperWebViewRef.current?.injectJavaScript(`window.setMode('${tool}');true;`);
+                    }}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: active ? theme.colors.accent : "transparent",
+                    }}
+                  >
+                    <Ionicons
+                      name={tool === "pan" ? "hand-left-outline" : "eyedrop-outline"}
+                      size={18}
+                      color={active ? theme.colors.onAccent : theme.colors.textSecondary}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
             <Pressable
               onPress={() => setShowEyedropper(false)}
               hitSlop={16}
@@ -1627,7 +1659,7 @@ upd();
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: 8, marginBottom: theme.spacing.sm }}
+              contentContainerStyle={{ paddingHorizontal: theme.spacing.md, gap: 6, marginBottom: theme.spacing.xs }}
             >
               {photos.map((photo, idx) => (
                 <Pressable
@@ -1638,8 +1670,8 @@ upd();
                     void prepareEyedropperPhoto(photo.uri);
                   }}
                   style={{
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     borderRadius: theme.radius.sm,
                     overflow: "hidden",
                     borderWidth: idx === eyedropperPhotoIndex ? 2 : StyleSheet.hairlineWidth,
@@ -1745,7 +1777,23 @@ function sampleAt(ex,ey){
 
 function dist(t){var dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
 function mid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
-var activeMode=null; /* 'pick' or 'pinch' */
+
+/* Tool chosen in the native header: 'pick' (eyedropper) or 'pan' (hand). */
+var mode='pick';
+window.setMode=function(m){mode=m;activeMode=null;loupe.style.display='none';};
+
+var activeMode=null; /* 'pick', 'pan' or 'pinch' — what the current gesture is doing */
+var dragStart={x:0,y:0},dragPan0={x:0,y:0};
+
+function startSingle(t){
+  if(mode==='pan'){
+    activeMode='pan';
+    dragStart={x:t.clientX,y:t.clientY};dragPan0={x:panX,y:panY};
+  } else {
+    activeMode='pick';
+    sampleAt(t.clientX,t.clientY);
+  }
+}
 
 vp.addEventListener('touchstart',function(e){
   e.preventDefault();
@@ -1754,8 +1802,7 @@ vp.addEventListener('touchstart',function(e){
     pinchDist0=dist(e.touches);pinchScale0=scale;
     pinchMid0=mid(e.touches);pinchPan0={x:panX,y:panY};
   } else if(e.touches.length===1){
-    activeMode='pick';
-    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+    startSingle(e.touches[0]);
   }
 },{passive:false});
 
@@ -1772,29 +1819,41 @@ vp.addEventListener('touchmove',function(e){
     panY=m.y-rect.top-cy+(pinchPan0.y-(pinchMid0.y-rect.top))*(newScale/pinchScale0)+(m.y-pinchMid0.y);
     scale=newScale;
     centerCanvas();
-  } else if(activeMode==='pick'&&e.touches.length===1){
-    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+  } else if(e.touches.length===1){
+    var t=e.touches[0];
+    if(activeMode==='pan'){
+      panX=dragPan0.x+(t.clientX-dragStart.x);
+      panY=dragPan0.y+(t.clientY-dragStart.y);
+      centerCanvas();
+    } else if(activeMode==='pick'){
+      sampleAt(t.clientX,t.clientY);
+    }
   }
 },{passive:false});
 
 vp.addEventListener('touchend',function(e){
   if(e.touches.length===0){activeMode=null;loupe.style.display='none';}
   else if(e.touches.length===1&&activeMode==='pinch'){
-    activeMode='pick';
-    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+    /* One finger lifted after a pinch: continue with whatever the tool does */
+    startSingle(e.touches[0]);
   }
 },{passive:true});
 vp.addEventListener('touchcancel',function(){activeMode=null;loupe.style.display='none';},{passive:true});
 
-/* Desktop: click to pick */
+/* Desktop: click to pick (only with the eyedropper tool) */
 vp.addEventListener('click',function(e){
-  if(e.target!==canvas)return;
+  if(mode!=='pick'||e.target!==canvas)return;
   var c=toImageCoords(e.clientX,e.clientY);
   var p=ctx.getImageData(c.x,c.y,1,1).data;
   var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
   window.ReactNativeWebView.postMessage('PREVIEW:'+hex);
 });
 </script></body></html>`,
+                }}
+                ref={eyedropperWebViewRef}
+                // The WebView remounts on photo change (key), so re-apply the native tool choice.
+                onLoadEnd={() => {
+                  eyedropperWebViewRef.current?.injectJavaScript(`window.setMode('${eyedropperTool}');true;`);
                 }}
                 onMessage={(event) => {
                   const msg = event.nativeEvent.data;
@@ -1857,7 +1916,7 @@ vp.addEventListener('click',function(e){
               </>
             ) : (
               <Text style={{ flex: 1, color: theme.colors.textTertiary, fontSize: theme.typography.size.sm, textAlign: "center" }}>
-                {t("spots.dragToPickColor")}
+                {t(eyedropperTool === "pan" ? "spots.panHint" : "spots.dragToPickColor")}
               </Text>
             )}
           </View>
