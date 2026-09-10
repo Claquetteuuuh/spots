@@ -125,8 +125,10 @@ function AddSpotForm() {
   const [showPhotoEyedropper, setShowPhotoEyedropper] = useState(false);
   const [eyedropperReady, setEyedropperReady] = useState(false);
   const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
+  const [eyedropperZoom, setEyedropperZoom] = useState(1);
   const eyedropperCanvasRef = useRef<HTMLCanvasElement>(null);
   const eyedropperLoupeRef = useRef<HTMLCanvasElement>(null);
+  const eyedropperWrapRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
   // Submit
@@ -472,44 +474,50 @@ function AddSpotForm() {
     }
   }
 
+  function eyedropperSample(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round((clientX - rect.left) * (canvas.width / rect.width));
+    const y = Math.round((clientY - rect.top) * (canvas.height / rect.height));
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    return { x, y, hex: rgbToHex(pixel[0], pixel[1], pixel[2]), rect };
+  }
+
   function handleEyedropperMove(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = eyedropperCanvasRef.current;
     const loupe = eyedropperLoupeRef.current;
-    if (!canvas || !loupe) return;
-    const ctx = canvas.getContext("2d");
+    const wrap = eyedropperWrapRef.current;
+    if (!canvas || !loupe || !wrap) return;
     const lCtx = loupe.getContext("2d");
-    if (!ctx || !lCtx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
-    const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
-    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+    if (!lCtx) return;
+    const s = eyedropperSample(canvas, e.clientX, e.clientY);
+    if (!s) return;
 
-    // Update preview color
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-    setEyedropperPreviewColor(hex);
+    setEyedropperPreviewColor(s.hex);
 
     // Draw loupe
     const LSIZE = 100;
-    const ZOOM = 3;
-    const srcSize = Math.round(LSIZE / ZOOM * (canvas.width / rect.width));
+    const LZOOM = 4;
+    const srcSize = Math.round(LSIZE / LZOOM * (canvas.width / s.rect.width));
     lCtx.clearRect(0, 0, LSIZE, LSIZE);
     lCtx.save();
     lCtx.beginPath();
     lCtx.arc(LSIZE / 2, LSIZE / 2, LSIZE / 2, 0, Math.PI * 2);
     lCtx.clip();
-    lCtx.drawImage(canvas, x - srcSize / 2, y - srcSize / 2, srcSize, srcSize, 0, 0, LSIZE, LSIZE);
+    lCtx.drawImage(canvas, s.x - srcSize / 2, s.y - srcSize / 2, srcSize, srcSize, 0, 0, LSIZE, LSIZE);
     lCtx.restore();
-    // Crosshair
     lCtx.strokeStyle = "#fff";
     lCtx.lineWidth = 1.5;
     lCtx.beginPath();
     lCtx.arc(LSIZE / 2, LSIZE / 2, 5, 0, Math.PI * 2);
     lCtx.stroke();
 
-    const relX = e.clientX - rect.left;
-    const relY = e.clientY - rect.top;
-    const inTopHalf = relY < rect.height / 2;
+    const wrapRect = wrap.getBoundingClientRect();
+    const relX = e.clientX - wrapRect.left;
+    const relY = e.clientY - wrapRect.top;
+    const inTopHalf = relY < wrapRect.height / 2;
     loupe.style.opacity = "1";
     loupe.style.left = `${relX}px`;
     loupe.style.top = `${relY + (inTopHalf ? 30 : -110)}px`;
@@ -518,14 +526,8 @@ function AddSpotForm() {
   function handleEyedropperClick(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = eyedropperCanvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
-    const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
-    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    setEyedropperPreviewColor(rgbToHex(pixel[0], pixel[1], pixel[2]));
+    const s = eyedropperSample(canvas, e.clientX, e.clientY);
+    if (s) setEyedropperPreviewColor(s.hex);
   }
 
   function handleEyedropperLeave() {
@@ -533,8 +535,14 @@ function AddSpotForm() {
     if (loupe) loupe.style.opacity = "0";
   }
 
+  function handleEyedropperWheel(e: React.WheelEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setEyedropperZoom((z) => Math.max(1, Math.min(6, z - e.deltaY * 0.005)));
+  }
+
   function drawPhotoOnCanvas(src: string) {
     setEyedropperReady(false);
+    setEyedropperZoom(1);
     setTimeout(() => {
       const canvas = eyedropperCanvasRef.current;
       if (!canvas) return;
@@ -1247,18 +1255,28 @@ function AddSpotForm() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="relative overflow-visible">
+                  <div ref={eyedropperWrapRef} className="relative overflow-visible" onWheel={handleEyedropperWheel}>
                     {!eyedropperReady ? (
-                      <div className="absolute inset-0 rounded-lg border border-border bg-bg-secondary animate-pulse" />
+                      <div className="w-full h-[400px] rounded-lg border border-border bg-bg-secondary animate-pulse" />
                     ) : null}
-                    <canvas
-                      ref={eyedropperCanvasRef}
-                      onMouseMove={handleEyedropperMove}
-                      onMouseLeave={handleEyedropperLeave}
-                      onClick={handleEyedropperClick}
-                      className="w-full max-h-[300px] object-contain rounded-lg cursor-crosshair border border-border"
-                      style={{ imageRendering: "auto", opacity: eyedropperReady ? 1 : 0, minHeight: eyedropperReady ? undefined : 300 }}
-                    />
+                    <div
+                      className="overflow-hidden rounded-lg border border-border"
+                      style={{ maxHeight: 400, display: eyedropperReady ? undefined : "none" }}
+                    >
+                      <canvas
+                        ref={eyedropperCanvasRef}
+                        onMouseMove={handleEyedropperMove}
+                        onMouseLeave={handleEyedropperLeave}
+                        onClick={handleEyedropperClick}
+                        className="w-full cursor-crosshair"
+                        style={{ imageRendering: "auto", transform: `scale(${eyedropperZoom})`, transformOrigin: "center center" }}
+                      />
+                    </div>
+                    {eyedropperReady && eyedropperZoom > 1 ? (
+                      <p className="text-[10px] text-text-tertiary text-center mt-1">
+                        {Math.round(eyedropperZoom * 100)}%
+                      </p>
+                    ) : null}
                     {/* Loupe */}
                     <canvas
                       ref={eyedropperLoupeRef}

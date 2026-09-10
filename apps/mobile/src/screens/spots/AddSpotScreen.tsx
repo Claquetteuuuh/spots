@@ -1605,23 +1605,22 @@ upd();
       {/* ── Photo Eyedropper Modal ────────────────────────── */}
       <Modal visible={showEyedropper} animationType="slide" onRequestClose={() => setShowEyedropper(false)}>
         <View style={{ flex: 1, backgroundColor: theme.colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
-          {/* Header — fixed, always accessible */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md, zIndex: 10 }}>
-            <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.md, fontWeight: theme.typography.weight.semibold }}>
+          {/* Header */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, zIndex: 10 }}>
+            <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm, fontWeight: theme.typography.weight.semibold }}>
               {t("spots.pickFromPhoto")}
+            </Text>
+            <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs, flex: 1, textAlign: "center" }}>
+              {t("spots.clickPhotoToPickColor")}
             </Text>
             <Pressable
               onPress={() => setShowEyedropper(false)}
               hitSlop={16}
-              style={{ padding: 8 }}
+              style={{ padding: 4 }}
             >
-              <Ionicons name="close" size={24} color={theme.colors.text} />
+              <Ionicons name="close" size={22} color={theme.colors.text} />
             </Pressable>
           </View>
-
-          <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs, textAlign: "center", marginBottom: theme.spacing.sm }}>
-            {t("spots.clickPhotoToPickColor")}
-          </Text>
 
           {/* Photo thumbnails for multi-photo selection */}
           {photos.length > 1 ? (
@@ -1654,7 +1653,7 @@ upd();
           ) : null}
 
           {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, borderRadius: theme.radius.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.xs, borderRadius: theme.radius.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
             {eyedropperDataUri ? (
               <WebView
                 key={eyedropperPhotoIndex}
@@ -1664,77 +1663,134 @@ upd();
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:visible;touch-action:none}
-body{display:flex;align-items:center;justify-content:center;position:relative}
-canvas{max-width:100%;max-height:100%;display:block}
-#loupe{position:fixed;width:100px;height:100px;border-radius:50%;border:3px solid #fff;
-  box-shadow:0 2px 12px rgba(0,0,0,0.4);overflow:hidden;pointer-events:none;
+html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden;touch-action:none}
+body{position:relative}
+#viewport{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+canvas{display:block;transform-origin:0 0}
+#loupe{position:fixed;width:110px;height:110px;border-radius:50%;border:3px solid #fff;
+  box-shadow:0 2px 16px rgba(0,0,0,0.45);overflow:hidden;pointer-events:none;
   display:none;z-index:10}
 #loupe canvas{position:absolute;top:0;left:0}
-#crosshair{position:absolute;top:50%;left:50%;width:12px;height:12px;
+#crosshair{position:absolute;top:50%;left:50%;width:14px;height:14px;
   border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);
   pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,0.3)}
 </style></head>
 <body>
-<canvas id="c"></canvas>
-<div id="loupe"><canvas id="lc" width="100" height="100"></canvas><div id="crosshair"></div></div>
+<div id="viewport"><canvas id="c"></canvas></div>
+<div id="loupe"><canvas id="lc" width="110" height="110"></canvas><div id="crosshair"></div></div>
 <script>
+var vp=document.getElementById('viewport');
 var canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 var loupe=document.getElementById('loupe'),lCanvas=document.getElementById('lc'),lCtx=lCanvas.getContext('2d');
-var ZOOM=3,LSIZE=100;
+var LZOOM=4,LSIZE=110;
+
+/* Zoom / pan state */
+var scale=1,panX=0,panY=0,baseW=0,baseH=0;
+var pinchDist0=0,pinchScale0=1,pinchMid0={x:0,y:0},pinchPan0={x:0,y:0};
+
 var img=new Image();
 img.onload=function(){
   canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
   ctx.drawImage(img,0,0);
+  /* Fit image to viewport */
+  var vw=vp.clientWidth,vh=vp.clientHeight;
+  baseW=vw;baseH=Math.round(vw*(img.naturalHeight/img.naturalWidth));
+  if(baseH>vh){baseH=vh;baseW=Math.round(vh*(img.naturalWidth/img.naturalHeight));}
+  canvas.style.width=baseW+'px';canvas.style.height=baseH+'px';
+  centerCanvas();
 };
 img.src="${eyedropperDataUri}";
 
-function sample(ex,ey){
-  var rect=canvas.getBoundingClientRect();
-  var x=Math.round((ex-rect.left)*(canvas.width/rect.width));
-  var y=Math.round((ey-rect.top)*(canvas.height/rect.height));
-  x=Math.max(0,Math.min(canvas.width-1,x));
-  y=Math.max(0,Math.min(canvas.height-1,y));
+function centerCanvas(){
+  var vw=vp.clientWidth,vh=vp.clientHeight;
+  var w=baseW*scale,h=baseH*scale;
+  panX=Math.min(0,Math.max(vw-w,panX));
+  panY=Math.min(0,Math.max(vh-h,panY));
+  if(w<=vw)panX=(vw-w)/2;
+  if(h<=vh)panY=(vh-h)/2;
+  canvas.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')';
+}
 
-  /* Position loupe: above finger in bottom half, below in top half */
+function toImageCoords(ex,ey){
+  var rect=vp.getBoundingClientRect();
+  var vx=ex-rect.left,vy=ey-rect.top;
+  var ix=(vx-panX)/(baseW*scale)*canvas.width;
+  var iy=(vy-panY)/(baseH*scale)*canvas.height;
+  ix=Math.max(0,Math.min(canvas.width-1,Math.round(ix)));
+  iy=Math.max(0,Math.min(canvas.height-1,Math.round(iy)));
+  return{x:ix,y:iy};
+}
+
+function showLoupe(ex,ey,ix,iy){
   var midY=window.innerHeight/2;
-  var offsetY=ey<midY?80:-120;
+  var offsetY=ey<midY?80:-130;
   loupe.style.display='block';
-  loupe.style.left=(ex-50)+'px';
+  loupe.style.left=(ex-LSIZE/2)+'px';
   loupe.style.top=(ey+offsetY)+'px';
   lCtx.clearRect(0,0,LSIZE,LSIZE);
-  var srcSize=LSIZE/ZOOM*(canvas.width/rect.width);
+  var srcR=LSIZE/LZOOM*(canvas.width/(baseW*scale));
   lCtx.save();
   lCtx.beginPath();lCtx.arc(LSIZE/2,LSIZE/2,LSIZE/2,0,Math.PI*2);lCtx.clip();
-  lCtx.drawImage(canvas,x-srcSize/2,y-srcSize/2,srcSize,srcSize,0,0,LSIZE,LSIZE);
+  lCtx.drawImage(canvas,ix-srcR/2,iy-srcR/2,srcR,srcR,0,0,LSIZE,LSIZE);
   lCtx.restore();
+}
 
-  var p=ctx.getImageData(x,y,1,1).data;
+function sampleAt(ex,ey){
+  var c=toImageCoords(ex,ey);
+  showLoupe(ex,ey,c.x,c.y);
+  var p=ctx.getImageData(c.x,c.y,1,1).data;
   var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
   window.ReactNativeWebView.postMessage('PREVIEW:'+hex);
 }
 
-canvas.addEventListener('touchstart',function(e){
+function dist(t){var dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+function mid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+var activeMode=null; /* 'pick' or 'pinch' */
+
+vp.addEventListener('touchstart',function(e){
   e.preventDefault();
-  sample(e.touches[0].clientX,e.touches[0].clientY);
+  if(e.touches.length===2){
+    activeMode='pinch';loupe.style.display='none';
+    pinchDist0=dist(e.touches);pinchScale0=scale;
+    pinchMid0=mid(e.touches);pinchPan0={x:panX,y:panY};
+  } else if(e.touches.length===1){
+    activeMode='pick';
+    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+  }
 },{passive:false});
-canvas.addEventListener('touchmove',function(e){
+
+vp.addEventListener('touchmove',function(e){
   e.preventDefault();
-  sample(e.touches[0].clientX,e.touches[0].clientY);
+  if(activeMode==='pinch'&&e.touches.length===2){
+    var d=dist(e.touches);
+    var newScale=Math.max(1,Math.min(8,pinchScale0*(d/pinchDist0)));
+    var m=mid(e.touches);
+    var rect=vp.getBoundingClientRect();
+    /* Zoom toward pinch center */
+    var cx=pinchMid0.x-rect.left,cy=pinchMid0.y-rect.top;
+    panX=m.x-rect.left-cx+(pinchPan0.x-(pinchMid0.x-rect.left))*(newScale/pinchScale0)+(m.x-pinchMid0.x);
+    panY=m.y-rect.top-cy+(pinchPan0.y-(pinchMid0.y-rect.top))*(newScale/pinchScale0)+(m.y-pinchMid0.y);
+    scale=newScale;
+    centerCanvas();
+  } else if(activeMode==='pick'&&e.touches.length===1){
+    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+  }
 },{passive:false});
-canvas.addEventListener('touchend',function(){
-  loupe.style.display='none';
+
+vp.addEventListener('touchend',function(e){
+  if(e.touches.length===0){activeMode=null;loupe.style.display='none';}
+  else if(e.touches.length===1&&activeMode==='pinch'){
+    activeMode='pick';
+    sampleAt(e.touches[0].clientX,e.touches[0].clientY);
+  }
 },{passive:true});
-canvas.addEventListener('touchcancel',function(){
-  loupe.style.display='none';
-},{passive:true});
-/* Desktop fallback */
-canvas.addEventListener('click',function(e){
-  var rect=canvas.getBoundingClientRect();
-  var x=Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
-  var y=Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
-  if(x<0||y<0||x>=canvas.width||y>=canvas.height)return;
-  var p=ctx.getImageData(x,y,1,1).data;
+vp.addEventListener('touchcancel',function(){activeMode=null;loupe.style.display='none';},{passive:true});
+
+/* Desktop: click to pick */
+vp.addEventListener('click',function(e){
+  if(e.target!==canvas)return;
+  var c=toImageCoords(e.clientX,e.clientY);
+  var p=ctx.getImageData(c.x,c.y,1,1).data;
   var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
   window.ReactNativeWebView.postMessage('PREVIEW:'+hex);
 });
