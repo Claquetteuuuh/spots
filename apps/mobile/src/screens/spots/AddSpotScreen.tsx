@@ -202,6 +202,7 @@ export function AddSpotScreen() {
   const [eyedropperPhotoIndex, setEyedropperPhotoIndex] = useState(0);
   const [eyedropperDataUri, setEyedropperDataUri] = useState<string | null>(null);
   const [eyedropperLoading, setEyedropperLoading] = useState(false);
+  const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -1074,6 +1075,7 @@ export function AddSpotScreen() {
                   onPress={() => {
                     if (photos.length > 0) {
                       setEyedropperPhotoIndex(0);
+                      setEyedropperPreviewColor(null);
                       setShowEyedropper(true);
                       void prepareEyedropperPhoto(photos[0].uri);
                     }
@@ -1633,6 +1635,7 @@ upd();
                   key={photo.id}
                   onPress={() => {
                     setEyedropperPhotoIndex(idx);
+                    setEyedropperPreviewColor(null);
                     void prepareEyedropperPhoto(photo.uri);
                   }}
                   style={{
@@ -1651,46 +1654,97 @@ upd();
           ) : null}
 
           {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
             {eyedropperDataUri ? (
               <WebView
                 key={eyedropperPhotoIndex}
                 originWhitelist={["*"]}
                 source={{
                   html: `<!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden}
-body{display:flex;align-items:center;justify-content:center}
-canvas{max-width:100%;max-height:100%;display:block}</style></head>
-<body><canvas id="c"></canvas>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden;touch-action:none}
+body{display:flex;align-items:center;justify-content:center;position:relative}
+canvas{max-width:100%;max-height:100%;display:block}
+#loupe{position:fixed;width:100px;height:100px;border-radius:50%;border:3px solid #fff;
+  box-shadow:0 2px 12px rgba(0,0,0,0.4);overflow:hidden;pointer-events:none;
+  display:none;z-index:10;transform:translate(-50%,-120px)}
+#loupe canvas{position:absolute;top:0;left:0}
+#crosshair{position:absolute;top:50%;left:50%;width:12px;height:12px;
+  border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);
+  pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,0.3)}
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<div id="loupe"><canvas id="lc" width="100" height="100"></canvas><div id="crosshair"></div></div>
 <script>
 var canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+var loupe=document.getElementById('loupe'),lCanvas=document.getElementById('lc'),lCtx=lCanvas.getContext('2d');
+var ZOOM=3,LSIZE=100;
 var img=new Image();
 img.onload=function(){
   canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
   ctx.drawImage(img,0,0);
 };
 img.src="${eyedropperDataUri}";
-function pick(ex,ey){
+
+function sample(ex,ey){
   var rect=canvas.getBoundingClientRect();
   var x=Math.round((ex-rect.left)*(canvas.width/rect.width));
   var y=Math.round((ey-rect.top)*(canvas.height/rect.height));
+  x=Math.max(0,Math.min(canvas.width-1,x));
+  y=Math.max(0,Math.min(canvas.height-1,y));
+
+  /* Draw loupe */
+  loupe.style.display='block';
+  loupe.style.left=ex+'px';
+  loupe.style.top=ey+'px';
+  lCtx.clearRect(0,0,LSIZE,LSIZE);
+  var srcSize=LSIZE/ZOOM*(canvas.width/rect.width);
+  lCtx.save();
+  lCtx.beginPath();lCtx.arc(LSIZE/2,LSIZE/2,LSIZE/2,0,Math.PI*2);lCtx.clip();
+  lCtx.drawImage(canvas,x-srcSize/2,y-srcSize/2,srcSize,srcSize,0,0,LSIZE,LSIZE);
+  lCtx.restore();
+
+  var p=ctx.getImageData(x,y,1,1).data;
+  var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
+  window.ReactNativeWebView.postMessage('PREVIEW:'+hex);
+}
+
+canvas.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  sample(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  sample(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
+canvas.addEventListener('touchend',function(){
+  loupe.style.display='none';
+},{passive:true});
+canvas.addEventListener('touchcancel',function(){
+  loupe.style.display='none';
+},{passive:true});
+/* Desktop fallback */
+canvas.addEventListener('click',function(e){
+  var rect=canvas.getBoundingClientRect();
+  var x=Math.round((e.clientX-rect.left)*(canvas.width/rect.width));
+  var y=Math.round((e.clientY-rect.top)*(canvas.height/rect.height));
   if(x<0||y<0||x>=canvas.width||y>=canvas.height)return;
   var p=ctx.getImageData(x,y,1,1).data;
   var hex='#'+[p[0],p[1],p[2]].map(function(v){return v.toString(16).padStart(2,'0')}).join('').toUpperCase();
-  window.ReactNativeWebView.postMessage(hex);
-}
-canvas.addEventListener('click',function(e){pick(e.clientX,e.clientY)});
-canvas.addEventListener('touchstart',function(e){
-  e.preventDefault();pick(e.touches[0].clientX,e.touches[0].clientY);
-},{passive:false});
+  window.ReactNativeWebView.postMessage('PREVIEW:'+hex);
+});
 </script></body></html>`,
                 }}
                 onMessage={(event) => {
-                  const data = event.nativeEvent.data;
-                  if (/^#[0-9A-F]{6}$/.test(data) && !selectedColors.includes(data) && selectedColors.length < 10) {
-                    setSelectedColors((prev) => [...prev, data]);
-                    setShowEyedropper(false);
+                  const msg = event.nativeEvent.data;
+                  if (msg.startsWith("PREVIEW:")) {
+                    const hex = msg.slice(8);
+                    if (/^#[0-9A-F]{6}$/.test(hex)) {
+                      setEyedropperPreviewColor(hex);
+                    }
                   }
                 }}
                 style={{ flex: 1, backgroundColor: theme.colors.bgSecondary }}
@@ -1699,6 +1753,54 @@ canvas.addEventListener('touchstart',function(e){
               />
             ) : (
               <EyedropperSkeleton theme={theme} loading={eyedropperLoading} />
+            )}
+          </View>
+
+          {/* Preview bar + validate button */}
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: theme.spacing.lg,
+            paddingVertical: theme.spacing.md,
+            gap: theme.spacing.sm,
+          }}>
+            {eyedropperPreviewColor ? (
+              <>
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: eyedropperPreviewColor,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: theme.colors.border,
+                }} />
+                <Text style={{ flex: 1, color: theme.colors.text, fontSize: theme.typography.size.sm, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                  {eyedropperPreviewColor}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    if (eyedropperPreviewColor && !selectedColors.includes(eyedropperPreviewColor) && selectedColors.length < 10) {
+                      setSelectedColors((prev) => [...prev, eyedropperPreviewColor]);
+                    }
+                    setEyedropperPreviewColor(null);
+                    setShowEyedropper(false);
+                  }}
+                  style={{
+                    backgroundColor: theme.colors.accent,
+                    paddingHorizontal: theme.spacing.lg,
+                    paddingVertical: theme.spacing.sm,
+                    borderRadius: 999,
+                  }}
+                >
+                  <Text style={{ color: theme.colors.onAccent, fontSize: theme.typography.size.sm, fontWeight: theme.typography.weight.semibold }}>
+                    {t("common.validate")}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <Text style={{ flex: 1, color: theme.colors.textTertiary, fontSize: theme.typography.size.sm, textAlign: "center" }}>
+                {t("spots.dragToPickColor")}
+              </Text>
             )}
           </View>
         </View>

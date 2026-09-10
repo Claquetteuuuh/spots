@@ -25,6 +25,7 @@ export const en = {
     selectionsLeft: "{{count}} more can be selected",
     limitReached: "Limit reached",
     required: "required",
+    validate: "Validate",
   },
   auth: {
     login: "Sign in",
@@ -112,7 +113,8 @@ export const en = {
     moreColors: "More colors",
     selectShade: "Select a shade",
     pickFromPhoto: "Pick from photo",
-    clickPhotoToPickColor: "Click on the photo to pick a color",
+    clickPhotoToPickColor: "Drag on the photo to pick a color",
+    dragToPickColor: "Drag your finger on the photo",
     selectedColors: "Selected colors",
     validation: {
       photosRequired: "At least one photo is required",

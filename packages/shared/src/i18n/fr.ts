@@ -25,6 +25,7 @@ export const fr = {
     selectionsLeft: "Encore {{count}} au maximum",
     limitReached: "Limite atteinte",
     required: "obligatoire",
+    validate: "Valider",
   },
   auth: {
     login: "Se connecter",
@@ -112,7 +113,8 @@ export const fr = {
     moreColors: "Plus de couleurs",
     selectShade: "Choisir une teinte",
     pickFromPhoto: "Pipette sur photo",
-    clickPhotoToPickColor: "Cliquez sur la photo pour récupérer une couleur",
+    clickPhotoToPickColor: "Glissez sur la photo pour récupérer une couleur",
+    dragToPickColor: "Glissez votre doigt sur la photo",
     selectedColors: "Couleurs sélectionnées",
     validation: {
       photosRequired: "Au moins une photo est requise",

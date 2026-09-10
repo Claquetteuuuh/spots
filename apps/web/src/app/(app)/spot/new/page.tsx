@@ -124,7 +124,9 @@ function AddSpotForm() {
   const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
   const [showPhotoEyedropper, setShowPhotoEyedropper] = useState(false);
   const [eyedropperReady, setEyedropperReady] = useState(false);
+  const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
   const eyedropperCanvasRef = useRef<HTMLCanvasElement>(null);
+  const eyedropperLoupeRef = useRef<HTMLCanvasElement>(null);
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
   // Submit
@@ -470,7 +472,47 @@ function AddSpotForm() {
     }
   }
 
-  function handlePhotoEyedropper(e: React.MouseEvent<HTMLCanvasElement>) {
+  function handleEyedropperMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = eyedropperCanvasRef.current;
+    const loupe = eyedropperLoupeRef.current;
+    if (!canvas || !loupe) return;
+    const ctx = canvas.getContext("2d");
+    const lCtx = loupe.getContext("2d");
+    if (!ctx || !lCtx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
+    const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+
+    // Update preview color
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+    setEyedropperPreviewColor(hex);
+
+    // Draw loupe
+    const LSIZE = 100;
+    const ZOOM = 3;
+    const srcSize = Math.round(LSIZE / ZOOM * (canvas.width / rect.width));
+    lCtx.clearRect(0, 0, LSIZE, LSIZE);
+    lCtx.save();
+    lCtx.beginPath();
+    lCtx.arc(LSIZE / 2, LSIZE / 2, LSIZE / 2, 0, Math.PI * 2);
+    lCtx.clip();
+    lCtx.drawImage(canvas, x - srcSize / 2, y - srcSize / 2, srcSize, srcSize, 0, 0, LSIZE, LSIZE);
+    lCtx.restore();
+    // Crosshair
+    lCtx.strokeStyle = "#fff";
+    lCtx.lineWidth = 1.5;
+    lCtx.beginPath();
+    lCtx.arc(LSIZE / 2, LSIZE / 2, 5, 0, Math.PI * 2);
+    lCtx.stroke();
+
+    loupe.style.opacity = "1";
+    loupe.style.left = `${e.clientX - rect.left}px`;
+    loupe.style.top = `${e.clientY - rect.top - 60}px`;
+  }
+
+  function handleEyedropperClick(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = eyedropperCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -478,10 +520,14 @@ function AddSpotForm() {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
     const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
     const pixel = ctx.getImageData(x, y, 1, 1).data;
-    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-    addColorIfNew(hex);
-    setShowPhotoEyedropper(false);
+    setEyedropperPreviewColor(rgbToHex(pixel[0], pixel[1], pixel[2]));
+  }
+
+  function handleEyedropperLeave() {
+    const loupe = eyedropperLoupeRef.current;
+    if (loupe) loupe.style.opacity = "0";
   }
 
   function drawPhotoOnCanvas(src: string) {
@@ -505,6 +551,7 @@ function AddSpotForm() {
 
   function openPhotoEyedropper() {
     if (photos.length === 0) return;
+    setEyedropperPreviewColor(null);
     setShowPhotoEyedropper(true);
     drawPhotoOnCanvas(photos[0].preview);
   }
@@ -1203,10 +1250,52 @@ function AddSpotForm() {
                     ) : null}
                     <canvas
                       ref={eyedropperCanvasRef}
-                      onClick={handlePhotoEyedropper}
+                      onMouseMove={handleEyedropperMove}
+                      onMouseLeave={handleEyedropperLeave}
+                      onClick={handleEyedropperClick}
                       className="w-full max-h-[300px] object-contain rounded-lg cursor-crosshair border border-border"
                       style={{ imageRendering: "auto", opacity: eyedropperReady ? 1 : 0, minHeight: eyedropperReady ? undefined : 300 }}
                     />
+                    {/* Loupe */}
+                    <canvas
+                      ref={eyedropperLoupeRef}
+                      width={100}
+                      height={100}
+                      className="absolute pointer-events-none rounded-full border-[3px] border-white shadow-lg transition-opacity duration-100"
+                      style={{ opacity: 0, transform: "translate(-50%, 0)", width: 80, height: 80 }}
+                    />
+                  </div>
+
+                  {/* Preview bar + validate */}
+                  <div className="flex items-center gap-2 mt-2">
+                    {eyedropperPreviewColor ? (
+                      <>
+                        <span
+                          className="h-8 w-8 rounded-full border border-border flex-shrink-0"
+                          style={{ backgroundColor: eyedropperPreviewColor }}
+                        />
+                        <span className="text-xs text-text font-mono flex-1">
+                          {eyedropperPreviewColor}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (eyedropperPreviewColor) {
+                              addColorIfNew(eyedropperPreviewColor);
+                            }
+                            setEyedropperPreviewColor(null);
+                            setShowPhotoEyedropper(false);
+                          }}
+                          className="px-4 py-1.5 text-sm font-semibold bg-accent text-on-accent rounded-full hover:opacity-90 transition-opacity cursor-pointer"
+                        >
+                          {t("common.validate")}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-text-tertiary flex-1 text-center">
+                        {t("spots.dragToPickColor")}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : null}
