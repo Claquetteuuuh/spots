@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -1650,7 +1651,7 @@ upd();
           ) : null}
 
           {/* WebView eyedropper — photo embedded as a data URI (WKWebView blocks file:// in inline HTML) */}
-          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: "#000" }}>
+          <View style={{ flex: 1, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, borderRadius: theme.radius.sm, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border, backgroundColor: theme.colors.bgSecondary }}>
             {eyedropperDataUri ? (
               <WebView
                 key={eyedropperPhotoIndex}
@@ -1658,7 +1659,7 @@ upd();
                 source={{
                   html: `<!DOCTYPE html>
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:#000;overflow:hidden}
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;background:${theme.colors.bgSecondary};overflow:hidden}
 body{display:flex;align-items:center;justify-content:center}
 canvas{max-width:100%;max-height:100%;display:block}</style></head>
 <body><canvas id="c"></canvas>
@@ -1692,25 +1693,65 @@ canvas.addEventListener('touchstart',function(e){
                     setShowEyedropper(false);
                   }
                 }}
-                style={{ flex: 1, backgroundColor: "#000" }}
+                style={{ flex: 1, backgroundColor: theme.colors.bgSecondary }}
                 javaScriptEnabled
                 scrollEnabled={false}
               />
             ) : (
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                {eyedropperLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={{ color: "#888888", fontSize: theme.typography.size.sm }}>
-                    {t("common.error")}
-                  </Text>
-                )}
-              </View>
+              <EyedropperSkeleton theme={theme} loading={eyedropperLoading} />
             )}
           </View>
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function EyedropperSkeleton({ theme, loading }: { theme: Theme; loading: boolean }) {
+  const { t } = useTranslation();
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    if (!loading) return;
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [loading, opacity]);
+
+  if (!loading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="alert-circle-outline" size={28} color={theme.colors.textTertiary} />
+        <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm, marginTop: theme.spacing.xs }}>
+          {t("common.error")}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, padding: theme.spacing.lg }}>
+      {/* Main image skeleton */}
+      <Animated.View
+        style={{
+          flex: 1,
+          borderRadius: theme.radius.sm,
+          backgroundColor: theme.colors.bgTertiary,
+          opacity,
+        }}
+      />
+      {/* Bottom bar skeleton */}
+      <View style={{ flexDirection: "row", marginTop: theme.spacing.sm, gap: theme.spacing.sm }}>
+        <Animated.View style={{ width: 48, height: 12, borderRadius: 6, backgroundColor: theme.colors.bgTertiary, opacity }} />
+        <View style={{ flex: 1 }} />
+        <Animated.View style={{ width: 32, height: 12, borderRadius: 6, backgroundColor: theme.colors.bgTertiary, opacity }} />
+      </View>
+    </View>
   );
 }
 

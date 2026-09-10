@@ -123,6 +123,7 @@ function AddSpotForm() {
   const [tags, setTags] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
   const [showPhotoEyedropper, setShowPhotoEyedropper] = useState(false);
+  const [eyedropperReady, setEyedropperReady] = useState(false);
   const eyedropperCanvasRef = useRef<HTMLCanvasElement>(null);
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
@@ -483,10 +484,8 @@ function AddSpotForm() {
     setShowPhotoEyedropper(false);
   }
 
-  function openPhotoEyedropper() {
-    if (photos.length === 0) return;
-    setShowPhotoEyedropper(true);
-    // Draw the first photo onto a canvas after a tick (so the canvas is mounted)
+  function drawPhotoOnCanvas(src: string) {
+    setEyedropperReady(false);
     setTimeout(() => {
       const canvas = eyedropperCanvasRef.current;
       if (!canvas) return;
@@ -498,9 +497,16 @@ function AddSpotForm() {
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
         ctx.drawImage(img, 0, 0);
+        setEyedropperReady(true);
       };
-      img.src = photos[0].preview;
+      img.src = src;
     }, 50);
+  }
+
+  function openPhotoEyedropper() {
+    if (photos.length === 0) return;
+    setShowPhotoEyedropper(true);
+    drawPhotoOnCanvas(photos[0].preview);
   }
 
   function removeColor(color: string) {
@@ -1183,19 +1189,7 @@ function AddSpotForm() {
                         <button
                           key={i}
                           type="button"
-                          onClick={() => {
-                            const canvas = eyedropperCanvasRef.current;
-                            if (!canvas) return;
-                            const ctx = canvas.getContext("2d");
-                            if (!ctx) return;
-                            const img = new Image();
-                            img.onload = () => {
-                              canvas.width = img.naturalWidth;
-                              canvas.height = img.naturalHeight;
-                              ctx.drawImage(img, 0, 0);
-                            };
-                            img.src = photo.preview;
-                          }}
+                          onClick={() => drawPhotoOnCanvas(photo.preview)}
                           className="h-10 w-10 flex-shrink-0 rounded-lg border border-border overflow-hidden cursor-pointer hover:border-accent transition-colors"
                         >
                           <img src={photo.preview} alt="" className="h-full w-full object-cover" />
@@ -1203,12 +1197,17 @@ function AddSpotForm() {
                       ))}
                     </div>
                   ) : null}
-                  <canvas
-                    ref={eyedropperCanvasRef}
-                    onClick={handlePhotoEyedropper}
-                    className="w-full max-h-[300px] object-contain rounded-lg cursor-crosshair border border-border"
-                    style={{ imageRendering: "auto" }}
-                  />
+                  <div className="relative">
+                    {!eyedropperReady ? (
+                      <div className="absolute inset-0 rounded-lg border border-border bg-bg-secondary animate-pulse" />
+                    ) : null}
+                    <canvas
+                      ref={eyedropperCanvasRef}
+                      onClick={handlePhotoEyedropper}
+                      className="w-full max-h-[300px] object-contain rounded-lg cursor-crosshair border border-border"
+                      style={{ imageRendering: "auto", opacity: eyedropperReady ? 1 : 0, minHeight: eyedropperReady ? undefined : 300 }}
+                    />
+                  </div>
                 </div>
               ) : null}
 
