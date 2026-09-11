@@ -70,10 +70,19 @@ function photo(over: Partial<SpotPhoto> = {}): SpotPhoto {
   };
 }
 
-/** Serve pages by cursor — the first page under `first`. */
+/**
+ * Serve pages by cursor — the first page under `first`.
+ *
+ * Returns pre-resolved promises (`Promise.resolve`) rather than `async`
+ * functions. An `async () => value` wraps the return in an extra promise
+ * via the async-function machinery; in CI's slower runners that extra
+ * microtask hop deadlocks with React 19's act — RNTL v14 wraps render
+ * and findBy* in act, which detects the pending microtask but blocks
+ * the event loop that would flush it, causing a 5s timeout.
+ */
 function servePhotos(pages: Record<string, Paginated<SpotPhoto>>) {
   mockedApi.getSpotPhotos.mockImplementation(
-    async (_spotId, cursor) => pages[cursor ?? "first"] ?? EMPTY,
+    (_spotId: string, cursor?: string) => Promise.resolve(pages[cursor ?? "first"] ?? EMPTY),
   );
 }
 
@@ -84,17 +93,7 @@ function pickerReturns(uri: string, fileName: string) {
   } as unknown as ImagePicker.ImagePickerResult);
 }
 
-/**
- * Render the section AND flush the microtask chain spawned by the
- * `useEffect` data-fetch (`getSpotPhotos(...).then(...).finally(...)`).
- * Without the trailing `act` the promise callbacks may resolve outside
- * React 19's act boundary in slower CI runners, leaving the component
- * stuck on `isLoading = true`.
- */
-async function renderSection() {
-  await render(<SpotPhotosSection spotId="s1" ownerId={OWNER_ID} />);
-  await act(async () => {});
-}
+const renderSection = () => render(<SpotPhotosSection spotId="s1" ownerId={OWNER_ID} />);
 
 /**
  * Press the destructive button of the last confirmation dialog.
@@ -122,13 +121,13 @@ describe("SpotPhotosSection", () => {
 
     await renderSection();
 
-    expect(screen.getByTestId("spot-photo-p1")).toBeTruthy();
+    expect(await screen.findByTestId("spot-photo-p1")).toBeTruthy();
     expect(mockedApi.getSpotPhotos).toHaveBeenCalledWith("s1");
   });
 
   it("shows the empty message when nobody has added a photo", async () => {
     await renderSection();
-    expect(screen.getByText("spotPhotos.noPhotos")).toBeTruthy();
+    expect(await screen.findByText("spotPhotos.noPhotos")).toBeTruthy();
   });
 
   it("loads the next page on demand", async () => {
