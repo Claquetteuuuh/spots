@@ -3,7 +3,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
-import type { FollowRequest } from "@/lib/api-client";
+import type { FollowRequest, NotificationsData } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PAGE_COLUMN, PageHeader } from "@/components/page";
@@ -37,17 +37,45 @@ function Spinner() {
   );
 }
 
+function Avatar({ avatarUrl, name }: { avatarUrl: string | null; name: string | null }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="h-11 w-11 rounded-full border border-border object-cover"
+      />
+    );
+  }
+  return (
+    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-bg-tertiary text-[13px] font-semibold text-text-secondary">
+      {initialsOf(name)}
+    </div>
+  );
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w`;
+}
+
 export default function NotificationsPage() {
   const t = useT();
-  const [requests, setRequests] = useState<FollowRequest[]>([]);
+  const [data, setData] = useState<NotificationsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Only the first load blanks the screen; a pull-to-refresh keeps the list
-  // on screen behind its own indicator, as the app's RefreshControl does.
-  const loadRequests = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const data = await apiClient.followRequests.list();
-      setRequests(data);
+      const result = await apiClient.followRequests.list();
+      setData(result);
     } catch {
       // Silently fail
     } finally {
@@ -57,14 +85,21 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     startTransition(() => {
-      loadRequests();
+      loadData();
     });
-  }, [loadRequests]);
+  }, [loadData]);
 
   async function handleAccept(id: string) {
     try {
       await apiClient.followRequests.accept(id);
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              pendingRequests: prev.pendingRequests.filter((r) => r.id !== id),
+            }
+          : prev,
+      );
     } catch {
       // Error
     }
@@ -73,13 +108,19 @@ export default function NotificationsPage() {
   async function handleReject(id: string) {
     try {
       await apiClient.followRequests.reject(id);
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              pendingRequests: prev.pendingRequests.filter((r) => r.id !== id),
+            }
+          : prev,
+      );
     } catch {
       // Error
     }
   }
 
-  // Like the app, the first load is a bare centred spinner — no header yet.
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center ${FULL_SCREEN} lg:min-h-0 lg:py-24`}>
@@ -88,70 +129,106 @@ export default function NotificationsPage() {
     );
   }
 
+  const pendingRequests = data?.pendingRequests ?? [];
+  const newFollowers = data?.newFollowers ?? [];
+  const hasContent = pendingRequests.length > 0 || newFollowers.length > 0;
+
   return (
-    <PullToRefresh onRefresh={loadRequests}>
+    <PullToRefresh onRefresh={loadData}>
       <div className={PAGE_COLUMN}>
         <PageHeader title={t("notifications.title")} back={false} />
 
-        {requests.length > 0 ? (
+        {hasContent ? (
           <div>
-            <p className="pt-4 pb-2 text-[13px] font-semibold text-text">
-              {t("notifications.followRequests")}
-            </p>
+            {/* Pending follow requests */}
+            {pendingRequests.length > 0 && (
+              <>
+                <p className="pt-4 pb-2 text-[13px] font-semibold text-text">
+                  {t("notifications.followRequests")}
+                </p>
 
-            <ul>
-              {requests.map((req) => (
-                <li
-                  key={req.id}
-                  className="-mx-4 flex items-center gap-3 border-b border-border px-4 py-3 lg:mx-0 lg:px-0"
-                >
-                  <Link href={`/profile/${req.follower.username}`} className="shrink-0">
-                    {req.follower.avatarUrl ? (
-                      <img
-                        src={req.follower.avatarUrl}
-                        alt=""
-                        className="h-11 w-11 rounded-full border border-border object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-bg-tertiary text-[13px] font-semibold text-text-secondary">
-                        {initialsOf(req.follower.name)}
+                <ul>
+                  {pendingRequests.map((req) => (
+                    <li
+                      key={req.id}
+                      className="-mx-4 flex items-center gap-3 border-b border-border px-4 py-3 lg:mx-0 lg:px-0"
+                    >
+                      <Link href={`/profile/${req.follower.username}`} className="shrink-0">
+                        <Avatar avatarUrl={req.follower.avatarUrl} name={req.follower.name} />
+                      </Link>
+
+                      <Link
+                        href={`/profile/${req.follower.username}`}
+                        className="min-w-0 flex-1"
+                      >
+                        <p className="truncate text-[13px] font-semibold text-text">
+                          {req.follower.username}
+                        </p>
+                        <p className="truncate text-xs text-text-tertiary">
+                          {req.follower.name}
+                        </p>
+                      </Link>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAccept(req.id)}
+                          className="cursor-pointer rounded-sm bg-accent px-4 py-2 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-dark"
+                        >
+                          {t("notifications.accept")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(req.id)}
+                          className="cursor-pointer rounded-sm border border-border bg-bg-secondary px-4 py-2 text-xs font-semibold text-text transition-colors hover:bg-bg-tertiary"
+                        >
+                          {t("notifications.reject")}
+                        </button>
                       </div>
-                    )}
-                  </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
 
-                  <Link
-                    href={`/profile/${req.follower.username}`}
-                    className="min-w-0 flex-1"
-                  >
-                    <p className="truncate text-[13px] font-semibold text-text">
-                      {req.follower.username}
-                    </p>
-                    <p className="truncate text-xs text-text-tertiary">
-                      {req.follower.name}
-                    </p>
-                  </Link>
+            {/* New followers (accepted) */}
+            {newFollowers.length > 0 && (
+              <>
+                <p className="pt-4 pb-2 text-[13px] font-semibold text-text">
+                  {t("notifications.newFollowers")}
+                </p>
 
-                  {/* The app's request actions are the one place buttons are
-                      not pills: 8px corners, 12px semibold. */}
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleAccept(req.id)}
-                      className="cursor-pointer rounded-sm bg-accent px-4 py-2 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-dark"
+                <ul>
+                  {newFollowers.map((follower) => (
+                    <li
+                      key={follower.id}
+                      className="-mx-4 flex items-center gap-3 border-b border-border px-4 py-3 lg:mx-0 lg:px-0"
                     >
-                      {t("notifications.accept")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReject(req.id)}
-                      className="cursor-pointer rounded-sm border border-border bg-bg-secondary px-4 py-2 text-xs font-semibold text-text transition-colors hover:bg-bg-tertiary"
-                    >
-                      {t("notifications.reject")}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      <Link href={`/profile/${follower.follower.username}`} className="shrink-0">
+                        <Avatar avatarUrl={follower.follower.avatarUrl} name={follower.follower.name} />
+                      </Link>
+
+                      <Link
+                        href={`/profile/${follower.follower.username}`}
+                        className="min-w-0 flex-1"
+                      >
+                        <p className="text-[13px] text-text">
+                          <span className="font-semibold">{follower.follower.username}</span>
+                          {" "}
+                          <span className="text-text-secondary">
+                            {t("notifications.startedFollowing")}
+                          </span>
+                        </p>
+                      </Link>
+
+                      <span className="shrink-0 text-xs text-text-tertiary">
+                        {timeAgo(follower.createdAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         ) : (
           <div className={`flex items-center justify-center pb-16 ${UNDER_HEADER} lg:min-h-0 lg:py-24`}>

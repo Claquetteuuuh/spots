@@ -170,6 +170,13 @@ export default function SettingsPage() {
   const handleAccountSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+
+      // If the username changed, ask for confirmation before saving
+      const usernameChanged = user && username !== user.username;
+      if (usernameChanged && !window.confirm(t("settings.usernameConfirmMessage"))) {
+        return;
+      }
+
       setIsSavingAccount(true);
       setAccountMessage(null);
 
@@ -186,6 +193,12 @@ export default function SettingsPage() {
 
         if (!res.ok) {
           const data = await res.json();
+          // Extract field-level errors from Zod validation details
+          if (data.details?.fieldErrors) {
+            const messages = Object.entries(data.details.fieldErrors)
+              .flatMap(([, errs]) => errs as string[]);
+            throw new Error(messages.join(". "));
+          }
           throw new Error(data.error ?? "Failed to save");
         }
 
@@ -200,7 +213,7 @@ export default function SettingsPage() {
         setIsSavingAccount(false);
       }
     },
-    [username, refreshUser, t],
+    [username, user, refreshUser, t],
   );
 
   const handlePasswordSubmit = useCallback(
@@ -279,7 +292,7 @@ export default function SettingsPage() {
 
   return (
     <div className={PAGE_COLUMN}>
-      <PageHeader title={t("settings.title")} back={false} />
+      <PageHeader title={t("settings.title")} />
 
       {/* The app's screen: 16px padding, 24px between sections, 64px under the last. */}
       <div className="space-y-6 pb-16 pt-4">

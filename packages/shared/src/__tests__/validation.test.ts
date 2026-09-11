@@ -13,7 +13,7 @@ describe("registerSchema", () => {
   it("accepts valid input", () => {
     const result = registerSchema.safeParse({
       email: "test@example.com",
-      password: "securepassword",
+      password: "SecurePass1!",
       username: "test_user",
       name: "Test User",
     });
@@ -23,7 +23,7 @@ describe("registerSchema", () => {
   it("rejects invalid email", () => {
     const result = registerSchema.safeParse({
       email: "not-an-email",
-      password: "securepassword",
+      password: "SecurePass1!",
       username: "test_user",
       name: "Test User",
     });
@@ -43,18 +43,48 @@ describe("registerSchema", () => {
   it("rejects username with special characters", () => {
     const result = registerSchema.safeParse({
       email: "test@example.com",
-      password: "securepassword",
+      password: "SecurePass1!",
       username: "test user!",
       name: "Test User",
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects username shorter than 3 chars", () => {
+  it("accepts short username (no minimum length)", () => {
     const result = registerSchema.safeParse({
       email: "test@example.com",
-      password: "securepassword",
+      password: "SecurePass1!",
       username: "ab",
+      name: "Test User",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects empty username", () => {
+    const result = registerSchema.safeParse({
+      email: "test@example.com",
+      password: "SecurePass1!",
+      username: "",
+      name: "Test User",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects password without uppercase", () => {
+    const result = registerSchema.safeParse({
+      email: "test@example.com",
+      password: "securepass1!",
+      username: "test_user",
+      name: "Test User",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects password without special character", () => {
+    const result = registerSchema.safeParse({
+      email: "test@example.com",
+      password: "SecurePass12",
+      username: "test_user",
       name: "Test User",
     });
     expect(result.success).toBe(false);

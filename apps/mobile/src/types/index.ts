@@ -33,6 +33,22 @@ export interface FollowRequest {
   createdAt: string;
 }
 
+export interface NotificationsData {
+  pendingRequests: FollowRequest[];
+  newFollowers: FollowRequest[];
+}
+
+export interface SentFollowRequest {
+  id: string;
+  following: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  createdAt: string;
+}
+
 export interface SpotImage {
   id: string;
   photoUrl: string;

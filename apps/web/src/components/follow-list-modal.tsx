@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { apiClient, type User } from "@/lib/api-client";
+import { apiClient, type User, type SentFollowRequest } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/use-t";
 
-type Tab = "followers" | "following";
+type Tab = "followers" | "following" | "requests";
 
 interface FollowListModalProps {
   open: boolean;
@@ -37,18 +37,20 @@ export function FollowListModal({
   const { user: currentUser } = useAuth();
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  const isOwnProfile = username === currentUser?.username;
+  const tabs: Tab[] = isOwnProfile
+    ? ["followers", "following", "requests"]
+    : ["followers", "following"];
+
   const [tab, setTab] = useState<Tab>(initialTab);
   const [lists, setLists] = useState<{ followers: User[]; following: User[] } | null>(null);
+  const [sentRequests, setSentRequests] = useState<SentFollowRequest[]>([]);
   const [unfollowedIds, setUnfollowedIds] = useState<Set<string>>(new Set());
+  const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
   const [swipeDirection, setSwipeDirection] = useState(0);
 
-  // "Loading" is simply "open and nothing has arrived yet". Deriving it keeps
-  // the fetch effect below free of synchronous setState calls.
   const isLoading = open && lists === null;
 
-  // Re-sync the active tab when the caller opens the modal on a different one.
-  // Adjusting state during render, guarded by the previous prop value, is
-  // React's sanctioned replacement for a setState-in-effect prop sync.
   const [syncedInitialTab, setSyncedInitialTab] = useState(initialTab);
   if (initialTab !== syncedInitialTab) {
     setSyncedInitialTab(initialTab);
@@ -60,26 +62,32 @@ export function FollowListModal({
     let cancelled = false;
     void (async () => {
       try {
-        const [followers, following] = await Promise.all([
+        const promises: [Promise<User[]>, Promise<User[]>, Promise<SentFollowRequest[]>?] = [
           apiClient.users.followers(username),
           apiClient.users.following(username),
-        ]);
+        ];
+        if (isOwnProfile) {
+          promises.push(apiClient.followRequests.sent());
+        }
+        const [followers, following, sent] = await Promise.all(promises);
         if (cancelled) return;
         setLists({ followers, following });
+        setSentRequests(sent ?? []);
         setUnfollowedIds(new Set());
+        setCancelledIds(new Set());
       } catch {
-        if (!cancelled) setLists({ followers: [], following: [] });
+        if (!cancelled) {
+          setLists({ followers: [], following: [] });
+          setSentRequests([]);
+        }
       }
     })();
-    // Closing (or switching profile) discards the data, so the next open
-    // starts from the spinner again rather than flashing a stale list.
     return () => {
       cancelled = true;
       setLists(null);
     };
-  }, [open, username]);
+  }, [open, username, isOwnProfile]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -89,7 +97,6 @@ export function FollowListModal({
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  // Lock body scroll
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -100,7 +107,9 @@ export function FollowListModal({
   }, [open]);
 
   function switchTab(newTab: Tab) {
-    setSwipeDirection(newTab === "following" ? 1 : -1);
+    const currentIdx = tabs.indexOf(tab);
+    const newIdx = tabs.indexOf(newTab);
+    setSwipeDirection(newIdx > currentIdx ? 1 : -1);
     setTab(newTab);
   }
 
@@ -126,12 +135,19 @@ export function FollowListModal({
     }
   }
 
+  async function handleCancelRequest(req: SentFollowRequest) {
+    try {
+      await apiClient.users.unfollow(req.following.username);
+      setCancelledIds((prev) => new Set(prev).add(req.id));
+    } catch {
+      // Silently fail
+    }
+  }
+
   if (!open) return null;
 
-  const list = (tab === "followers" ? lists?.followers : lists?.following) ?? [];
-  const emptyText =
-    tab === "followers" ? t("users.noFollowers") : t("users.noFollowing");
-  const isOwnProfile = username === currentUser?.username;
+  const tabWidth = `${100 / tabs.length}%`;
+  const tabIndex = tabs.indexOf(tab);
 
   const listVariants = {
     enter: (direction: number) => ({
@@ -148,6 +164,141 @@ export function FollowListModal({
     }),
   };
 
+  function renderUserList() {
+    if (tab === "requests") {
+      const visibleRequests = sentRequests.filter((r) => !cancelledIds.has(r.id));
+
+      if (visibleRequests.length === 0) {
+        return (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-sm text-text-secondary">{t("users.noRequests")}</p>
+          </div>
+        );
+      }
+
+      return (
+        <ul>
+          {visibleRequests.map((req) => (
+            <li
+              key={req.id}
+              className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-bg-secondary transition-colors"
+            >
+              <Link
+                href={`/profile/${req.following.username}`}
+                onClick={onClose}
+                className="flex items-center gap-3 flex-1 min-w-0"
+              >
+                {req.following.avatarUrl ? (
+                  <img
+                    src={req.following.avatarUrl}
+                    alt=""
+                    className="h-11 w-11 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
+                    {initialsOf(req.following.name)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-text truncate">
+                    {req.following.username}
+                  </p>
+                  <p className="text-xs text-text-secondary truncate">
+                    {req.following.name}
+                  </p>
+                </div>
+              </Link>
+
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => handleCancelRequest(req)}
+              >
+                {t("users.cancelRequest")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    const list = (tab === "followers" ? lists?.followers : lists?.following) ?? [];
+    const emptyText =
+      tab === "followers" ? t("users.noFollowers") : t("users.noFollowing");
+
+    if (list.length === 0) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-sm text-text-secondary">{emptyText}</p>
+        </div>
+      );
+    }
+
+    return (
+      <ul>
+        {list.map((user) => {
+          const isCurrentUser = user.id === currentUser?.id;
+          const wasUnfollowed = unfollowedIds.has(user.id);
+          const showButton =
+            !isCurrentUser && isOwnProfile && tab === "following";
+
+          return (
+            <li
+              key={user.id}
+              className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-bg-secondary transition-colors"
+            >
+              <Link
+                href={`/profile/${user.username}`}
+                onClick={onClose}
+                className="flex items-center gap-3 flex-1 min-w-0"
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-11 w-11 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
+                    {initialsOf(user.name)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-text truncate">
+                    {user.username}
+                  </p>
+                  <p className="text-xs text-text-secondary truncate">
+                    {user.name}
+                  </p>
+                </div>
+              </Link>
+
+              {showButton ? (
+                wasUnfollowed ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => handleFollow(user)}
+                  >
+                    {t("users.follow")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={() => handleUnfollow(user)}
+                  >
+                    {t("users.unfollow")}
+                  </Button>
+                )
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -162,9 +313,6 @@ export function FollowListModal({
             if (e.target === backdropRef.current) onClose();
           }}
         >
-          {/* Below lg this is the app's page sheet: the whole screen, no
-              radius, no border, padded for the home indicator. From lg it
-              is the centred dialog it always was. */}
           <motion.div
             className="fixed inset-0 flex flex-col overflow-hidden bg-bg pb-[env(safe-area-inset-bottom)]
               lg:relative lg:inset-auto lg:mx-0 lg:w-full lg:max-w-md lg:max-h-[70vh] lg:rounded-2xl lg:border lg:border-border lg:pb-0"
@@ -173,8 +321,7 @@ export function FollowListModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300, mass: 0.5 }}
           >
-            {/* Header — the app closes its sheet from the left; the desktop
-                dialog keeps its close control on the right. */}
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div className="w-8 order-last lg:order-first" />
               <h2 className="flex-1 truncate text-center text-base font-semibold text-text">
@@ -194,30 +341,28 @@ export function FollowListModal({
 
             {/* Tabs with animated indicator */}
             <div className="flex border-b border-border relative">
-              <button
-                type="button"
-                onClick={() => switchTab("followers")}
-                className={`flex-1 py-3 text-sm font-semibold text-center transition-colors cursor-pointer ${
-                  tab === "followers" ? "text-text" : "text-text-secondary hover:text-text"
-                }`}
-              >
-                {t("users.followers")}
-              </button>
-              <button
-                type="button"
-                onClick={() => switchTab("following")}
-                className={`flex-1 py-3 text-sm font-semibold text-center transition-colors cursor-pointer ${
-                  tab === "following" ? "text-text" : "text-text-secondary hover:text-text"
-                }`}
-              >
-                {t("users.following")}
-              </button>
+              {tabs.map((t_) => (
+                <button
+                  key={t_}
+                  type="button"
+                  onClick={() => switchTab(t_)}
+                  className={`flex-1 py-3 text-sm font-semibold text-center transition-colors cursor-pointer ${
+                    tab === t_ ? "text-text" : "text-text-secondary hover:text-text"
+                  }`}
+                >
+                  {t_ === "followers"
+                    ? t("users.followers")
+                    : t_ === "following"
+                      ? t("users.following")
+                      : t("users.requests")}
+                </button>
+              ))}
 
               {/* Animated indicator */}
               <motion.div
                 className="absolute bottom-0 h-[1.5px] bg-text"
-                style={{ width: "50%" }}
-                animate={{ x: tab === "followers" ? "0%" : "100%" }}
+                style={{ width: tabWidth }}
+                animate={{ x: `${tabIndex * 100}%` }}
                 transition={{ type: "spring", damping: 25, stiffness: 300, mass: 0.5 }}
               />
             </div>
@@ -243,73 +388,7 @@ export function FollowListModal({
                     transition={{ type: "spring", damping: 25, stiffness: 300, mass: 0.5 }}
                     className="overflow-y-auto h-full"
                   >
-                    {list.length === 0 ? (
-                      <div className="flex items-center justify-center py-12">
-                        <p className="text-sm text-text-secondary">{emptyText}</p>
-                      </div>
-                    ) : (
-                      <ul>
-                        {list.map((user) => {
-                          const isCurrentUser = user.id === currentUser?.id;
-                          const wasUnfollowed = unfollowedIds.has(user.id);
-                          const showButton =
-                            !isCurrentUser && isOwnProfile && tab === "following";
-
-                          return (
-                            <li
-                              key={user.id}
-                              className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-bg-secondary transition-colors"
-                            >
-                              <Link
-                                href={`/profile/${user.username}`}
-                                onClick={onClose}
-                                className="flex items-center gap-3 flex-1 min-w-0"
-                              >
-                                {user.avatarUrl ? (
-                                  <img
-                                    src={user.avatarUrl}
-                                    alt=""
-                                    className="h-11 w-11 rounded-full object-cover shrink-0"
-                                  />
-                                ) : (
-                                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
-                                    {initialsOf(user.name)}
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="text-[13px] font-semibold text-text truncate">
-                                    {user.username}
-                                  </p>
-                                  <p className="text-xs text-text-secondary truncate">
-                                    {user.name}
-                                  </p>
-                                </div>
-                              </Link>
-
-                              {showButton ? (
-                                wasUnfollowed ? (
-                                  <Button
-                                    variant="primary"
-                                    size="md"
-                                    onClick={() => handleFollow(user)}
-                                  >
-                                    {t("users.follow")}
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="secondary"
-                                    size="md"
-                                    onClick={() => handleUnfollow(user)}
-                                  >
-                                    {t("users.unfollow")}
-                                  </Button>
-                                )
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
+                    {renderUserList()}
                   </motion.div>
                 </AnimatePresence>
               )}

@@ -24,14 +24,11 @@ import { useAuthStore } from "../../stores/auth-store";
 import * as api from "../../lib/api";
 import { Button } from "../ui/Button";
 import type { RootStackNavigationProp } from "../../navigation/types";
-import type { User } from "../../types";
+import type { SentFollowRequest, User } from "../../types";
 
-type Tab = "followers" | "following";
-const TAB_INDEX: Record<Tab, number> = { followers: 0, following: 1 };
-const INDEX_TAB: Tab[] = ["followers", "following"];
+type Tab = "followers" | "following" | "requests";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const TAB_WIDTH = SCREEN_WIDTH / 2;
 
 const SPRING_CONFIG = {
   damping: 20,
@@ -58,41 +55,61 @@ export function FollowListModal({
   const currentUser = useAuthStore((s) => s.user);
   const pagerRef = useRef<PagerView>(null);
 
+  const isOwnProfile = username === currentUser?.username;
+  const tabs: Tab[] = isOwnProfile
+    ? ["followers", "following", "requests"]
+    : ["followers", "following"];
+
+  const tabCount = tabs.length;
+  const tabWidth = SCREEN_WIDTH / tabCount;
+
+  const tabIndex = (t_: Tab) => tabs.indexOf(t_);
+
   const [tab, setTab] = useState<Tab>(initialTab);
   const [followers, setFollowers] = useState<User[]>([]);
   const [following, setFollowing] = useState<User[]>([]);
+  const [sentRequests, setSentRequests] = useState<SentFollowRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [unfollowedIds, setUnfollowedIds] = useState<Set<string>>(new Set());
+  const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
 
   // Animated tab indicator
-  const indicatorX = useSharedValue(TAB_INDEX[initialTab] * TAB_WIDTH);
+  const indicatorX = useSharedValue(tabIndex(initialTab) * tabWidth);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
+    width: tabWidth,
   }));
 
   useEffect(() => {
     setTab(initialTab);
-    indicatorX.value = withSpring(TAB_INDEX[initialTab] * TAB_WIDTH, SPRING_CONFIG);
-    pagerRef.current?.setPage(TAB_INDEX[initialTab]);
-  }, [initialTab, indicatorX]);
+    indicatorX.value = withSpring(tabIndex(initialTab) * tabWidth, SPRING_CONFIG);
+    pagerRef.current?.setPage(tabIndex(initialTab));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [f, g] = await Promise.all([
+      const promises: [Promise<User[]>, Promise<User[]>, Promise<SentFollowRequest[]>?] = [
         api.getFollowers(username),
         api.getFollowing(username),
-      ]);
+      ];
+      if (isOwnProfile) {
+        promises.push(api.getSentFollowRequests());
+      }
+      const [f, g, sent] = await Promise.all(promises);
       setFollowers(f);
       setFollowing(g);
+      setSentRequests(sent ?? []);
       setUnfollowedIds(new Set());
+      setCancelledIds(new Set());
     } catch {
       // Silently fail
     } finally {
       setIsLoading(false);
     }
-  }, [username]);
+  }, [username, isOwnProfile]);
 
   useEffect(() => {
     if (visible) {
@@ -100,16 +117,18 @@ export function FollowListModal({
     }
   }, [visible, loadData]);
 
-  const handleTabPress = (t: Tab) => {
-    setTab(t);
-    indicatorX.value = withSpring(TAB_INDEX[t] * TAB_WIDTH, SPRING_CONFIG);
-    pagerRef.current?.setPage(TAB_INDEX[t]);
+  const handleTabPress = (t_: Tab) => {
+    const idx = tabIndex(t_);
+    setTab(t_);
+    indicatorX.value = withSpring(idx * tabWidth, SPRING_CONFIG);
+    pagerRef.current?.setPage(idx);
   };
 
   const handlePageSelected = (e: { nativeEvent: { position: number } }) => {
     const pos = e.nativeEvent.position;
-    setTab(INDEX_TAB[pos]);
-    indicatorX.value = withSpring(pos * TAB_WIDTH, SPRING_CONFIG);
+    const selectedTab = tabs[pos];
+    setTab(selectedTab);
+    indicatorX.value = withSpring(pos * tabWidth, SPRING_CONFIG);
   };
 
   const handleUnfollow = async (user: User) => {
@@ -134,15 +153,22 @@ export function FollowListModal({
     }
   };
 
-  const navigateToProfile = (user: User) => {
-    onClose();
-    if (user.username === currentUser?.username) {
-      return;
+  const handleCancelRequest = async (req: SentFollowRequest) => {
+    try {
+      await api.unfollowUser(req.following.username);
+      setCancelledIds((prev) => new Set(prev).add(req.id));
+    } catch {
+      // Silently fail
     }
-    navigation.navigate("OtherProfile", { username: user.username });
   };
 
-  const isOwnProfile = username === currentUser?.username;
+  const navigateToProfile = (profileUsername: string) => {
+    onClose();
+    if (profileUsername === currentUser?.username) {
+      return;
+    }
+    navigation.navigate("OtherProfile", { username: profileUsername });
+  };
 
   const renderUser = (item: User, currentTab: Tab) => {
     const isCurrentUser = item.id === currentUser?.id;
@@ -152,7 +178,7 @@ export function FollowListModal({
     return (
       <Pressable
         key={item.id}
-        onPress={() => navigateToProfile(item)}
+        onPress={() => navigateToProfile(item.username)}
         style={[styles.userRow, { borderBottomColor: theme.colors.border }]}
       >
         {item.avatarUrl ? (
@@ -211,6 +237,60 @@ export function FollowListModal({
     );
   };
 
+  const renderSentRequest = (item: SentFollowRequest) => {
+    if (cancelledIds.has(item.id)) return null;
+
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => navigateToProfile(item.following.username)}
+        style={[styles.userRow, { borderBottomColor: theme.colors.border }]}
+      >
+        {item.following.avatarUrl ? (
+          <Image source={{ uri: item.following.avatarUrl }} style={styles.userAvatar} />
+        ) : (
+          <View
+            style={[
+              styles.userAvatar,
+              styles.avatarPlaceholder,
+              { backgroundColor: theme.colors.bgTertiary },
+            ]}
+          >
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 16, fontWeight: "600" }}>
+              {item.following.name?.charAt(0)?.toUpperCase() ?? "?"}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.userInfo}>
+          <Text
+            style={{
+              color: theme.colors.text,
+              fontSize: theme.typography.size.sm,
+              fontWeight: theme.typography.weight.semibold,
+            }}
+            numberOfLines={1}
+          >
+            {item.following.username}
+          </Text>
+          <Text
+            style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}
+            numberOfLines={1}
+          >
+            {item.following.name}
+          </Text>
+        </View>
+
+        <Button
+          title={t("users.cancelRequest")}
+          variant="secondary"
+          fullWidth={false}
+          onPress={() => handleCancelRequest(item)}
+        />
+      </Pressable>
+    );
+  };
+
   const renderList = (data: User[], currentTab: Tab, emptyText: string) => (
     <FlatList
       data={data}
@@ -221,6 +301,24 @@ export function FollowListModal({
         <View style={styles.centered}>
           <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>
             {emptyText}
+          </Text>
+        </View>
+      }
+    />
+  );
+
+  const visibleRequests = sentRequests.filter((r) => !cancelledIds.has(r.id));
+
+  const renderRequestsList = () => (
+    <FlatList
+      data={visibleRequests}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => renderSentRequest(item) as React.ReactElement}
+      contentContainerStyle={{ flexGrow: 1 }}
+      ListEmptyComponent={
+        <View style={styles.centered}>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}>
+            {t("users.noRequests")}
           </Text>
         </View>
       }
@@ -256,30 +354,24 @@ export function FollowListModal({
 
         {/* Tabs with animated indicator */}
         <View style={[styles.tabRow, { borderBottomColor: theme.colors.border }]}>
-          <Pressable onPress={() => handleTabPress("followers")} style={styles.tab}>
-            <Text
-              style={{
-                color: tab === "followers" ? theme.colors.text : theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                fontWeight: theme.typography.weight.semibold,
-                textAlign: "center",
-              }}
-            >
-              {t("users.followers")}
-            </Text>
-          </Pressable>
-          <Pressable onPress={() => handleTabPress("following")} style={styles.tab}>
-            <Text
-              style={{
-                color: tab === "following" ? theme.colors.text : theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                fontWeight: theme.typography.weight.semibold,
-                textAlign: "center",
-              }}
-            >
-              {t("users.following")}
-            </Text>
-          </Pressable>
+          {tabs.map((t_) => (
+            <Pressable key={t_} onPress={() => handleTabPress(t_)} style={styles.tab}>
+              <Text
+                style={{
+                  color: tab === t_ ? theme.colors.text : theme.colors.textSecondary,
+                  fontSize: theme.typography.size.sm,
+                  fontWeight: theme.typography.weight.semibold,
+                  textAlign: "center",
+                }}
+              >
+                {t_ === "followers"
+                  ? t("users.followers")
+                  : t_ === "following"
+                    ? t("users.following")
+                    : t("users.requests")}
+              </Text>
+            </Pressable>
+          ))}
 
           {/* Sliding indicator */}
           <Animated.View
@@ -300,7 +392,7 @@ export function FollowListModal({
           <PagerView
             ref={pagerRef}
             style={styles.pager}
-            initialPage={TAB_INDEX[initialTab]}
+            initialPage={tabIndex(initialTab)}
             onPageSelected={handlePageSelected}
           >
             <View key="followers" style={styles.page}>
@@ -309,6 +401,11 @@ export function FollowListModal({
             <View key="following" style={styles.page}>
               {renderList(following, "following", t("users.noFollowing"))}
             </View>
+            {isOwnProfile && (
+              <View key="requests" style={styles.page}>
+                {renderRequestsList()}
+              </View>
+            )}
           </PagerView>
         )}
       </View>
@@ -344,7 +441,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     left: 0,
-    width: TAB_WIDTH,
     height: 1.5,
   },
   pager: {

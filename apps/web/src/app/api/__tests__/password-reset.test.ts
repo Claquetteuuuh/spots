@@ -137,7 +137,7 @@ describe("POST /api/auth/reset-password", () => {
     });
     mockTransaction.mockResolvedValue([{}, { count: 1 }]);
 
-    const res = await callReset({ token: "valid-token", password: "newpassword123" });
+    const res = await callReset({ token: "valid-token", password: "NewPassword1!" });
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -148,7 +148,7 @@ describe("POST /api/auth/reset-password", () => {
   it("rejects invalid token", async () => {
     mockFindUniqueToken.mockResolvedValue(null);
 
-    const res = await callReset({ token: "bad-token", password: "newpassword123" });
+    const res = await callReset({ token: "bad-token", password: "NewPassword1!" });
     expect(res.status).toBe(400);
   });
 
@@ -163,11 +163,11 @@ describe("POST /api/auth/reset-password", () => {
     });
     mockDelete.mockResolvedValue({});
 
-    const res = await callReset({ token: "expired-token", password: "newpassword123" });
+    const res = await callReset({ token: "expired-token", password: "NewPassword1!" });
     expect(res.status).toBe(400);
   });
 
-  it("rejects password shorter than 8 characters", async () => {
+  it("rejects password not meeting ANSSI policy", async () => {
     const res = await callReset({ token: "valid-token", password: "short" });
     expect(res.status).toBe(400);
   });

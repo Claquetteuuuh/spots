@@ -205,6 +205,22 @@ export interface FollowRequest {
   createdAt: string;
 }
 
+export interface NotificationsData {
+  pendingRequests: FollowRequest[];
+  newFollowers: FollowRequest[];
+}
+
+export interface SentFollowRequest {
+  id: string;
+  following: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  createdAt: string;
+}
+
 export interface SpotImage {
   id: string;
   photoUrl: string;
@@ -469,13 +485,17 @@ export const apiClient = {
   },
 
   followRequests: {
-    async list(): Promise<FollowRequest[]> {
-      return request<FollowRequest[]>(API_ROUTES.followRequests.list);
+    async list(): Promise<NotificationsData> {
+      return request<NotificationsData>(API_ROUTES.followRequests.list);
     },
 
     async count(): Promise<number> {
       const res = await request<{ count: number }>(API_ROUTES.followRequests.count);
       return res.count;
+    },
+
+    async sent(): Promise<SentFollowRequest[]> {
+      return request<SentFollowRequest[]>(API_ROUTES.followRequests.sent);
     },
 
     async accept(id: string): Promise<void> {

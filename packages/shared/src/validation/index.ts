@@ -3,12 +3,26 @@ import { COMPOSITION_TYPES } from "../constants";
 
 // ─── Auth ────────────────────────────────────────────────────────────
 
+/**
+ * ANSSI password policy:
+ * - 12 characters minimum
+ * - At least one uppercase, one lowercase, one digit, one special character
+ */
+const passwordSchema = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .max(128)
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[0-9]/, "Password must contain at least one digit")
+  .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character");
+
 export const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8).max(128),
+  password: passwordSchema,
   username: z
     .string()
-    .min(3)
+    .min(1)
     .max(30)
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
   name: z.string().min(1).max(100),
@@ -30,12 +44,12 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8).max(128),
+  password: passwordSchema,
 });
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8).max(128),
+  newPassword: passwordSchema,
 });
 
 // ─── Spots ───────────────────────────────────────────────────────────
@@ -90,9 +104,9 @@ export const updateProfileSchema = z.object({
   email: z.string().email().max(255).optional(),
   username: z
     .string()
-    .min(3)
-    .max(30)
-    .regex(/^[a-zA-Z0-9_]+$/)
+    .min(1)
+    .max(30, "Username must be 30 characters or fewer")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
   bio: z.string().max(500).optional(),
   locale: z.enum(["fr", "en"]).optional(),

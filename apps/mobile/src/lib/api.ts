@@ -6,8 +6,10 @@ import type {
   FollowRequest,
   ForwardGeocodeResult,
   MapBounds,
+  NotificationsData,
   Paginated,
   ReverseGeocodeResult,
+  SentFollowRequest,
   Spot,
   UploadPhotoResult,
   User,
@@ -276,14 +278,19 @@ export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<
 
 // ─── Follow requests ────────────────────────────────────────────────
 
-export async function getFollowRequests(): Promise<FollowRequest[]> {
-  const { data } = await client.get<FollowRequest[]>(API_ROUTES.followRequests.list);
+export async function getFollowRequests(): Promise<NotificationsData> {
+  const { data } = await client.get<NotificationsData>(API_ROUTES.followRequests.list);
   return data;
 }
 
 export async function getFollowRequestsCount(): Promise<number> {
   const { data } = await client.get<{ count: number }>(API_ROUTES.followRequests.count);
   return data.count;
+}
+
+export async function getSentFollowRequests(): Promise<SentFollowRequest[]> {
+  const { data } = await client.get<SentFollowRequest[]>(API_ROUTES.followRequests.sent);
+  return data;
 }
 
 export async function acceptFollowRequest(id: string): Promise<void> {

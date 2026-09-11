@@ -11,10 +11,15 @@ import { verifyGoogleIdToken } from "@/lib/google-auth";
  * Appends random digits if the base slug is taken.
  */
 async function generateUsername(name: string): Promise<string> {
-  const base = name
+  let base = name
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 15) || "user";
+
+  // Ensure the base meets the minimum length (3 chars) required by validation
+  while (base.length < 3) {
+    base += Math.floor(Math.random() * 10).toString();
+  }
 
   // Try the base name first
   const existing = await prisma.user.findUnique({ where: { username: base } });

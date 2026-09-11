@@ -156,6 +156,9 @@ export const en = {
     spots: "{{count}} spots",
     noFollowers: "No followers",
     noFollowing: "Not following anyone",
+    requests: "Requests",
+    noRequests: "No pending requests",
+    cancelRequest: "Cancel",
     bio: "Bio",
     searchPlaceholder: "Search for a photographer...",
     notFound: "User not found",
@@ -225,6 +228,7 @@ export const en = {
     privateAccountDesc: "When your account is private, only people you approve can see your spots",
     privateAccountShort: "Only approved followers can see your spots",
     publicAccountShort: "Anyone can follow you and see your spots",
+    usernameConfirmMessage: "Are you sure you want to change your username? This will change your profile URL.",
   },
   landing: {
     tagline: "The places your best photographs come from.",
@@ -247,6 +251,8 @@ export const en = {
   notifications: {
     title: "Notifications",
     followRequests: "Follow requests",
+    newFollowers: "New followers",
+    startedFollowing: "started following you",
     accept: "Confirm",
     reject: "Delete",
     noNotifications: "No notifications",

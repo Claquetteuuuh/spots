@@ -156,6 +156,9 @@ export const fr = {
     spots: "{{count}} spots",
     noFollowers: "Aucun abonné",
     noFollowing: "Aucun abonnement",
+    requests: "Demandes",
+    noRequests: "Aucune demande en attente",
+    cancelRequest: "Annuler",
     bio: "Bio",
     searchPlaceholder: "Rechercher un photographe...",
     notFound: "Utilisateur introuvable",
@@ -225,6 +228,7 @@ export const fr = {
     privateAccountDesc: "Quand votre compte est privé, seules les personnes que vous approuvez peuvent voir vos spots",
     privateAccountShort: "Seuls les abonnés approuvés peuvent voir vos spots",
     publicAccountShort: "Tout le monde peut s'abonner et voir vos spots",
+    usernameConfirmMessage: "Voulez-vous vraiment changer votre nom d'utilisateur ? Cela modifiera l'URL de votre profil.",
   },
   landing: {
     tagline: "Les endroits d'où viennent vos meilleures photos.",
@@ -247,6 +251,8 @@ export const fr = {
   notifications: {
     title: "Notifications",
     followRequests: "Demandes d'abonnement",
+    newFollowers: "Nouveaux abonnés",
+    startedFollowing: "a commencé à vous suivre",
     accept: "Confirmer",
     reject: "Supprimer",
     noNotifications: "Aucune notification",
