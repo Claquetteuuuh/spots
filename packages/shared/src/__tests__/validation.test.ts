@@ -204,6 +204,30 @@ describe("updateProfileSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts a DiceBear avatar URL", () => {
+    const result = updateProfileSchema.safeParse({
+      avatarUrl: "https://api.dicebear.com/9.x/bottts/svg?seed=alice&backgroundColor=b6e3f4",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts clearing the avatar", () => {
+    const result = updateProfileSchema.safeParse({ avatarUrl: null });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an avatar URL from any other origin", () => {
+    for (const avatarUrl of [
+      "https://example.com/me.png",
+      "https://api.dicebear.com.evil.io/9.x/bottts/svg?seed=x",
+      "http://api.dicebear.com/9.x/bottts/svg?seed=x",
+      "not a url",
+    ]) {
+      const result = updateProfileSchema.safeParse({ avatarUrl });
+      expect(result.success, avatarUrl).toBe(false);
+    }
+  });
 });
 
 describe("spotQuerySchema", () => {

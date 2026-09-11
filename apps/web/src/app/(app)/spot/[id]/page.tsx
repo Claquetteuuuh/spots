@@ -214,6 +214,7 @@ export default function SpotDetailPage({
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const loadSpot = useCallback(async () => {
@@ -299,6 +300,22 @@ export default function SpotDetailPage({
     } finally {
       setIsUploading(false);
       if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeletePhoto(photo: SpotPhoto) {
+    if (!window.confirm(t("spotPhotos.deleteConfirm"))) return;
+    setDeletingPhotoId(photo.id);
+    try {
+      await apiClient.spots.deletePhoto(id, photo.id);
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    } catch (err) {
+      setUploadMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : t("common.error"),
+      });
+    } finally {
+      setDeletingPhotoId(null);
     }
   }
 
@@ -609,29 +626,48 @@ export default function SpotDetailPage({
         {/* Photos grid — the app's three-column, 1px-gutter grid below lg */}
         {photos.length > 0 ? (
           <div className="-mx-4 grid grid-cols-3 gap-px lg:mx-0 lg:gap-2">
-            {photos.map((photo) => (
-              <div
-                key={photo.id}
-                className="group relative aspect-square overflow-hidden rounded-none bg-bg-secondary lg:rounded-xl"
-              >
-                <img
-                  src={photo.photoUrl}
-                  alt={photo.caption ?? ""}
-                  className="h-full w-full object-cover"
-                />
-                {/* Hover overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 p-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                  <p className="text-xs font-semibold text-white">
-                    {photo.user.username}
-                  </p>
-                  {photo.caption ? (
-                    <p className="mt-1 line-clamp-2 text-center text-xs text-white/80">
-                      {photo.caption}
+            {photos.map((photo) => {
+              const canDelete =
+                user && (user.id === photo.user.id || isOwner);
+              return (
+                <div
+                  key={photo.id}
+                  className="group relative aspect-square overflow-hidden rounded-none bg-bg-secondary lg:rounded-xl"
+                >
+                  <img
+                    src={photo.photoUrl}
+                    alt={photo.caption ?? ""}
+                    className="h-full w-full object-cover"
+                  />
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 p-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <p className="text-xs font-semibold text-white">
+                      {photo.user.username}
                     </p>
+                    {photo.caption ? (
+                      <p className="mt-1 line-clamp-2 text-center text-xs text-white/80">
+                        {photo.caption}
+                      </p>
+                    ) : null}
+                  </div>
+                  {/* Delete button */}
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePhoto(photo)}
+                      disabled={deletingPhotoId === photo.id}
+                      className="absolute top-1.5 right-1.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-200 hover:bg-error group-hover:opacity-100 disabled:opacity-50"
+                      title={t("spotPhotos.deletePhoto")}
+                      aria-label={t("spotPhotos.deletePhoto")}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                    </button>
                   ) : null}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : !photosLoading ? (
           <p className="py-8 text-center text-sm text-text-tertiary">

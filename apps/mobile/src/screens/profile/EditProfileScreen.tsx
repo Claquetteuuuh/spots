@@ -30,7 +30,7 @@ export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProf
   const handleSave = async () => {
     const nextErrors: typeof errors = {};
     if (name.trim().length < 1) nextErrors.name = t("auth.name");
-    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) nextErrors.username = t("auth.errors.usernameTaken");
+    if (!/^[a-zA-Z0-9_]{1,30}$/.test(username)) nextErrors.username = t("auth.errors.usernameTaken");
     if (bio.length > 500) nextErrors.bio = t("common.error");
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -122,8 +122,9 @@ export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProf
       <AvatarPicker
         visible={showAvatarPicker}
         onClose={() => setShowAvatarPicker(false)}
-        onSelect={(url) => setAvatarUrl(url)}
+        onSelect={(url) => setAvatarUrl(url ?? null)}
         seed={user?.username ?? "user"}
+        currentUrl={avatarUrl}
       />
     </SafeAreaView>
   );

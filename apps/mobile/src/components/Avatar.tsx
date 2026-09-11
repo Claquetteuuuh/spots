@@ -1,5 +1,15 @@
 import React from "react";
-import { Image, StyleSheet, Text, View, type ImageStyle, type ViewStyle, type TextStyle } from "react-native";
+import {
+  Image,
+  PixelRatio,
+  StyleSheet,
+  Text,
+  View,
+  type ImageStyle,
+  type ViewStyle,
+  type TextStyle,
+} from "react-native";
+import { dicebearRasterUrl } from "@trs/shared/constants";
 import { useTheme } from "../theme";
 
 /** Two-letter initials — "Ada Lovelace" → "AL", unknown → "?". */
@@ -41,7 +51,10 @@ export function Avatar({ url, name, size = 44, style, textStyle }: AvatarProps) 
   };
 
   if (url) {
-    return <Image source={{ uri: url }} style={[baseSize, style as ImageStyle]} />;
+    // DiceBear avatars are stored as SVG, which <Image> cannot draw — ask
+    // for a PNG at the device's real pixel size instead.
+    const uri = dicebearRasterUrl(url, PixelRatio.getPixelSizeForLayoutSize(size));
+    return <Image source={{ uri }} style={[baseSize, style as ImageStyle]} />;
   }
 
   return (

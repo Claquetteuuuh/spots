@@ -266,6 +266,8 @@ export const en = {
     captionPlaceholder: "What did you capture here?",
     uploading: "Uploading...",
     photoAdded: "Photo added!",
+    deletePhoto: "Delete photo",
+    deleteConfirm: "Delete this photo? This cannot be undone.",
   },
   avatar: {
     pickTitle: "Choose an avatar",

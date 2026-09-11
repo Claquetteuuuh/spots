@@ -2,6 +2,8 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { ApiError } from "./api-utils";
 
@@ -13,6 +15,9 @@ const REQUIRED_ENV = [
   "R2_BUCKET_NAME",
   "R2_PUBLIC_URL",
 ] as const;
+
+/** S3 refuses more keys than this in a single DeleteObjects call. */
+const DELETE_BATCH_SIZE = 1000;
 
 /**
  * Fail with something a person can act on.
@@ -103,8 +108,101 @@ export async function deleteFile(key: string): Promise<void> {
 }
 
 /**
+ * Delete many objects in as few round-trips as possible. Duplicates and
+ * empty keys are dropped; an empty list is a no-op that never touches the
+ * network. Throws if the bucket reports a per-key failure, naming the keys.
+ */
+export async function deleteFiles(keys: readonly string[]): Promise<void> {
+  const unique = [...new Set(keys.filter((key) => key.length > 0))];
+  if (unique.length === 0) return;
+
+  const client = getClient();
+  const bucket = getBucket();
+
+  for (let i = 0; i < unique.length; i += DELETE_BATCH_SIZE) {
+    const chunk = unique.slice(i, i + DELETE_BATCH_SIZE);
+    const result = await client.send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+      })
+    );
+
+    const errors = result.Errors ?? [];
+    if (errors.length > 0) {
+      const detail = errors.map((e) => `${e.Key} (${e.Code})`).join(", ");
+      throw new Error(`Failed to delete ${errors.length} object(s): ${detail}`);
+    }
+  }
+}
+
+export interface StoredObject {
+  key: string;
+  size: number;
+  lastModified: Date;
+}
+
+/**
+ * Every object in the bucket, optionally under `prefix`. Pages through the
+ * listing so callers get one flat array. Meant for maintenance (orphan
+ * sweeps), not request handling.
+ */
+export async function listAllObjects(prefix?: string): Promise<StoredObject[]> {
+  const client = getClient();
+  const bucket = getBucket();
+  const objects: StoredObject[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+
+    for (const item of page.Contents ?? []) {
+      if (!item.Key) continue;
+      objects.push({
+        key: item.Key,
+        size: item.Size ?? 0,
+        lastModified: item.LastModified ?? new Date(0),
+      });
+    }
+
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
+}
+
+/**
  * Build the public URL for a stored object key.
  */
 export function getFileUrl(key: string): string {
   return `${getPublicUrl()}/${key}`;
+}
+
+/**
+ * The object key behind one of *our* public URLs — `null` for anything
+ * else (a DiceBear avatar, an external image, storage not configured).
+ * Lets callers clean up a stored file from the URL a row holds without
+ * ever deleting something that was never ours.
+ */
+export function keyFromUrl(url: string | null | undefined): string | null {
+  const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/+$/, "");
+  if (!url || !publicUrl) return null;
+
+  const base = `${publicUrl}/`;
+  if (!url.startsWith(base)) return null;
+
+  const key = url.slice(base.length).split(/[?#]/)[0];
+  if (!key) return null;
+
+  try {
+    return decodeURIComponent(key);
+  } catch {
+    return null;
+  }
 }

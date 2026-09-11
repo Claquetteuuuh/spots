@@ -28,7 +28,7 @@ import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
-import { uploadPhoto, reverseGeocode, forwardGeocode, searchTags } from "../../lib/api";
+import { uploadPhoto, discardUploads, reverseGeocode, forwardGeocode, searchTags } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -532,11 +532,19 @@ export function AddSpotScreen() {
     if (photos.length === 0 || !location || !user) return;
     setIsSubmitting(true);
     setSubmitError(null);
+    // Whatever reached the bucket before something failed has no spot to
+    // belong to — it is discarded again in the catch below.
+    let uploads: { photoUrl: string; photoKey: string }[] = [];
     try {
       // Upload all photos in parallel
-      const uploads = await Promise.all(
+      const settled = await Promise.allSettled(
         photos.map((p, i) => uploadPhoto(p.uri, `spot-${Date.now()}-${i}.jpg`))
       );
+      uploads = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const failed = settled.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected"
+      );
+      if (failed) throw failed.reason;
       const photosPayload = uploads.map((u) => ({ url: u.photoUrl, key: u.photoKey }));
 
       await createSpot({
@@ -557,6 +565,9 @@ export function AddSpotScreen() {
       resetWizard();
       navigation.navigate("Map");
     } catch (err) {
+      void discardUploads(uploads.map((u) => u.photoKey)).catch(() => {
+        // Best effort — the orphan sweep picks up anything left behind
+      });
       setSubmitError(extractErrorMessage(err, t("spots.errors.saveFailed")));
     } finally {
       setIsSubmitting(false);

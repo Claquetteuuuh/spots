@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Native/WASM image codecs: load from node_modules at runtime rather than
+  // bundling them. sharp ships platform binaries, heic-convert a ~2 MB WASM.
+  serverExternalPackages: ["sharp", "heic-convert", "libheif-js"],
+
   async headers() {
     return [
       {

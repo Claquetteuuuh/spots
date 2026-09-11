@@ -276,6 +276,15 @@ export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<
   return data;
 }
 
+/**
+ * Throw away staged photos that will never be attached to a spot — call it
+ * when creating the spot fails after the uploads went through.
+ */
+export async function discardUploads(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  await client.delete(API_ROUTES.upload.photo, { data: { keys } });
+}
+
 // ─── Follow requests ────────────────────────────────────────────────
 
 export async function getFollowRequests(): Promise<NotificationsData> {

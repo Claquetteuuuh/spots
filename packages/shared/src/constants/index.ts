@@ -107,6 +107,7 @@ export const API_ROUTES = {
     create: "/api/spots",
     detail: (id: string) => `/api/spots/${id}`,
     photos: (id: string) => `/api/spots/${id}/photos`,
+    photo: (id: string, photoId: string) => `/api/spots/${id}/photos/${photoId}`,
     feed: "/api/spots/feed",
     tags: "/api/spots/tags",
   },
@@ -127,7 +128,6 @@ export const API_ROUTES = {
   },
   upload: {
     photo: "/api/upload/photo",
-    avatar: "/api/upload/avatar",
   },
   geocoding: {
     reverse: "/api/geocoding/reverse",
@@ -164,24 +164,49 @@ export const DICEBEAR_BG_COLORS = [
   "ffdfbf",
 ] as const;
 
+/**
+ * Only this origin is accepted as an avatar URL — an avatar is generated,
+ * never uploaded, so nothing else should ever end up in `avatarUrl`.
+ */
+export const DICEBEAR_ORIGIN = "https://api.dicebear.com";
+
 /** Build a DiceBear SVG URL from a style, seed and background hex (no `#`). */
 export function dicebearUrl(
   style: string,
   seed: string,
   bgColor: string,
 ): string {
-  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
+  return `${DICEBEAR_ORIGIN}/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
+}
+
+/**
+ * The stored avatar is an SVG — crisp at any size on the web. React
+ * Native's `<Image>` cannot render SVG, so the app asks DiceBear for the
+ * same avatar as a PNG instead. Any non-DiceBear URL is returned untouched.
+ */
+export function dicebearRasterUrl(url: string, size = 256): string {
+  if (!url.startsWith(`${DICEBEAR_ORIGIN}/`)) return url;
+  const [path, query = ""] = url.split("?");
+  const rasterPath = path.replace(/\/svg$/, "/png");
+  const params = new URLSearchParams(query);
+  params.set("size", String(size));
+  return `${rasterPath}?${params.toString()}`;
 }
 
 // ─── Photo ───────────────────────────────────────────────────────────
 
-export const MAX_PHOTO_SIZE_MB = 10;
+/**
+ * Upload ceiling for the *original* file. Every photo is downscaled and
+ * re-encoded server-side before it reaches storage (see
+ * `apps/web/src/lib/image.ts`), so this only bounds request size and
+ * decode memory, not what ends up in the bucket.
+ */
+export const MAX_PHOTO_SIZE_MB = 20;
 export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
-export const MAX_AVATAR_SIZE_MB = 2;
-export const MAX_AVATAR_SIZE_BYTES = MAX_AVATAR_SIZE_MB * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/heic",
+  "image/heif",
 ];

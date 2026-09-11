@@ -72,8 +72,10 @@ vi.mock("@/lib/geocode", () => ({
 }));
 
 // Mock storage
+const mockDeleteFiles = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/lib/storage", () => ({
   deleteFile: vi.fn().mockResolvedValue(undefined),
+  deleteFiles: (...args: unknown[]) => mockDeleteFiles(...args),
 }));
 
 import { GET } from "../spots/route";
@@ -424,7 +426,7 @@ describe("DELETE /api/spots/[id]", () => {
   });
 
   it("deletes a spot owned by the user", async () => {
-    mockSpotFindUnique.mockResolvedValue(SAMPLE_SPOT);
+    mockSpotFindUnique.mockResolvedValue({ ...SAMPLE_SPOT, spotPhotos: [] });
     mockSpotDelete.mockResolvedValue(SAMPLE_SPOT);
 
     const req = new NextRequest("http://localhost/api/spots/spot-1", {
@@ -438,6 +440,62 @@ describe("DELETE /api/spots/[id]", () => {
     expect(res.status).toBe(200);
     expect(json.data.id).toBe("spot-1");
     expect(mockSpotDelete).toHaveBeenCalledOnce();
+    expect(mockDeleteFiles).toHaveBeenCalledWith([SAMPLE_SPOT.photoKey]);
+  });
+
+  it("removes the cover, the gallery and every community photo from storage", async () => {
+    mockSpotFindUnique.mockResolvedValue({
+      ...SAMPLE_SPOT,
+      images: [
+        { photoKey: "spots/user-1/photo.jpg" }, // the cover, listed again as image 0
+        { photoKey: "spots/user-1/second.webp" },
+      ],
+      spotPhotos: [
+        { photoKey: "spot-photos/spot-1/user-2/c1.webp" },
+        { photoKey: "spot-photos/spot-1/user-3/c2.webp" },
+      ],
+    });
+    mockSpotDelete.mockResolvedValue(SAMPLE_SPOT);
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer mock-token" },
+    });
+
+    const res = await DELETE(req, { params: Promise.resolve({ id: "spot-1" }) });
+    expect(res.status).toBe(200);
+
+    // The row query must ask for the related keys, since the cascade
+    // deletes those rows along with the spot.
+    expect(mockSpotFindUnique.mock.calls[0][0].include).toMatchObject({
+      images: expect.anything(),
+      spotPhotos: expect.anything(),
+    });
+    expect(mockDeleteFiles).toHaveBeenCalledOnce();
+    expect(mockDeleteFiles.mock.calls[0][0]).toEqual([
+      "spots/user-1/photo.jpg",
+      "spots/user-1/photo.jpg",
+      "spots/user-1/second.webp",
+      "spot-photos/spot-1/user-2/c1.webp",
+      "spot-photos/spot-1/user-3/c2.webp",
+    ]);
+  });
+
+  it("still answers 200 when storage cleanup fails — the spot is gone", async () => {
+    mockSpotFindUnique.mockResolvedValue({ ...SAMPLE_SPOT, spotPhotos: [] });
+    mockSpotDelete.mockResolvedValue(SAMPLE_SPOT);
+    mockDeleteFiles.mockRejectedValueOnce(new Error("R2 down"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer mock-token" },
+    });
+
+    const res = await DELETE(req, { params: Promise.resolve({ id: "spot-1" }) });
+    expect(res.status).toBe(200);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("returns 403 when non-owner tries to delete", async () => {

@@ -917,11 +917,20 @@ function AddSpotForm() {
     setIsSubmitting(true);
     setError(null);
 
+    // Whatever reached the bucket before something failed has no spot to
+    // belong to — it is discarded again in the catch below.
+    let uploads: { url: string; key: string }[] = [];
+
     try {
       // 1. Upload all photos
-      const uploads = await Promise.all(
+      const settled = await Promise.allSettled(
         photos.map((p) => apiClient.upload.photo(p.file)),
       );
+      uploads = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const failed = settled.find(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+      if (failed) throw failed.reason;
 
       // 2. Build photos payload
       const photosPayload = uploads.map((u) => ({ url: u.url, key: u.key }));
@@ -945,6 +954,9 @@ function AddSpotForm() {
 
       router.push(`/spot/${spot.id}`);
     } catch (err) {
+      void apiClient.upload.discard(uploads.map((u) => u.key)).catch(() => {
+        // Best effort — the orphan sweep picks up anything left behind
+      });
       setError(err instanceof Error ? err.message : t("common.error"));
       setIsSubmitting(false);
     }
