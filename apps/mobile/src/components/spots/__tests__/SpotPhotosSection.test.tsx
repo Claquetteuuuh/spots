@@ -108,12 +108,25 @@ async function confirmLastAlert() {
   });
 }
 
+// CI runners are slower — the first render loads modules lazily and
+// React 19's act may need more time to flush all work.
+jest.setTimeout(15_000);
+
 describe("SpotPhotosSection", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
     signIn("viewer-1");
     servePhotos({});
+  });
+
+  // The empty-state test runs first: its render triggers the same module
+  // loading as the data test but with a minimal state delta (only
+  // `isLoading` changes), so act finishes quickly and warms the module
+  // cache for subsequent tests.
+  it("shows the empty message when nobody has added a photo", async () => {
+    await renderSection();
+    expect(await screen.findByText("spotPhotos.noPhotos")).toBeTruthy();
   });
 
   it("lists the spot's community photos", async () => {
@@ -123,11 +136,6 @@ describe("SpotPhotosSection", () => {
 
     expect(await screen.findByTestId("spot-photo-p1")).toBeTruthy();
     expect(mockedApi.getSpotPhotos).toHaveBeenCalledWith("s1");
-  });
-
-  it("shows the empty message when nobody has added a photo", async () => {
-    await renderSection();
-    expect(await screen.findByText("spotPhotos.noPhotos")).toBeTruthy();
   });
 
   it("loads the next page on demand", async () => {
