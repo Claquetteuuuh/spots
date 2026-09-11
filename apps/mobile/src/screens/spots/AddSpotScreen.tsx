@@ -420,9 +420,11 @@ export function AddSpotScreen() {
 
   const addTag = (value?: string) => {
     const tag = (value ?? tagInput).trim();
-    if (tag && !tags.includes(tag) && tags.length < 10) {
-      setTags((prev) => [...prev, tag]);
-    }
+    if (!tag) { setTagInput(""); return; }
+    setTags((prev) => {
+      if (prev.includes(tag) || prev.length >= 10) return prev;
+      return [...prev, tag];
+    });
     setTagInput("");
     setTagSuggestions([]);
   };

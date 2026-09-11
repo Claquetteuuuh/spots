@@ -808,8 +808,13 @@ function AddSpotForm() {
 
   function addTag(value?: string) {
     const tag = (value ?? tagInput).trim();
-    if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) return;
-    setTags((prev) => [...prev, tag]);
+    if (!tag) return;
+    // Use callback to check against the latest state — avoids duplicates
+    // when addTag fires twice in the same React batch (Enter + onBlur).
+    setTags((prev) => {
+      if (prev.includes(tag) || prev.length >= MAX_TAGS) return prev;
+      return [...prev, tag];
+    });
     setTagInput("");
     setShowTagSuggestions(false);
     setTagSuggestions([]);
@@ -1742,7 +1747,7 @@ function AddSpotForm() {
                     value={tagInput}
                     onChange={(e) => handleTagInputChange(e.target.value)}
                     onKeyDown={handleTagKeyDown}
-                    onBlur={() => { setTimeout(() => addTag(), 150); }}
+                    onBlur={() => setShowTagSuggestions(false)}
                     placeholder={t("spots.tagsPlaceholder")}
                     maxLength={50}
                     disabled={tags.length >= MAX_TAGS}
