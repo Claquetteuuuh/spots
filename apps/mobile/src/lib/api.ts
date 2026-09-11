@@ -226,13 +226,19 @@ export interface GetMapPinsParams {
   limit?: number;
   /** Server-side filters (compositions, accessibility, "around me"). */
   filters?: MapFilterQuery;
+  /** The ETag of what we already hold for this query — a 304 means "still that". */
+  etag?: string | null;
 }
 
-export interface MapPinsPage {
-  items: MapPin[];
-  /** The fetch hit the limit — zooming in may reveal more pins. */
-  truncated: boolean;
-}
+export type MapPinsPage =
+  | {
+      notModified: false;
+      items: MapPin[];
+      /** The fetch hit the limit — zooming in may reveal more pins. */
+      truncated: boolean;
+      etag: string | null;
+    }
+  | { notModified: true };
 
 /** Lightweight pins inside a viewport — own spots first, then followed. */
 export async function getMapPins({
@@ -240,11 +246,20 @@ export async function getMapPins({
   scope = "all",
   limit = MAP_PINS_LIMIT,
   filters = {},
+  etag,
 }: GetMapPinsParams): Promise<MapPinsPage> {
-  const { data } = await client.get<MapPinsPage>(API_ROUTES.spots.map, {
+  const res = await client.get<{ items: MapPin[]; truncated: boolean }>(API_ROUTES.spots.map, {
     params: { ...bounds, ...filters, scope, limit },
+    headers: etag ? { "If-None-Match": etag } : undefined,
+    validateStatus: (s) => (s >= 200 && s < 300) || s === 304,
   });
-  return data;
+  if (res.status === 304) return { notModified: true };
+  return {
+    notModified: false,
+    items: res.data.items,
+    truncated: res.data.truncated,
+    etag: (res.headers?.etag as string | undefined) ?? null,
+  };
 }
 
 export async function searchTags(query: string): Promise<string[]> {

@@ -1,7 +1,13 @@
 import React, { act } from "react";
 import { StyleSheet } from "react-native";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { MAP_PINS_LIMIT, padBounds, regionToBounds, type MapPin } from "@trs/shared/map";
+import {
+  MAP_PINS_LIMIT,
+  padBounds,
+  quantizeBounds,
+  regionToBounds,
+  type MapPin,
+} from "@trs/shared/map";
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 
@@ -39,7 +45,7 @@ jest.mock("react-native-safe-area-context", () => {
 
 const mockSetTabIndex = jest.fn();
 jest.mock("../../../navigation/tab-context", () => ({
-  useTabSwitch: () => ({ setTabIndex: mockSetTabIndex }),
+  useTabSwitch: () => ({ setTabIndex: mockSetTabIndex, activeIndex: 0 }),
 }));
 
 const mockNavigate = jest.fn();
@@ -83,7 +89,7 @@ jest.mock("react-native-maps", () => {
 });
 
 import { useAuthStore } from "../../../stores/auth-store";
-import { useSpotsStore } from "../../../stores/spots-store";
+import { invalidateMapCache, useSpotsStore } from "../../../stores/spots-store";
 import { MapScreen } from "../MapScreen";
 import type { User } from "../../../types";
 
@@ -157,6 +163,7 @@ beforeEach(() => {
     mapPins: [],
     mapTruncated: false,
     isMapLoading: false,
+    mapCacheVersion: 0,
     fetchMapPins: mockFetchMapPins,
   });
 });
@@ -169,12 +176,23 @@ describe("MapScreen", () => {
 
     await waitFor(() =>
       expect(mockFetchMapPins).toHaveBeenCalledWith({
-        bounds: padBounds(regionToBounds(DEFAULT_REGION)),
+        bounds: quantizeBounds(padBounds(regionToBounds(DEFAULT_REGION))),
         scope: "all",
         limit: MAP_PINS_LIMIT,
         filters: {},
       }),
     );
+  });
+
+  it("re-asks for the view the moment the map cache is dropped", async () => {
+    await render(<MapScreen />);
+    await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      invalidateMapCache();
+    });
+
+    await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(2));
   });
 
   it("groups nearby pins into a counted cluster and splits them when zoomed in", async () => {
@@ -252,7 +270,7 @@ describe("MapScreen", () => {
     await settleRegion(FAR_REGION);
     await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(2));
     expect(mockFetchMapPins).toHaveBeenLastCalledWith(
-      expect.objectContaining({ bounds: padBounds(regionToBounds(FAR_REGION)) }),
+      expect.objectContaining({ bounds: quantizeBounds(padBounds(regionToBounds(FAR_REGION))) }),
     );
   });
 

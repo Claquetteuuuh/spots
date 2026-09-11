@@ -4,7 +4,14 @@
 import { act } from "react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MAP_PINS_LIMIT, padBounds, type MapBounds, type MapPin } from "@trs/shared/map";
+import {
+  MAP_PINS_LIMIT,
+  padBounds,
+  quantizeBounds,
+  type MapBounds,
+  type MapPin,
+} from "@trs/shared/map";
+import { invalidateMapCache } from "@/lib/map-cache";
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 
@@ -48,9 +55,16 @@ vi.mock("@/components/composition-icon", () => ({
   CompositionIcon: ({ type }: { type: string }) => <span data-testid={`comp-icon-${type}`} />,
 }));
 
-const mockMapFetch = vi.fn();
+const { mockMapFetch, spotsChanged } = vi.hoisted(() => ({
+  mockMapFetch: vi.fn(),
+  spotsChanged: new Set<() => void>(),
+}));
 vi.mock("@/lib/api-client", () => ({
   apiClient: { spots: { map: (...args: unknown[]) => mockMapFetch(...args) } },
+  onSpotsChanged: (l: () => void) => {
+    spotsChanged.add(l);
+    return () => spotsChanged.delete(l);
+  },
 }));
 
 import MapPage from "../page";
@@ -58,7 +72,8 @@ import MapPage from "../page";
 // ─── Fixtures ───────────────────────────────────────────────────────
 
 const VIEW: MapBounds = { swLat: 48.8, swLng: 2.2, neLat: 48.9, neLng: 2.4 };
-const PADDED = padBounds(VIEW);
+/** What the page actually asks for: the padded view, snapped to the grid. */
+const BOX = quantizeBounds(padBounds(VIEW));
 /** A view well inside VIEW's padded box. */
 const INNER: MapBounds = { swLat: 48.82, swLng: 2.25, neLat: 48.88, neLng: 2.35 };
 /** Lyon — nowhere near. */
@@ -119,6 +134,9 @@ function stubGeolocation(coords: { latitude: number; longitude: number } | null)
 beforeEach(() => {
   vi.clearAllMocks();
   mapProps.current = null;
+  // jsdom here has no localStorage; the cache copes, so must the test
+  globalThis.localStorage?.clear();
+  invalidateMapCache();
   mockMapFetch.mockImplementation(() => Promise.resolve({ items: [PIN], truncated: false }));
 });
 
@@ -133,7 +151,10 @@ describe("MapPage", () => {
     expect(mockMapFetch).not.toHaveBeenCalled();
 
     await waitFor(() =>
-      expect(mockMapFetch).toHaveBeenCalledWith({ ...PADDED, scope: "all", limit: MAP_PINS_LIMIT }),
+      expect(mockMapFetch).toHaveBeenCalledWith(
+        { ...BOX, scope: "all", limit: MAP_PINS_LIMIT },
+        { etag: null },
+      ),
     );
     await waitFor(() => expect(mapProps.current.pins).toEqual([PIN]));
   });
@@ -168,7 +189,10 @@ describe("MapPage", () => {
     await moveTo(FAR);
 
     await waitFor(() => expect(mockMapFetch).toHaveBeenCalledTimes(2));
-    expect(mockMapFetch).toHaveBeenLastCalledWith(expect.objectContaining(padBounds(FAR)));
+    expect(mockMapFetch).toHaveBeenLastCalledWith(
+      expect.objectContaining(quantizeBounds(padBounds(FAR))),
+      expect.anything(),
+    );
   });
 
   it("refetches an inner view when the last fetch was truncated", async () => {
@@ -190,7 +214,10 @@ describe("MapPage", () => {
     await click(screen.getByRole("button", { name: "map.mySpots" }));
 
     await waitFor(() =>
-      expect(mockMapFetch).toHaveBeenLastCalledWith(expect.objectContaining({ scope: "mine" })),
+      expect(mockMapFetch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ scope: "mine" }),
+        expect.anything(),
+      ),
     );
     expect(screen.getByRole("button", { name: "map.mySpots" }).getAttribute("aria-pressed")).toBe(
       "true",
@@ -225,6 +252,40 @@ describe("MapPage", () => {
     });
 
     expect(ids()).toEqual(["new"]);
+  });
+
+  it("shows the cached box at once on a repeat view, then revalidates with its ETag", async () => {
+    mockMapFetch.mockImplementation(() =>
+      Promise.resolve({ items: [PIN], truncated: false, etag: 'W/"v1"' }),
+    );
+    const first = render(<MapPage />);
+    await waitFor(() => expect(mapProps.current).not.toBeNull());
+    await moveTo(VIEW);
+    await waitFor(() => expect(mockMapFetch).toHaveBeenCalledTimes(1));
+    first.unmount();
+    mapProps.current = null;
+
+    // Nothing changed server-side this time
+    mockMapFetch.mockImplementation(() => Promise.resolve({ notModified: true }));
+    await renderPage();
+    await moveTo(VIEW);
+
+    await waitFor(() => expect(mockMapFetch).toHaveBeenCalledTimes(2));
+    expect(mockMapFetch).toHaveBeenLastCalledWith(expect.anything(), { etag: 'W/"v1"' });
+    expect(ids()).toEqual(["s1"]);
+    expect(screen.queryByText("common.loading")).toBeNull();
+  });
+
+  it("re-asks for the view the moment a spot changes elsewhere in the app", async () => {
+    await renderPage();
+    await moveTo(VIEW);
+    await waitFor(() => expect(mockMapFetch).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      for (const l of spotsChanged) l();
+    });
+
+    await waitFor(() => expect(mockMapFetch).toHaveBeenCalledTimes(2));
   });
 
   it("hands the map its copy", async () => {
@@ -269,6 +330,7 @@ describe("MapPage — filters", () => {
     await waitFor(() =>
       expect(mockMapFetch).toHaveBeenLastCalledWith(
         expect.objectContaining({ compositions: "SYMMETRY", accessibility: "EASY" }),
+        expect.anything(),
       ),
     );
   });
@@ -285,6 +347,7 @@ describe("MapPage — filters", () => {
     await waitFor(() =>
       expect(mockMapFetch).toHaveBeenLastCalledWith(
         expect.objectContaining({ nearLat: 48.85, nearLng: 2.35, radiusKm: 5 }),
+        expect.anything(),
       ),
     );
     expect(screen.queryByText("map.needLocation")).toBeNull();
@@ -302,6 +365,7 @@ describe("MapPage — filters", () => {
     await act(settle);
     expect(mockMapFetch).toHaveBeenLastCalledWith(
       expect.not.objectContaining({ nearLat: expect.anything() }),
+      expect.anything(),
     );
   });
 

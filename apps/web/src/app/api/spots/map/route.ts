@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { mapPinsQuerySchema } from "@trs/shared/validation";
 import {
@@ -91,5 +93,15 @@ export const GET = withAuth(async (request, authUser) => {
   const truncated = rows.length >= q.limit;
   const items = near ? rows.filter((p) => haversineKm(near, p) <= q.radiusKm!) : rows;
 
-  return successResponse({ items, truncated });
+  // Clients poll an open map; when nothing moved, answer with a 304 and no
+  // body. `no-cache` means "always revalidate", never "never cache".
+  const body = { items, truncated };
+  const etag = `W/"${createHash("sha1").update(JSON.stringify(body)).digest("base64url")}"`;
+  const headers = { ETag: etag, "Cache-Control": "private, no-cache" };
+  if (request.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers });
+  }
+  const res = successResponse(body);
+  for (const [k, v] of Object.entries(headers)) res.headers.set(k, v);
+  return res;
 });

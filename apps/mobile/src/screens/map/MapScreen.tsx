@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, PROVIDER_DEFAULT, type MapPressEvent, type Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   EMPTY_FILTERS,
   MAP_PINS_LIMIT,
+  MAP_POLL_MS,
   SpotClusterer,
   boundsContain,
   clusterMarkerSize,
@@ -18,6 +19,7 @@ import {
   formatClusterCount,
   longitudeDeltaFromZoom,
   padBounds,
+  quantizeBounds,
   regionToBounds,
   zoomFromLongitudeDelta,
   type LatLng,
@@ -59,16 +61,22 @@ export function MapScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<MainTabNavigationProp<"Map">>();
-  const { setTabIndex } = useTabSwitch();
+  const { setTabIndex, activeIndex } = useTabSwitch();
 
   // The id, not the object: a refreshed session must not refetch the map.
   const userId = useAuthStore((s) => s.user?.id);
   const mapPins = useSpotsStore((s) => s.mapPins);
   const isMapLoading = useSpotsStore((s) => s.isMapLoading);
+  const mapCacheVersion = useSpotsStore((s) => s.mapCacheVersion);
   const fetchMapPins = useSpotsStore((s) => s.fetchMapPins);
 
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
+  // The latest region for effects that must not re-run on every pan
+  const regionRef = useRef(region);
+  useEffect(() => {
+    regionRef.current = region;
+  }, [region]);
   const [scope, setScope] = useState<MapScope>("all");
   const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -108,7 +116,8 @@ export function MapScreen() {
       ) {
         return;
       }
-      const padded = padBounds(bounds);
+      // Snapped to a grid so nearby views share a cache entry and an ETag
+      const padded = quantizeBounds(padBounds(bounds));
       void fetchMapPins({
         bounds: padded,
         scope: nextScope,
@@ -152,6 +161,35 @@ export function MapScreen() {
     },
     [],
   );
+
+  // While this tab is the one on screen and the app is in the foreground,
+  // re-ask for the current view every MAP_POLL_MS (a 304 when nothing
+  // moved), on coming back to the tab or the app, and the moment a spot is
+  // created, edited or deleted from this app.
+  const wasActiveRef = useRef(activeIndex === 0);
+  useEffect(() => {
+    const isActive = activeIndex === 0;
+    const refresh = () => {
+      if (AppState.currentState === "active") loadPins(regionToBounds(regionRef.current), scope, true);
+    };
+    if (isActive && !wasActiveRef.current) refresh();
+    wasActiveRef.current = isActive;
+    if (!isActive) return;
+
+    const interval = setInterval(refresh, MAP_POLL_MS);
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") refresh();
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, [activeIndex, scope, loadPins]);
+
+  useEffect(() => {
+    if (mapCacheVersion > 0) loadPins(regionToBounds(regionRef.current), scope, true);
+    // Only a cache drop should trigger this
+  }, [mapCacheVersion]);
 
   const locateMe = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();

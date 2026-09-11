@@ -4,17 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api-client";
+import { fetchMapPins, onMapCacheInvalidated, readMapCache } from "@/lib/map-cache";
 import type { MapCenter, MapViewport, SpotMapLabels } from "@/components/spot-map";
 import { MapFiltersMenu } from "@/components/map-filters";
 import {
   EMPTY_FILTERS,
   MAP_PINS_LIMIT,
+  MAP_POLL_MS,
   boundsContain,
   countActiveFilters,
   filterPinsByColor,
   filtersToQuery,
   padBounds,
+  quantizeBounds,
   type LatLng,
   type MapBounds,
   type MapFilters,
@@ -67,9 +69,11 @@ export default function MapPage() {
   }, [serverQuery]);
 
   /**
-   * Fetch pins for a view. Pads the box so small pans stay inside the last
+   * Load pins for a view. Pads the box so small pans stay inside the last
    * fetched area and skip the request — unless that fetch hit the limit,
-   * in which case zooming in may reveal pins we never received.
+   * in which case zooming in may reveal pins we never received. The box
+   * is snapped to a grid so nearby views share a cache entry and an ETag:
+   * what we hold shows at once, the server confirms or replaces it.
    */
   const loadPins = useCallback(
     async (bounds: MapBounds, nextScope: MapScope, force = false) => {
@@ -88,29 +92,24 @@ export default function MapPage() {
         return;
       }
 
-      const padded = padBounds(bounds);
+      const box = quantizeBounds(padBounds(bounds));
       const seq = ++requestSeqRef.current;
-      setIsLoading(true);
-      try {
-        const result = await apiClient.spots.map({
-          ...padded,
-          ...query,
-          scope: nextScope,
-          limit: MAP_PINS_LIMIT,
-        });
-        if (seq !== requestSeqRef.current) return;
-        fetchedRef.current = {
-          bounds: padded,
-          scope: nextScope,
-          query: key,
-          truncated: result.truncated,
-        };
-        setPins(result.items);
-      } catch (err) {
-        if (seq === requestSeqRef.current) console.error("Failed to load map spots:", err);
-      } finally {
-        if (seq === requestSeqRef.current) setIsLoading(false);
+      const cached = readMapCache(box, nextScope, query);
+      if (cached) {
+        setPins(cached.items);
+        fetchedRef.current = { bounds: box, scope: nextScope, query: key, truncated: cached.truncated };
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
       }
+
+      const entry = await fetchMapPins(box, nextScope, query, MAP_PINS_LIMIT);
+      if (seq !== requestSeqRef.current) return;
+      if (entry) {
+        fetchedRef.current = { bounds: box, scope: nextScope, query: key, truncated: entry.truncated };
+        setPins(entry.items);
+      }
+      setIsLoading(false);
     },
     [userId],
   );
@@ -130,6 +129,24 @@ export default function MapPage() {
     const bounds = viewportRef.current;
     if (bounds) loadPins(bounds, scope, true);
   }, [scope, serverKey, loadPins]);
+
+  // While the map is open and visible, re-ask for the current view every
+  // MAP_POLL_MS (a 304 when nothing moved), on return to the tab, and the
+  // moment a spot is created, edited or deleted anywhere in the app.
+  useEffect(() => {
+    const refresh = () => {
+      const bounds = viewportRef.current;
+      if (bounds && document.visibilityState === "visible") loadPins(bounds, scope, true);
+    };
+    const interval = setInterval(refresh, MAP_POLL_MS);
+    document.addEventListener("visibilitychange", refresh);
+    const unsubscribe = onMapCacheInvalidated(refresh);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      unsubscribe();
+    };
+  }, [scope, loadPins]);
 
   useEffect(
     () => () => {

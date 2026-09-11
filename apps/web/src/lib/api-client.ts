@@ -8,10 +8,32 @@ import type {
   SpotQuery,
 } from "@trs/shared/validation";
 
-export interface MapPinsResponse {
-  items: MapPin[];
-  /** The fetch hit the limit — zooming in may reveal more pins. */
-  truncated: boolean;
+export type MapPinsResponse =
+  | {
+      notModified?: false;
+      items: MapPin[];
+      /** The fetch hit the limit — zooming in may reveal more pins. */
+      truncated: boolean;
+      /** The server's tag for this exact answer — send it back to get a 304. */
+      etag?: string | null;
+    }
+  | { notModified: true };
+
+// ─── Spot change notifications ──────────────────────────────────────
+// Anything holding spots derived data (the map's cache) listens here and
+// drops it the moment a spot is created, edited or deleted from this app.
+
+const spotsChangedListeners = new Set<() => void>();
+
+export function onSpotsChanged(listener: () => void): () => void {
+  spotsChangedListeners.add(listener);
+  return () => {
+    spotsChangedListeners.delete(listener);
+  };
+}
+
+function emitSpotsChanged(): void {
+  for (const listener of spotsChangedListeners) listener();
 }
 
 // ─── Token helpers ──────────────────────────────────────────────────
@@ -103,11 +125,8 @@ async function doRefresh(): Promise<AuthResponse> {
   return data;
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  _skipRefresh = false,
-): Promise<T> {
+/** Send an authenticated request, refreshing the token once on a 401. */
+async function send(path: string, options: RequestInit = {}, _skipRefresh = false): Promise<Response> {
   const token = getToken();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -135,12 +154,22 @@ async function request<T>(
       }
       await refreshPromise;
       refreshPromise = null;
-      return request<T>(path, options, true);
+      return send(path, options, true);
     } catch {
       refreshPromise = null;
       // Fall through to the normal error path
     }
   }
+
+  return res;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  _skipRefresh = false,
+): Promise<T> {
+  const res = await send(path, options, _skipRefresh);
 
   const json = (await res.json()) as ApiResponse<T>;
 
@@ -379,10 +408,12 @@ export const apiClient = {
     },
 
     async create(data: Partial<CreateSpotInput> & { latitude: number; longitude: number; photoUrl: string; photoKey: string; photos?: { url: string; key: string }[]; compositions?: CreateSpotInput["compositions"]; colors?: string[]; tags?: string[] }): Promise<Spot> {
-      return request<Spot>(API_ROUTES.spots.create, {
+      const spot = await request<Spot>(API_ROUTES.spots.create, {
         method: "POST",
         body: JSON.stringify(data),
       });
+      emitSpotsChanged();
+      return spot;
     },
 
     async get(id: string): Promise<Spot> {
@@ -390,16 +421,19 @@ export const apiClient = {
     },
 
     async update(id: string, data: UpdateSpotInput): Promise<Spot> {
-      return request<Spot>(API_ROUTES.spots.detail(id), {
+      const spot = await request<Spot>(API_ROUTES.spots.detail(id), {
         method: "PATCH",
         body: JSON.stringify(data),
       });
+      emitSpotsChanged();
+      return spot;
     },
 
     async delete(id: string): Promise<void> {
       await request<void>(API_ROUTES.spots.detail(id), {
         method: "DELETE",
       });
+      emitSpotsChanged();
     },
 
     async searchTags(query: string): Promise<string[]> {
@@ -441,15 +475,28 @@ export const apiClient = {
       });
     },
 
-    /** Lightweight pins inside a viewport — own spots first, then followed. */
+    /**
+     * Lightweight pins inside a viewport — own spots first, then followed.
+     * Pass the ETag of what you hold and the server answers 304 when it
+     * still stands, with no body to download.
+     */
     async map(
       query: MapBounds & MapFilterQuery & { scope?: MapScope; limit?: number },
+      opts: { etag?: string | null } = {},
     ): Promise<MapPinsResponse> {
       const params = new URLSearchParams();
       for (const [k, v] of Object.entries(query)) {
         if (v !== undefined) params.set(k, String(v));
       }
-      return request<MapPinsResponse>(`${API_ROUTES.spots.map}?${params.toString()}`);
+      const res = await send(`${API_ROUTES.spots.map}?${params.toString()}`, {
+        headers: opts.etag ? { "If-None-Match": opts.etag } : undefined,
+      });
+      if (res.status === 304) return { notModified: true };
+      const json = (await res.json()) as ApiResponse<{ items: MapPin[]; truncated: boolean }>;
+      if (!res.ok || json.error || !json.data) {
+        throw new Error(json.error ?? `Request failed (${res.status})`);
+      }
+      return { ...json.data, etag: res.headers.get("etag") };
     },
 
     async feed(

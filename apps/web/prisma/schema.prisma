@@ -146,6 +146,8 @@ model Spot {
 
   @@index([userId])
   @@index([latitude, longitude])
+  // The map always filters by owner(s) then box — one index walks both
+  @@index([userId, latitude, longitude])
   @@index([createdAt(sort: Desc)])
 }
 

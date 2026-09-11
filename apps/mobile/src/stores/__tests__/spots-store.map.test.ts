@@ -14,7 +14,7 @@ jest.mock("../../lib/auth", () => ({
   setAccessToken: jest.fn(),
 }));
 
-import { useSpotsStore } from "../spots-store";
+import { invalidateMapCache, useSpotsStore } from "../spots-store";
 import * as api from "../../lib/api";
 import type { MapPin } from "@trs/shared/map";
 
@@ -39,16 +39,23 @@ const getMapPins = api.getMapPins as jest.Mock;
 describe("spots store — fetchMapPins", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useSpotsStore.setState({ mapPins: [], mapTruncated: false, isMapLoading: false, error: null });
+    invalidateMapCache();
+    useSpotsStore.setState({
+      mapPins: [],
+      mapTruncated: false,
+      isMapLoading: false,
+      mapCacheVersion: 0,
+      error: null,
+    });
   });
 
   it("stores the pins and the truncation flag", async () => {
-    getMapPins.mockResolvedValueOnce({ items: [pin("a")], truncated: true });
+    getMapPins.mockResolvedValueOnce({ items: [pin("a")], truncated: true, etag: 'W/"1"' });
 
     const applied = await useSpotsStore.getState().fetchMapPins({ bounds: BOX, scope: "all" });
 
     expect(applied).toBe(true);
-    expect(getMapPins).toHaveBeenCalledWith({ bounds: BOX, scope: "all" });
+    expect(getMapPins).toHaveBeenCalledWith({ bounds: BOX, scope: "all", etag: null });
     const state = useSpotsStore.getState();
     expect(state.mapPins.map((p) => p.id)).toEqual(["a"]);
     expect(state.mapTruncated).toBe(true);
@@ -82,5 +89,43 @@ describe("spots store — fetchMapPins", () => {
     expect(await first).toBe(false);
 
     expect(useSpotsStore.getState().mapPins.map((p) => p.id)).toEqual(["new"]);
+  });
+
+  it("shows a cached box at once, revalidates with its ETag and keeps it on a 304", async () => {
+    getMapPins.mockResolvedValueOnce({ items: [pin("a")], truncated: false, etag: 'W/"1"' });
+    await useSpotsStore.getState().fetchMapPins({ bounds: BOX });
+    useSpotsStore.setState({ mapPins: [] });
+
+    let resolve!: (v: unknown) => void;
+    getMapPins.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    const second = useSpotsStore.getState().fetchMapPins({ bounds: BOX });
+
+    // Before the server answers, the cached pins are already up, no spinner
+    expect(useSpotsStore.getState().mapPins.map((p) => p.id)).toEqual(["a"]);
+    expect(useSpotsStore.getState().isMapLoading).toBe(false);
+    expect(getMapPins).toHaveBeenLastCalledWith(expect.objectContaining({ etag: 'W/"1"' }));
+
+    resolve({ notModified: true });
+    expect(await second).toBe(true);
+    expect(useSpotsStore.getState().mapPins.map((p) => p.id)).toEqual(["a"]);
+  });
+
+  it("drops the cache and bumps the version when a spot is created", async () => {
+    getMapPins.mockResolvedValueOnce({ items: [pin("a")], truncated: false, etag: 'W/"1"' });
+    await useSpotsStore.getState().fetchMapPins({ bounds: BOX });
+    (api.createSpot as jest.Mock).mockResolvedValueOnce({ id: "new" });
+
+    await useSpotsStore.getState().createSpot({
+      latitude: 1,
+      longitude: 1,
+      photoUrl: "u",
+      photoKey: "k",
+    });
+
+    expect(useSpotsStore.getState().mapCacheVersion).toBe(1);
+    getMapPins.mockResolvedValueOnce({ items: [], truncated: false, etag: null });
+    await useSpotsStore.getState().fetchMapPins({ bounds: BOX });
+    // No ETag left to send: the box was forgotten
+    expect(getMapPins).toHaveBeenLastCalledWith(expect.objectContaining({ etag: null }));
   });
 });

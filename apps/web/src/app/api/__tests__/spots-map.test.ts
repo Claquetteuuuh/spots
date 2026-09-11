@@ -197,6 +197,37 @@ describe("GET /api/spots/map", () => {
   });
 });
 
+describe("GET /api/spots/map — revalidation", () => {
+  it("tags the response and asks clients to revalidate", async () => {
+    mockSpotFindMany.mockResolvedValueOnce([row("m1", VIEWER.userId)]);
+
+    const res = await GET(...makeRequest(BOX));
+
+    expect(res.headers.get("etag")).toMatch(/^W\/"/);
+    expect(res.headers.get("cache-control")).toBe("private, no-cache");
+  });
+
+  it("answers 304 with no body when the ETag still matches, 200 when the data moved", async () => {
+    mockSpotFindMany.mockResolvedValue([row("m1", VIEWER.userId)]);
+    const first = await GET(...makeRequest(BOX));
+    const etag = first.headers.get("etag")!;
+
+    const [req] = makeRequest(BOX);
+    req.headers.set("if-none-match", etag);
+    const same = await GET(req, {});
+    expect(same.status).toBe(304);
+    expect(same.headers.get("etag")).toBe(etag);
+    expect(await same.text()).toBe("");
+
+    mockSpotFindMany.mockResolvedValue([row("m1", VIEWER.userId), row("m2", VIEWER.userId)]);
+    const [req2] = makeRequest(BOX);
+    req2.headers.set("if-none-match", etag);
+    const changed = await GET(req2, {});
+    expect(changed.status).toBe(200);
+    expect(changed.headers.get("etag")).not.toBe(etag);
+  });
+});
+
 describe("GET /api/spots/map — filters", () => {
   it("carries colours, compositions and accessibility on every pin", async () => {
     mockSpotFindMany.mockResolvedValueOnce([row("m1", VIEWER.userId, { accessibility: null })]);

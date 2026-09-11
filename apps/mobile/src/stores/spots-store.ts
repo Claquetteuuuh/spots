@@ -4,7 +4,7 @@ import * as api from "../lib/api";
 import { extractErrorMessage } from "../lib/error";
 import type { Spot } from "../types";
 import type { CreateSpotParams, GetMapPinsParams, UpdateSpotParams } from "../lib/api";
-import type { MapPin } from "@trs/shared/map";
+import { MapCache, mapCacheKey, type MapPin } from "@trs/shared/map";
 
 interface SpotsState {
   spots: Spot[];
@@ -19,6 +19,8 @@ interface SpotsState {
   /** True when that fetch hit the limit — zooming in may reveal more. */
   mapTruncated: boolean;
   isMapLoading: boolean;
+  /** Bumped when the map cache is dropped — open maps refetch on it. */
+  mapCacheVersion: number;
 
   fetchMySpots: (userId: string, opts?: { reset?: boolean }) => Promise<void>;
   fetchFeed: (opts?: { reset?: boolean }) => Promise<void>;
@@ -35,6 +37,18 @@ interface SpotsState {
 /** Sequence of the latest map request — older responses are dropped. */
 let mapRequestSeq = 0;
 
+/**
+ * Viewport responses by (box, scope, filters): shown again at once, then
+ * confirmed by a 304 or replaced. Lives as long as the app does.
+ */
+const mapCache = new MapCache();
+
+/** Forget every cached box — after a spot is created, edited or deleted. */
+export function invalidateMapCache(): void {
+  mapCache.clear();
+  useSpotsStore.setState((s) => ({ mapCacheVersion: s.mapCacheVersion + 1 }));
+}
+
 export const useSpotsStore = create<SpotsState>()((set, get) => ({
   spots: [],
   feedSpots: [],
@@ -46,15 +60,34 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
   mapPins: [],
   mapTruncated: false,
   isMapLoading: false,
+  mapCacheVersion: 0,
 
   // Map failures stay quiet: the last good pins remain on screen and the
   // next pan tries again. Only the newest response is ever applied.
   fetchMapPins: async (params) => {
     const seq = ++mapRequestSeq;
-    set({ isMapLoading: true });
+    const key = mapCacheKey(params.bounds, params.scope ?? "all", params.filters ?? {});
+    const cached = mapCache.get(key);
+    // What we hold for this box goes up at once; the request confirms or replaces it.
+    if (cached) {
+      set({ mapPins: cached.items, mapTruncated: cached.truncated, isMapLoading: false });
+    } else {
+      set({ isMapLoading: true });
+    }
     try {
-      const page = await api.getMapPins(params);
+      const page = await api.getMapPins({ ...params, etag: cached?.etag ?? null });
       if (seq !== mapRequestSeq) return false;
+      if (page.notModified) {
+        mapCache.touch(key);
+        set({ isMapLoading: false });
+        return Boolean(cached);
+      }
+      mapCache.set(key, {
+        items: page.items,
+        truncated: page.truncated,
+        etag: page.etag ?? null,
+        fetchedAt: Date.now(),
+      });
       set({ mapPins: page.items, mapTruncated: page.truncated, isMapLoading: false });
       return true;
     } catch {
@@ -100,6 +133,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
     try {
       const spot = await api.createSpot(params);
       set((state) => ({ spots: [spot, ...state.spots], isLoading: false }));
+      invalidateMapCache();
       return spot;
     } catch (err) {
       set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.saveFailed")) });
@@ -117,6 +151,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
         selectedSpot: state.selectedSpot?.id === id ? updated : state.selectedSpot,
         isLoading: false,
       }));
+      invalidateMapCache();
       return updated;
     } catch (err) {
       set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.updateFailed")) });
@@ -129,6 +164,7 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
     set((state) => ({ spots: state.spots.filter((s) => s.id !== id) }));
     try {
       await api.deleteSpot(id);
+      invalidateMapCache();
     } catch (err) {
       set({ spots: previous, error: extractErrorMessage(err, i18n.t("spots.errors.deleteFailed")) });
       throw err;

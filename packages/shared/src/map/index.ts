@@ -249,6 +249,111 @@ export function filterPinsByColor(pins: MapPin[], families: ColorFamily[]): MapP
   return pins.filter((p) => p.colors.some((hex) => wanted.has(colorFamilyOf(hex))));
 }
 
+// ─── Client cache ────────────────────────────────────────────────────
+
+/** How often an open map re-asks for its current view (a 304 when unchanged). */
+export const MAP_POLL_MS = 20_000;
+/** Viewport entries kept per client. */
+export const MAP_CACHE_MAX_ENTRIES = 40;
+
+/**
+ * Snap a box outward to a grid a quarter of its size, so nearby views
+ * share one box — one cache key, one URL, one ETag.
+ */
+export function quantizeBounds(b: MapBounds): MapBounds {
+  const span = Math.max(b.neLat - b.swLat, b.neLng - b.swLng, 1e-6);
+  const step = Math.pow(2, Math.floor(Math.log2(span / 4)));
+  return {
+    swLat: clampLat(Math.floor(b.swLat / step) * step),
+    swLng: clampLng(Math.floor(b.swLng / step) * step),
+    neLat: clampLat(Math.ceil(b.neLat / step) * step),
+    neLng: clampLng(Math.ceil(b.neLng / step) * step),
+  };
+}
+
+/** One key per (box, scope, server-side filters) — what a response depends on. */
+export function mapCacheKey(bounds: MapBounds, scope: MapScope, query: MapFilterQuery): string {
+  const q = Object.keys(query)
+    .sort()
+    .map((k) => `${k}=${String(query[k as keyof MapFilterQuery])}`)
+    .join("&");
+  return `${scope}|${bounds.swLat},${bounds.swLng},${bounds.neLat},${bounds.neLng}|${q}`;
+}
+
+export interface MapCacheEntry {
+  items: MapPin[];
+  truncated: boolean;
+  /** The server's ETag for this box, sent back as If-None-Match. */
+  etag: string | null;
+  fetchedAt: number;
+}
+
+/**
+ * A small LRU of viewport responses. Reads are instant; the caller
+ * always revalidates in the background, so what is shown converges on
+ * the server within one round trip.
+ */
+export class MapCache {
+  private readonly entries = new Map<string, MapCacheEntry>();
+
+  constructor(private readonly max = MAP_CACHE_MAX_ENTRIES) {}
+
+  get(key: string): MapCacheEntry | undefined {
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+    // Re-insert so the most recently read is evicted last
+    this.entries.delete(key);
+    this.entries.set(key, entry);
+    return entry;
+  }
+
+  set(key: string, entry: MapCacheEntry): void {
+    this.entries.delete(key);
+    this.entries.set(key, entry);
+    while (this.entries.size > this.max) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest === undefined) break;
+      this.entries.delete(oldest);
+    }
+  }
+
+  /** Mark an entry as just confirmed by the server (a 304). */
+  touch(key: string, now = Date.now()): void {
+    const entry = this.entries.get(key);
+    if (entry) this.set(key, { ...entry, fetchedAt: now });
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
+
+  get size(): number {
+    return this.entries.size;
+  }
+
+  toJSON(): [string, MapCacheEntry][] {
+    return [...this.entries.entries()];
+  }
+
+  /** Rebuild from `toJSON()` output; anything malformed is ignored. */
+  static fromJSON(raw: unknown, max = MAP_CACHE_MAX_ENTRIES): MapCache {
+    const cache = new MapCache(max);
+    if (!Array.isArray(raw)) return cache;
+    for (const pair of raw) {
+      if (!Array.isArray(pair) || typeof pair[0] !== "string") continue;
+      const e = pair[1] as Partial<MapCacheEntry> | null;
+      if (!e || !Array.isArray(e.items) || typeof e.fetchedAt !== "number") continue;
+      cache.set(pair[0], {
+        items: e.items,
+        truncated: Boolean(e.truncated),
+        etag: typeof e.etag === "string" ? e.etag : null,
+        fetchedAt: e.fetchedAt,
+      });
+    }
+    return cache;
+  }
+}
+
 // ─── Cluster presentation ────────────────────────────────────────────
 
 /**
