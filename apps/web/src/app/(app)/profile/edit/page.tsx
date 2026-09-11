@@ -1,12 +1,13 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { apiClient, getToken } from "@/lib/api-client";
-import { ACCEPTED_IMAGE_TYPES, MAX_AVATAR_SIZE_BYTES } from "@trs/shared/constants";
+import { getToken } from "@/lib/api-client";
 import { Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/avatar";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { useT } from "@/lib/use-t";
 import { PAGE_COLUMN, PageHeader } from "@/components/page";
 import { CharacterCount } from "@/components/ui/limit-hint";
@@ -19,16 +20,13 @@ export default function EditProfilePage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
-
-  // Avatar
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -36,46 +34,18 @@ export default function EditProfilePage() {
         setName(user.name ?? "");
         setUsername(user.username ?? "");
         setBio(user.bio ?? "");
-        setAvatarPreview(user.avatarUrl);
+        setAvatarUrl(user.avatarUrl ?? null);
       });
     }
   }, [user]);
 
-  async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setMessage({ type: "error", text: t("settings.avatarHint") });
-      return;
-    }
-    if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      setMessage({ type: "error", text: t("settings.avatarHint") });
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-    setAvatarPreview(previewUrl);
-    setIsUploadingAvatar(true);
-    setMessage(null);
-
-    try {
-      await apiClient.upload.avatar(file);
-      await refreshUser();
-      setMessage({ type: "success", text: t("common.profileUpdated") });
-    } catch (err) {
-      setAvatarPreview(user?.avatarUrl ?? null);
-      setMessage({
-        type: "error",
-        text: err instanceof Error ? err.message : t("common.error"),
-      });
-    } finally {
-      setIsUploadingAvatar(false);
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
+  const handleAvatarSelect = useCallback(
+    (url: string | null) => {
+      setAvatarUrl(url);
+      setMessage(null);
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -85,13 +55,20 @@ export default function EditProfilePage() {
 
       try {
         const token = getToken();
+        const body: Record<string, unknown> = { name, username, bio };
+
+        // Only send avatarUrl if it changed
+        if (avatarUrl !== (user?.avatarUrl ?? null)) {
+          body.avatarUrl = avatarUrl;
+        }
+
         const res = await fetch("/api/auth/me", {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ name, username, bio }),
+          body: JSON.stringify(body),
         });
 
         if (!res.ok) {
@@ -110,17 +87,8 @@ export default function EditProfilePage() {
         setIsSaving(false);
       }
     },
-    [name, username, bio, refreshUser, t],
+    [name, username, bio, avatarUrl, user?.avatarUrl, refreshUser, t],
   );
-
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
 
   return (
     <div className={PAGE_COLUMN}>
@@ -135,39 +103,15 @@ export default function EditProfilePage() {
       >
         {/* Avatar at top */}
         <div className="flex flex-col items-center gap-2 pb-2">
-          <div className="relative">
-            {avatarPreview ? (
-              <img
-                src={avatarPreview}
-                alt=""
-                className="h-20 w-20 rounded-full object-cover border border-border"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent text-on-accent text-xl font-semibold">
-                {initials}
-              </div>
-            )}
-            {isUploadingAvatar ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-bg/70 rounded-full">
-                <svg className="h-5 w-5 animate-spin text-accent" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              </div>
-            ) : null}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(",")}
-            className="hidden"
-            onChange={handleAvatarSelect}
+          <Avatar
+            url={avatarUrl}
+            name={user?.name}
+            className="h-20 w-20 rounded-full border border-border object-cover text-xl font-semibold"
           />
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploadingAvatar}
-            className="text-sm font-semibold text-accent hover:text-accent-dark transition-colors cursor-pointer disabled:opacity-50"
+            onClick={() => setShowAvatarPicker(true)}
+            className="text-sm font-semibold text-accent hover:text-accent-dark transition-colors cursor-pointer"
           >
             {t("settings.changeAvatar")}
           </button>
@@ -220,6 +164,14 @@ export default function EditProfilePage() {
           {t("common.cancel")}
         </Button>
       </form>
+
+      <AvatarPicker
+        open={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        onSelect={handleAvatarSelect}
+        seed={user?.username ?? "user"}
+        currentUrl={avatarUrl}
+      />
     </div>
   );
 }

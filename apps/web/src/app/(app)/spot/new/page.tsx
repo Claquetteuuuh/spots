@@ -196,6 +196,11 @@ function AddSpotForm() {
       .catch(() => {});
   }, [facingMode]);
 
+  // Photos (multi) — declared before capturePhoto which references setPhotos
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const capturePhoto = useCallback(() => {
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) return;
@@ -252,11 +257,6 @@ function AddSpotForm() {
     },
     [router],
   );
-
-  // Photos (multi)
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Location
   const [latitude, setLatitude] = useState<number | null>(null);

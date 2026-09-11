@@ -11,38 +11,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme";
-
-// ─── DiceBear configuration ────────────────────────────────────────
-// These match the shared constants the web fork defines. Once both
-// forks are merged the import can switch to `@trs/shared/constants`.
-
-const DICEBEAR_STYLES = [
-  "avataaars",
-  "bottts",
-  "fun-emoji",
-  "lorelei",
-  "notionists",
-  "open-peeps",
-  "personas",
-  "pixel-art",
-  "thumbs",
-] as const;
-
-const DICEBEAR_BG_COLORS = [
-  "b6e3f4",
-  "c0aede",
-  "d1d4f9",
-  "ffd5dc",
-  "ffdfbf",
-] as const;
-
-function dicebearUrl(
-  style: string,
-  seed: string,
-  bgColor: string,
-): string {
-  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
-}
+import {
+  DICEBEAR_STYLES,
+  DICEBEAR_BG_COLORS,
+  dicebearUrl,
+} from "@trs/shared/constants";
 
 // ─── Component ─────────────────────────────────────────────────────
 

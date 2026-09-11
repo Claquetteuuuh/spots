@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/wordmark";
 import { TabIcon } from "@/components/tab-icons";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api-client";
+import { Avatar } from "@/components/avatar";
 import { useT } from "@/lib/use-t";
 
 export function Header() {
@@ -58,15 +59,6 @@ export function Header() {
     setMenuOpen(false);
     router.push("/");
   }, [logout, router]);
-
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
 
   const isActive = (path: string) => pathname === path;
 
@@ -190,17 +182,7 @@ export function Header() {
                       : "ring-transparent hover:ring-border-dark"
                   }`}
                 >
-                  {user?.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary">
-                      {initials}
-                    </div>
-                  )}
+                  <Avatar url={user?.avatarUrl} name={user?.name} size={32} />
                 </button>
 
                 {menuOpen ? (

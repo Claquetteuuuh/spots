@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/api-client";
 import type { Spot, SpotPhoto, SpotImage } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
 import { useAuth } from "@/lib/auth-context";
+import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -370,17 +371,7 @@ export default function SpotDetailPage({
               href={`/profile/${spot.user.username}`}
               className="flex items-center gap-3 group"
             >
-              {spot.user.avatarUrl ? (
-                <img
-                  src={spot.user.avatarUrl}
-                  alt=""
-                  className="h-8 w-8 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent text-xs font-semibold">
-                  {spot.user.name?.charAt(0)?.toUpperCase() ?? "?"}
-                </div>
-              )}
+              <Avatar url={spot.user.avatarUrl} name={spot.user.name} size={32} />
               <p className="text-sm font-semibold text-text group-hover:text-text-secondary transition-colors">
                 {spot.user.username}
               </p>

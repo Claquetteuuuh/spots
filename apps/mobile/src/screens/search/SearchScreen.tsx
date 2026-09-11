@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import { searchUsers, followUser, unfollowUser } from "../../lib/api";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import type { RootStackNavigationProp } from "../../navigation/types";
 import type { User } from "../../types";
@@ -135,21 +136,7 @@ export function SearchScreen() {
                 onPress={() => navigation.navigate("OtherProfile", { username: item.username })}
                 style={styles.rowTappable}
               >
-                {item.avatarUrl ? (
-                  <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
-                ) : (
-                  <View
-                    style={[
-                      styles.avatar,
-                      styles.avatarPlaceholder,
-                      { backgroundColor: theme.colors.bgTertiary },
-                    ]}
-                  >
-                    <Text style={{ color: theme.colors.textSecondary, fontWeight: "600", fontSize: theme.typography.size.base }}>
-                      {item.name.slice(0, 1).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+                <Avatar url={item.avatarUrl} name={item.name} size={44} />
 
                 <View style={styles.info}>
                   <Text
@@ -216,15 +203,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 9999,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   info: {
     flex: 1,

@@ -267,6 +267,14 @@ export const fr = {
     uploading: "Envoi en cours...",
     photoAdded: "Photo ajoutée !",
   },
+  avatar: {
+    pickTitle: "Choisir un avatar",
+    style: "Style",
+    bgColor: "Couleur de fond",
+    preview: "Aperçu",
+    random: "Aléatoire",
+    removeAvatar: "Supprimer l'avatar",
+  },
   errors: {
     notFound: "Page introuvable",
     notFoundMessage:

@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import { FollowListModal } from "../../components/profile/FollowListModal";
 import type { MainTabNavigationProp } from "../../navigation/types";
@@ -31,13 +32,6 @@ export function ProfileScreen() {
   }, [user, fetchMySpots]);
 
   if (!user) return null;
-
-  const initials = user.name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
   const [followModalVisible, setFollowModalVisible] = useState(false);
   const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
@@ -94,27 +88,12 @@ export function ProfileScreen() {
 
             {/* Avatar + Stats row */}
             <View style={[styles.headerRow, { marginTop: theme.spacing.lg }]}>
-              {user.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View
-                  style={[
-                    styles.avatar,
-                    styles.avatarPlaceholder,
-                    { backgroundColor: theme.colors.bgTertiary },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: theme.colors.textSecondary,
-                      fontSize: theme.typography.size.xl,
-                      fontWeight: theme.typography.weight.semibold,
-                    }}
-                  >
-                    {initials}
-                  </Text>
-                </View>
-              )}
+              <Avatar
+                url={user.avatarUrl}
+                name={user.name}
+                size={80}
+                textStyle={{ fontSize: theme.typography.size.xl }}
+              />
 
               <View style={styles.statsRow}>
                 <Stat label={t("users.spots", { count: spots.length })} value={String(spots.length)} theme={theme} />
@@ -213,15 +192,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 9999,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   statsRow: {
     flex: 1,

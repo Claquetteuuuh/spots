@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient, type User, type SentFollowRequest } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/use-t";
 
@@ -15,16 +16,6 @@ interface FollowListModalProps {
   onClose: () => void;
   username: string;
   initialTab: Tab;
-}
-
-/** Up to two initials for the avatar placeholder — "Ada Lovelace" → "AL". */
-function initialsOf(name: string | null | undefined) {
-  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  return parts
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
 }
 
 export function FollowListModal({
@@ -188,17 +179,7 @@ export function FollowListModal({
                 onClick={onClose}
                 className="flex items-center gap-3 flex-1 min-w-0"
               >
-                {req.following.avatarUrl ? (
-                  <img
-                    src={req.following.avatarUrl}
-                    alt=""
-                    className="h-11 w-11 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
-                    {initialsOf(req.following.name)}
-                  </div>
-                )}
+                <Avatar url={req.following.avatarUrl} name={req.following.name} className="h-11 w-11 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-text truncate">
                     {req.following.username}
@@ -252,17 +233,7 @@ export function FollowListModal({
                 onClick={onClose}
                 className="flex items-center gap-3 flex-1 min-w-0"
               >
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt=""
-                    className="h-11 w-11 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
-                    {initialsOf(user.name)}
-                  </div>
-                )}
+                <Avatar url={user.avatarUrl} name={user.name} className="h-11 w-11 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold text-text truncate">
                     {user.username}

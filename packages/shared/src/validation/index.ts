@@ -109,6 +109,7 @@ export const updateProfileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
   bio: z.string().max(500).optional(),
+  avatarUrl: z.string().url().nullable().optional(),
   locale: z.enum(["fr", "en"]).optional(),
   isPrivate: z.boolean().optional(),
 });

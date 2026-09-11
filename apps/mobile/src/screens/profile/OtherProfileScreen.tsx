@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import * as api from "../../lib/api";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import { FollowListModal } from "../../components/profile/FollowListModal";
 import type { RootStackParamList, RootStackNavigationProp } from "../../navigation/types";
@@ -121,13 +122,6 @@ export function OtherProfileScreen() {
     );
   }
 
-  const initials = profile.name
-    ?.split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() ?? "?";
-
   const spotsCount = profile.spotCount ?? spots.length;
   const followersCount = profile.followerCount ?? 0;
   const followingCount = profile.followingCount ?? 0;
@@ -178,27 +172,12 @@ export function OtherProfileScreen() {
         >
           {/* Avatar + Stats */}
           <View style={styles.headerRow}>
-            {profile.avatarUrl ? (
-              <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View
-                style={[
-                  styles.avatar,
-                  styles.avatarPlaceholder,
-                  { backgroundColor: theme.colors.bgTertiary },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.size.xl,
-                    fontWeight: theme.typography.weight.semibold,
-                  }}
-                >
-                  {initials}
-                </Text>
-              </View>
-            )}
+            <Avatar
+              url={profile.avatarUrl}
+              name={profile.name}
+              size={80}
+              textStyle={{ fontSize: theme.typography.size.xl }}
+            />
 
             <View style={styles.statsRow}>
               <Stat label="spots" value={String(spotsCount)} theme={theme} />
@@ -411,15 +390,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 9999,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   statsRow: {
     flex: 1,

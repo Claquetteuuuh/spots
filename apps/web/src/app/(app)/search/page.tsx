@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import type { FollowStatus, User } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/use-t";
+import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { PAGE_COLUMN } from "@/components/page";
 
@@ -178,17 +179,7 @@ export default function SearchPage() {
                   href={`/profile/${user.username}`}
                   className="flex min-w-0 flex-1 items-center gap-3 transition-opacity active:opacity-70"
                 >
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt=""
-                      className="h-11 w-11 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-bg-tertiary text-[15px] font-semibold text-text-secondary">
-                      {user.name?.charAt(0)?.toUpperCase() ?? "?"}
-                    </div>
-                  )}
+                  <Avatar url={user.avatarUrl} name={user.name} className="h-11 w-11 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold text-text">
                       {user.username}

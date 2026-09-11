@@ -140,6 +140,39 @@ export const API_ROUTES = {
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
 
+// ─── DiceBear Avatars ───────────────────────────────────────────────
+
+export const DICEBEAR_STYLES = [
+  "avataaars",
+  "bottts",
+  "fun-emoji",
+  "lorelei",
+  "notionists",
+  "open-peeps",
+  "personas",
+  "pixel-art",
+  "thumbs",
+] as const;
+
+export type DiceBearStyle = (typeof DICEBEAR_STYLES)[number];
+
+export const DICEBEAR_BG_COLORS = [
+  "b6e3f4",
+  "c0aede",
+  "d1d4f9",
+  "ffd5dc",
+  "ffdfbf",
+] as const;
+
+/** Build a DiceBear SVG URL from a style, seed and background hex (no `#`). */
+export function dicebearUrl(
+  style: string,
+  seed: string,
+  bgColor: string,
+): string {
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bgColor}`;
+}
+
 // ─── Photo ───────────────────────────────────────────────────────────
 
 export const MAX_PHOTO_SIZE_MB = 10;

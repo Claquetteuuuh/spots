@@ -8,24 +8,13 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { ProfileSkeleton, SpotGridSkeleton } from "@/components/ui/skeleton";
+import { Avatar } from "@/components/avatar";
 import { FollowListModal } from "@/components/follow-list-modal";
 import { useT } from "@/lib/use-t";
 import { PAGE_WIDE, PageHeader } from "@/components/page";
 
 type FollowStatus = "ACCEPTED" | "PENDING" | null;
 type ProfileTab = "spots" | "map";
-
-/** Two-letter initials, the app's avatar placeholder. */
-function initialsOf(name: string | null | undefined): string {
-  const letters = (name ?? "")
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return letters || "?";
-}
 
 export default function ProfilePage({
   params,
@@ -275,17 +264,11 @@ export default function ProfilePage({
       <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 lg:items-start lg:gap-x-12">
         {/* Avatar */}
         <div className="shrink-0 lg:row-span-3">
-          {profile.avatarUrl ? (
-            <img
-              src={profile.avatarUrl}
-              alt=""
-              className="h-20 w-20 rounded-full object-cover lg:h-36 lg:w-36 lg:border lg:border-border"
-            />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-bg-tertiary text-[22px] font-semibold text-text-secondary lg:h-36 lg:w-36 lg:bg-accent-tint lg:text-4xl lg:text-accent-dark">
-              {initialsOf(profile.name)}
-            </div>
-          )}
+          <Avatar
+            url={profile.avatarUrl}
+            name={profile.name}
+            className="h-20 w-20 lg:h-36 lg:w-36 lg:border lg:border-border text-[22px] lg:text-4xl lg:bg-accent-tint lg:text-accent-dark"
+          />
         </div>
 
         {/* Desktop only: username + action row (below lg the PageHeader is the username) */}

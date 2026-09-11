@@ -267,6 +267,14 @@ export const en = {
     uploading: "Uploading...",
     photoAdded: "Photo added!",
   },
+  avatar: {
+    pickTitle: "Choose an avatar",
+    style: "Style",
+    bgColor: "Background colour",
+    preview: "Preview",
+    random: "Random",
+    removeAvatar: "Remove avatar",
+  },
   errors: {
     notFound: "Page not found",
     notFoundMessage:

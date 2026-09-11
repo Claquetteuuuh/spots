@@ -3,8 +3,9 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
-import type { FollowRequest, NotificationsData } from "@/lib/api-client";
+import type { NotificationsData } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
+import { Avatar } from "@/components/avatar";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { PAGE_COLUMN, PageHeader } from "@/components/page";
 
@@ -16,41 +17,12 @@ import { PAGE_COLUMN, PageHeader } from "@/components/page";
 const FULL_SCREEN = "min-h-[calc(100dvh-50px-env(safe-area-inset-bottom))]";
 const UNDER_HEADER = "min-h-[calc(100dvh-48px-50px-env(safe-area-inset-bottom))]";
 
-/** Two initials, like the app: "Alice Photo" → "AP". */
-function initialsOf(name: string | null | undefined): string {
-  const initials = name
-    ?.split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return initials || "?";
-}
-
 function Spinner() {
   return (
     <svg className="h-6 w-6 animate-spin text-text-secondary" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
-  );
-}
-
-function Avatar({ avatarUrl, name }: { avatarUrl: string | null; name: string | null }) {
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        className="h-11 w-11 rounded-full border border-border object-cover"
-      />
-    );
-  }
-  return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-bg-tertiary text-[13px] font-semibold text-text-secondary">
-      {initialsOf(name)}
-    </div>
   );
 }
 
@@ -154,7 +126,7 @@ export default function NotificationsPage() {
                       className="-mx-4 flex items-center gap-3 border-b border-border px-4 py-3 lg:mx-0 lg:px-0"
                     >
                       <Link href={`/profile/${req.follower.username}`} className="shrink-0">
-                        <Avatar avatarUrl={req.follower.avatarUrl} name={req.follower.name} />
+                        <Avatar url={req.follower.avatarUrl} name={req.follower.name} className="h-11 w-11 border border-border" />
                       </Link>
 
                       <Link
@@ -205,7 +177,7 @@ export default function NotificationsPage() {
                       className="-mx-4 flex items-center gap-3 border-b border-border px-4 py-3 lg:mx-0 lg:px-0"
                     >
                       <Link href={`/profile/${follower.follower.username}`} className="shrink-0">
-                        <Avatar avatarUrl={follower.follower.avatarUrl} name={follower.follower.name} />
+                        <Avatar url={follower.follower.avatarUrl} name={follower.follower.name} className="h-11 w-11 border border-border" />
                       </Link>
 
                       <Link

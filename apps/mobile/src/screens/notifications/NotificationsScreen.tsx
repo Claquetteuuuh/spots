@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
+import { Avatar } from "../../components/Avatar";
 import * as api from "../../lib/api";
 import type { FollowRequest, NotificationsData } from "../../types";
 import type { RootStackNavigationProp } from "../../navigation/types";
@@ -28,17 +28,6 @@ function timeAgo(dateStr: string): string {
   if (days < 7) return `${days}d`;
   const weeks = Math.floor(days / 7);
   return `${weeks}w`;
-}
-
-function initialsOf(name: string | null | undefined): string {
-  const initials = name
-    ?.split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return initials || "?";
 }
 
 export function NotificationsScreen() {
@@ -103,36 +92,6 @@ export function NotificationsScreen() {
     }
   };
 
-  const renderAvatar = (avatarUrl: string | null, name: string | null) => {
-    if (avatarUrl) {
-      return (
-        <Image
-          source={{ uri: avatarUrl }}
-          style={[styles.avatar, { borderColor: theme.colors.border }]}
-        />
-      );
-    }
-    return (
-      <View
-        style={[
-          styles.avatar,
-          styles.avatarPlaceholder,
-          { backgroundColor: theme.colors.bgTertiary },
-        ]}
-      >
-        <Text
-          style={{
-            color: theme.colors.textSecondary,
-            fontSize: theme.typography.size.sm,
-            fontWeight: theme.typography.weight.semibold,
-          }}
-        >
-          {initialsOf(name)}
-        </Text>
-      </View>
-    );
-  };
-
   const renderRequest = (item: FollowRequest) => (
     <View
       key={item.id}
@@ -146,7 +105,7 @@ export function NotificationsScreen() {
         }
         style={styles.avatarWrap}
       >
-        {renderAvatar(item.follower.avatarUrl, item.follower.name)}
+        <Avatar url={item.follower.avatarUrl} name={item.follower.name} size={44} style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }} />
       </Pressable>
 
       <Pressable
@@ -236,7 +195,7 @@ export function NotificationsScreen() {
       style={[styles.requestRow, { borderBottomColor: theme.colors.border }]}
     >
       <View style={styles.avatarWrap}>
-        {renderAvatar(item.follower.avatarUrl, item.follower.name)}
+        <Avatar url={item.follower.avatarUrl} name={item.follower.name} size={44} style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }} />
       </View>
 
       <View style={styles.infoWrap}>
@@ -418,16 +377,6 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {
     flexShrink: 0,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 9999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   infoWrap: {
     flex: 1,
