@@ -8,10 +8,16 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: "22"
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -19,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install dependencies
@@ -31,11 +37,8 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Build
-        run: pnpm build
-
       - name: Install Vercel CLI
-        run: pnpm add -g vercel
+        run: npm i -g vercel
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
