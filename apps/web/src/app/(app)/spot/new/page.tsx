@@ -125,7 +125,110 @@ function AddSpotForm() {
   const searchParams = useSearchParams();
   const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Camera detection + capture via getUserMedia
+  const [hasCamera, setHasCamera] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      const videoInputs = devices.filter((d) => d.kind === "videoinput");
+      setHasCamera(videoInputs.length > 0);
+      setHasMultipleCameras(videoInputs.length > 1);
+    }).catch(() => { /* no camera API */ });
+  }, []);
+
+  const openCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setShowCamera(true);
+      // Wait for the modal's video element to mount
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      });
+    } catch {
+      // Permission denied or no camera — hide button for the rest of the session
+      setHasCamera(false);
+    }
+  }, [facingMode]);
+
+  const closeCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  }, []);
+
+  const flipCamera = useCallback(() => {
+    const next = facingMode === "user" ? "environment" : "user";
+    setFacingMode(next);
+    // Restart stream with the new facing mode
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+    }
+    navigator.mediaDevices
+      .getUserMedia({
+        video: { facingMode: next, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      })
+      .then((stream) => {
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      })
+      .catch(() => {});
+  }, [facingMode]);
+
+  const capturePhoto = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `camera-${Date.now()}.jpg`, { type: "image/jpeg" });
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setPhotos((prev) =>
+            [...prev, { file, preview: ev.target?.result as string }].slice(0, MAX_PHOTOS),
+          );
+        };
+        reader.readAsDataURL(file);
+        closeCamera();
+      },
+      "image/jpeg",
+      0.92,
+    );
+  }, [closeCamera]);
+
+  // Stop camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
 
   // The step lives in the URL, so the browser's back button (and the phone's
   // back gesture) walks back through the form instead of leaving it and
@@ -267,9 +370,8 @@ function AddSpotForm() {
       setError(null);
     }
 
-    // Reset inputs so the same file(s) can be re-selected
+    // Reset input so the same file(s) can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
   function removePhoto(index: number) {
@@ -992,13 +1094,13 @@ function AddSpotForm() {
                     </button>
                   ) : null}
 
-                  {/* Add more tile — camera (mobile browsers only) */}
-                  {photos.length < MAX_PHOTOS ? (
+                  {/* Add more tile — camera (only when camera detected) */}
+                  {photos.length < MAX_PHOTOS && hasCamera ? (
                     <button
                       type="button"
-                      onClick={() => cameraInputRef.current?.click()}
+                      onClick={openCamera}
                       aria-label={t("spots.takePhoto")}
-                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent lg:hidden"
+                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent"
                     >
                       {/* Camera icon (Ionicons camera-outline) */}
                       <svg className="h-6 w-6" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
@@ -1036,17 +1138,18 @@ function AddSpotForm() {
                   </span>
                 </button>
                 {/* Like the mobile app: Take a photo (primary) on top, Pick from gallery below.
-                    Camera button hidden on desktop where capture isn't relevant. */}
+                    Camera button only visible when a camera is detected. */}
+                {hasCamera ? (
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={openCamera}
+                  >
+                    {t("spots.takePhoto")}
+                  </Button>
+                ) : null}
                 <Button
-                  variant="primary"
-                  fullWidth
-                  className="lg:hidden"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  {t("spots.takePhoto")}
-                </Button>
-                <Button
-                  variant="secondary"
+                  variant={hasCamera ? "secondary" : "primary"}
                   fullWidth
                   onClick={() => fileInputRef.current?.click()}
                 >
@@ -1063,15 +1166,6 @@ function AddSpotForm() {
               type="file"
               accept={ACCEPTED_IMAGE_TYPES.join(",")}
               multiple
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            {/* Separate input with capture="environment" — forces the native camera on mobile browsers */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept={ACCEPTED_IMAGE_TYPES.join(",")}
-              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -1735,6 +1829,67 @@ function AddSpotForm() {
           )}
         </div>
       </div>
+
+      {/* ── Camera modal ──────────────────────────────────────────── */}
+      {showCamera ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+          {/* Live video preview — full-screen on mobile, centred on desktop */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="h-full w-full object-cover lg:max-h-[80vh] lg:max-w-[80vw] lg:rounded-lg"
+          />
+
+          {/* Controls overlay */}
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-6 pb-10 lg:pb-8">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={closeCamera}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors cursor-pointer hover:bg-white/30"
+              aria-label={t("common.close")}
+            >
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Shutter button */}
+            <button
+              type="button"
+              onClick={capturePhoto}
+              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-white/20 transition-transform cursor-pointer hover:scale-105 active:scale-95"
+              aria-label={t("spots.takePhoto")}
+            >
+              <span className="block h-[56px] w-[56px] rounded-full bg-white" />
+            </button>
+
+            {/* Flip camera (only when multiple cameras detected) */}
+            {hasMultipleCameras ? (
+              <button
+                type="button"
+                onClick={flipCamera}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors cursor-pointer hover:bg-white/30"
+                aria-label="Flip camera"
+              >
+                {/* Ionicons camera-reverse-outline */}
+                <svg className="h-6 w-6" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+                  <path d="M350.54 148.68l-26.62-42.06C318.31 97.08 310.62 92 302 92h-92c-8.62 0-16.31 5.08-21.92 14.62l-26.62 42.06C155.85 155.23 148.62 160 140 160H80a32 32 0 00-32 32v208a32 32 0 0032 32h352a32 32 0 0032-32V192a32 32 0 00-32-32h-60c-8.65 0-15.85-4.77-21.46-11.32z" />
+                  <path d="M220 260l-44 44 44 44" />
+                  <path d="M176 304h114c16.4 0 30-13.6 30-30v-2" />
+                  <path d="M292 348l44-44-44-44" />
+                  <path d="M336 304H222c-16.4 0-30 13.6-30 30v2" />
+                </svg>
+              </button>
+            ) : (
+              /* Spacer to keep shutter centred */
+              <div className="h-12 w-12" />
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
