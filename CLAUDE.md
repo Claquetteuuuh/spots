@@ -153,6 +153,45 @@ Colour tokens live in `@trs/shared/constants` (`COLORS`, `RADIUS`), which the
 mobile theme reads directly, and are mirrored in `apps/web/src/app/globals.css`
 for Tailwind. Change both together.
 
+## Deployment
+
+- **Hosting**: Vercel — project root directory set to `apps/web`
+- **Deploy trigger**: GitHub Releases only (`ignoreCommand: "exit 0"` blocks all auto-deploys)
+- **Config**: `apps/web/vercel.json` (installCommand navigates to monorepo root)
+- **Workflow**: `.github/workflows/deploy.yml` — on `release:published`
+
+### Release flow
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+# GitHub → Releases → Create release on the tag
+```
+
+The workflow runs: install → generate → test → **prisma migrate deploy** → vercel deploy --prod.
+
+### Database migrations in production
+
+- Migrations are applied automatically by the deploy workflow (`prisma migrate deploy`)
+- **Creating a migration** (dev): modify `prisma/schema.prisma`, then `pnpm db:migrate`
+- The migration file in `prisma/migrations/` MUST be committed — it's what `migrate deploy` applies
+- Never use `prisma db push` in production — always `migrate deploy`
+
+### Required secrets (GitHub Actions)
+
+- `VERCEL_TOKEN` — Vercel API token
+- `VERCEL_ORG_ID` — `team_Ch39vqrjZFQ7aIfwPf9ARHRk`
+- `VERCEL_PROJECT_ID` — `prj_k2tDktliUOadnJP0UkoGWNKHq5Sz`
+- `DATABASE_URL` — PostgreSQL connection string (same as on Vercel)
+
+### Required env vars (Vercel)
+
+`DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `R2_ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`,
+`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID`
+
+Optional: `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `RESEND_API_KEY`, `EMAIL_FROM`
+
 ## Code Conventions
 
 - TypeScript strict mode everywhere
