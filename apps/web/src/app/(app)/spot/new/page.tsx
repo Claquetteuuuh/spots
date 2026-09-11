@@ -1035,24 +1035,23 @@ function AddSpotForm() {
                     {t("spots.upToPhotos", { count: MAX_PHOTOS })} <span className="text-error">*</span>
                   </span>
                 </button>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {t("spots.pickPhoto")}
-                  </Button>
-                  {/* Camera button — only useful on mobile browsers where capture triggers the native camera */}
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    className="lg:hidden"
-                    onClick={() => cameraInputRef.current?.click()}
-                  >
-                    {t("spots.takePhoto")}
-                  </Button>
-                </div>
+                {/* Like the mobile app: Take a photo (primary) on top, Pick from gallery below.
+                    Camera button hidden on desktop where capture isn't relevant. */}
+                <Button
+                  variant="primary"
+                  fullWidth
+                  className="lg:hidden"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  {t("spots.takePhoto")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {t("spots.pickPhoto")}
+                </Button>
                 <p className="text-center text-xs text-text-tertiary">
                   JPEG, PNG, WebP · {MAX_PHOTO_SIZE_MB}MB max · {t("spots.upToPhotos", { count: String(MAX_PHOTOS) })}
                 </p>
