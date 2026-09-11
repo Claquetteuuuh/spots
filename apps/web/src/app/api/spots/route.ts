@@ -156,7 +156,7 @@ export const POST = withAuth(async (request, authUser) => {
       customComposition: input.customComposition,
       colors: input.colors,
       compositions: input.compositions,
-      tags: input.tags,
+      tags: input.tags?.map((t: string) => t.toLowerCase()),
       images: {
         create: photos.map((p, i) => ({
           photoUrl: p.url,

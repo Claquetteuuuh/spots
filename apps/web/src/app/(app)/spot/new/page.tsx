@@ -807,7 +807,7 @@ function AddSpotForm() {
   const tagDropdownRef = useRef<HTMLDivElement>(null);
 
   function addTag(value?: string) {
-    const tag = (value ?? tagInput).trim();
+    const tag = (value ?? tagInput).trim().toLowerCase();
     if (!tag) return;
     // Use callback to check against the latest state — avoids duplicates
     // when addTag fires twice in the same React batch (Enter + onBlur).

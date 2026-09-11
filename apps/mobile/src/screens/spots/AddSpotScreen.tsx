@@ -419,7 +419,7 @@ export function AddSpotScreen() {
   const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addTag = (value?: string) => {
-    const tag = (value ?? tagInput).trim();
+    const tag = (value ?? tagInput).trim().toLowerCase();
     if (!tag) { setTagInput(""); return; }
     setTags((prev) => {
       if (prev.includes(tag) || prev.length >= 10) return prev;

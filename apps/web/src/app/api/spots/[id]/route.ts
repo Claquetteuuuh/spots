@@ -116,6 +116,7 @@ export const PATCH = withAuth<RouteParams>(async (request, authUser, { params })
     where: { id },
     data: {
       ...input,
+      ...(input.tags ? { tags: input.tags.map((t: string) => t.toLowerCase()) } : {}),
       address,
       city,
       country,
