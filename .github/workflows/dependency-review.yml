@@ -20,6 +20,10 @@ concurrency:
 jobs:
   review:
     name: Dependency review
+    # The action reads the Dependency graph, which GitHub only exposes on a
+    # private repository with Advanced Security. Skip rather than fail there —
+    # Grype SCA still gates CVEs on every PR.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

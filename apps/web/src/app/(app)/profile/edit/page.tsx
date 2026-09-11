@@ -23,10 +23,7 @@ export default function EditProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -42,53 +39,47 @@ export default function EditProfilePage() {
   const handleAvatarSelect = useCallback(
     (url: string | null) => {
       setAvatarUrl(url);
-      setMessage(null);
+      setError(null);
     },
     [],
   );
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setIsSaving(true);
-      setMessage(null);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSaving(true);
+    setError(null);
 
-      try {
-        const token = getToken();
-        const body: Record<string, unknown> = { name, username, bio };
+    try {
+      const token = getToken();
+      const body: Record<string, unknown> = { name, username, bio };
 
-        // Only send avatarUrl if it changed
-        if (avatarUrl !== (user?.avatarUrl ?? null)) {
-          body.avatarUrl = avatarUrl;
-        }
-
-        const res = await fetch("/api/auth/me", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error ?? "Failed to save");
-        }
-
-        await refreshUser();
-        setMessage({ type: "success", text: t("common.profileUpdated") });
-      } catch (err) {
-        setMessage({
-          type: "error",
-          text: err instanceof Error ? err.message : t("common.error"),
-        });
-      } finally {
-        setIsSaving(false);
+      // Only send avatarUrl if it changed
+      if (avatarUrl !== (user?.avatarUrl ?? null)) {
+        body.avatarUrl = avatarUrl;
       }
-    },
-    [name, username, bio, avatarUrl, user?.avatarUrl, refreshUser, t],
-  );
+
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Failed to save");
+      }
+
+      await refreshUser();
+      router.push(`/profile/${username}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className={PAGE_COLUMN}>
@@ -141,14 +132,9 @@ export default function EditProfilePage() {
           <CharacterCount value={bio} max={500} />
         </div>
 
-        {message ? (
-          <p
-            className={`text-center text-[13px] ${
-              message.type === "success" ? "text-success" : "text-error"
-            }`}
-            role={message.type === "error" ? "alert" : "status"}
-          >
-            {message.text}
+        {error ? (
+          <p className="text-center text-[13px] text-error" role="alert">
+            {error}
           </p>
         ) : null}
 
