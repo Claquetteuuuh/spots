@@ -143,6 +143,15 @@ function AddSpotForm() {
     }).catch(() => { /* no camera API */ });
   }, []);
 
+  // Connect the stream to the video element once React has mounted the modal
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!showCamera || !video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  }, [showCamera]);
+
   const openCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -151,13 +160,6 @@ function AddSpotForm() {
       });
       streamRef.current = stream;
       setShowCamera(true);
-      // Wait for the modal's video element to mount
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
-      });
     } catch {
       // Permission denied or no camera — hide button for the rest of the session
       setHasCamera(false);
@@ -196,7 +198,7 @@ function AddSpotForm() {
 
   const capturePhoto = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !video.videoWidth || !video.videoHeight) return;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
