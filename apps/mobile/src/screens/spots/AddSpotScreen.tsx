@@ -23,7 +23,7 @@ import * as Location from "expo-location";
 import { WebView } from "react-native-webview";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
-import { useNavigation } from "@react-navigation/native";
+import { useTabSwitch } from "../../navigation/tab-context";
 import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
@@ -32,7 +32,6 @@ import { uploadPhoto, discardUploads, reverseGeocode, forwardGeocode, searchTags
 import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import type { MainTabNavigationProp } from "../../navigation/types";
 import type { ForwardGeocodeResult } from "../../types";
 
 const TOTAL_STEPS = 5;
@@ -168,7 +167,7 @@ export function AddSpotScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<MainTabNavigationProp<"Add">>();
+  const { setTabIndex } = useTabSwitch();
   const createSpot = useSpotsStore((s) => s.createSpot);
   const user = useAuthStore((s) => s.user);
 
@@ -563,7 +562,9 @@ export function AddSpotScreen() {
         customComposition: customComposition.trim() || undefined,
       });
       resetWizard();
-      navigation.navigate("Map");
+      // The tabs are a pager, not a navigator — there is no "Map" screen to
+      // navigate to. Switch to the map tab so the new spot is on screen.
+      setTabIndex(0);
     } catch (err) {
       void discardUploads(uploads.map((u) => u.photoKey)).catch(() => {
         // Best effort — the orphan sweep picks up anything left behind
@@ -1066,6 +1067,9 @@ export function AddSpotScreen() {
                     <Pressable
                       key={color}
                       onPress={() => toggleColor(color)}
+                      accessibilityRole="button"
+                      accessibilityLabel={color}
+                      accessibilityState={{ selected }}
                       style={[
                         styles.colorSwatch,
                         {
