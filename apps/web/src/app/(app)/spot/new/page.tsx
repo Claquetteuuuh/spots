@@ -801,11 +801,41 @@ function AddSpotForm() {
 
   // ── Tags ──────────────────────────────────────────────────────────
 
-  function addTag() {
-    const tag = tagInput.trim();
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tagDropdownRef = useRef<HTMLDivElement>(null);
+
+  function addTag(value?: string) {
+    const tag = (value ?? tagInput).trim();
     if (!tag || tags.includes(tag) || tags.length >= MAX_TAGS) return;
     setTags((prev) => [...prev, tag]);
     setTagInput("");
+    setShowTagSuggestions(false);
+    setTagSuggestions([]);
+  }
+
+  function handleTagInputChange(value: string) {
+    setTagInput(value);
+    if (tagDebounceRef.current) clearTimeout(tagDebounceRef.current);
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      setTagSuggestions([]);
+      setShowTagSuggestions(false);
+      return;
+    }
+    tagDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await apiClient.spots.searchTags(trimmed);
+        // Filter out tags already selected
+        const filtered = results.filter((t) => !tags.includes(t));
+        setTagSuggestions(filtered);
+        setShowTagSuggestions(filtered.length > 0);
+      } catch {
+        setTagSuggestions([]);
+        setShowTagSuggestions(false);
+      }
+    }, 350);
   }
 
   function handleTagKeyDown(e: React.KeyboardEvent) {
@@ -813,11 +843,25 @@ function AddSpotForm() {
       e.preventDefault();
       addTag();
     }
+    if (e.key === "Escape") {
+      setShowTagSuggestions(false);
+    }
   }
 
   function removeTag(tag: string) {
     setTags((prev) => prev.filter((t) => t !== tag));
   }
+
+  // Close tag suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(e.target as Node)) {
+        setShowTagSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   // ── Validation ─────────────────────────────────────────────────────
 
@@ -1689,25 +1733,44 @@ function AddSpotForm() {
             </div>
 
             {/* Tags — the shared field with a ghost add action beside it, chips below */}
-            <div>
+            <div ref={tagDropdownRef}>
               <SectionLabel htmlFor="tag-input">{t("spots.tags")}</SectionLabel>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="relative mt-1 flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <Input
                     id="tag-input"
                     value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
+                    onChange={(e) => handleTagInputChange(e.target.value)}
                     onKeyDown={handleTagKeyDown}
-                    onBlur={addTag}
+                    onBlur={() => { setTimeout(() => addTag(), 150); }}
                     placeholder={t("spots.tagsPlaceholder")}
                     maxLength={50}
                     disabled={tags.length >= MAX_TAGS}
                     autoComplete="off"
                   />
+
+                  {/* Tag suggestions dropdown */}
+                  {showTagSuggestions && tagSuggestions.length > 0 ? (
+                    <div className="absolute top-full left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-bg shadow-sm">
+                      {tagSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // prevent blur
+                            addTag(suggestion);
+                          }}
+                          className="flex w-full items-center px-4 py-2.5 text-left text-sm text-text transition-colors cursor-pointer hover:bg-bg-secondary"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <Button
                   variant="ghost"
-                  onClick={addTag}
+                  onClick={() => addTag()}
                   disabled={!tagInput.trim() || tags.length >= MAX_TAGS}
                 >
                   {t("common.save")}

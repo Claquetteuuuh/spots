@@ -378,6 +378,12 @@ export const apiClient = {
       });
     },
 
+    async searchTags(query: string): Promise<string[]> {
+      return request<string[]>(
+        `${API_ROUTES.spots.tags}?q=${encodeURIComponent(query)}`,
+      );
+    },
+
     // Community photos
     async listPhotos(
       spotId: string,

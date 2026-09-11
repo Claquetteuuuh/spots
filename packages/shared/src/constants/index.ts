@@ -108,6 +108,7 @@ export const API_ROUTES = {
     detail: (id: string) => `/api/spots/${id}`,
     photos: (id: string) => `/api/spots/${id}/photos`,
     feed: "/api/spots/feed",
+    tags: "/api/spots/tags",
   },
   users: {
     profile: (username: string) => `/api/users/${username}`,

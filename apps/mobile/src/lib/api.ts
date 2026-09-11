@@ -200,6 +200,13 @@ export async function getFeed(cursor?: string, limit = 20): Promise<Paginated<Sp
   return data;
 }
 
+export async function searchTags(query: string): Promise<string[]> {
+  const { data } = await client.get<string[]>(API_ROUTES.spots.tags, {
+    params: { q: query },
+  });
+  return data;
+}
+
 // ─── Users ───────────────────────────────────────────────────────────
 
 export async function followUser(username: string): Promise<{ status: string }> {

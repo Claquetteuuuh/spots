@@ -28,7 +28,7 @@ import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
-import { uploadPhoto, reverseGeocode, forwardGeocode } from "../../lib/api";
+import { uploadPhoto, reverseGeocode, forwardGeocode, searchTags } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -415,12 +415,34 @@ export function AddSpotScreen() {
     );
   };
 
-  const addTag = () => {
-    const value = tagInput.trim();
-    if (value && !tags.includes(value) && tags.length < 10) {
-      setTags((prev) => [...prev, value]);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const addTag = (value?: string) => {
+    const tag = (value ?? tagInput).trim();
+    if (tag && !tags.includes(tag) && tags.length < 10) {
+      setTags((prev) => [...prev, tag]);
     }
     setTagInput("");
+    setTagSuggestions([]);
+  };
+
+  const handleTagInputChange = (value: string) => {
+    setTagInput(value);
+    if (tagDebounceRef.current) clearTimeout(tagDebounceRef.current);
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      setTagSuggestions([]);
+      return;
+    }
+    tagDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchTags(trimmed);
+        setTagSuggestions(results.filter((t) => !tags.includes(t)));
+      } catch {
+        setTagSuggestions([]);
+      }
+    }, 350);
   };
 
   const removeTag = (tag: string) => setTags((prev) => prev.filter((t) => t !== tag));
@@ -1264,10 +1286,10 @@ export function AddSpotScreen() {
                 <View style={styles.tagInputRow}>
                   <TextInput
                     value={tagInput}
-                    onChangeText={setTagInput}
+                    onChangeText={handleTagInputChange}
                     placeholder={t("spots.tagsPlaceholder")}
                     placeholderTextColor={theme.colors.textTertiary}
-                    onSubmitEditing={addTag}
+                    onSubmitEditing={() => addTag()}
                     style={[
                       styles.tagInput,
                       {
@@ -1282,8 +1304,40 @@ export function AddSpotScreen() {
                       },
                     ]}
                   />
-                  <Button title={t("common.save")} onPress={addTag} variant="ghost" fullWidth={false} />
+                  <Button title={t("common.save")} onPress={() => addTag()} variant="ghost" fullWidth={false} />
                 </View>
+
+                {/* Tag suggestions */}
+                {tagSuggestions.length > 0 ? (
+                  <View
+                    style={{
+                      marginTop: theme.spacing.xs,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radius.md,
+                      backgroundColor: theme.colors.bgSecondary,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {tagSuggestions.map((suggestion, idx) => (
+                      <Pressable
+                        key={suggestion}
+                        onPress={() => addTag(suggestion)}
+                        style={({ pressed }) => ({
+                          paddingHorizontal: theme.spacing.lg,
+                          paddingVertical: theme.spacing.sm + 2,
+                          backgroundColor: pressed ? theme.colors.bgTertiary : "transparent",
+                          borderTopWidth: idx > 0 ? StyleSheet.hairlineWidth : 0,
+                          borderTopColor: theme.colors.border,
+                        })}
+                      >
+                        <Text style={{ color: theme.colors.text, fontSize: theme.typography.size.sm }}>
+                          {suggestion}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
                 <View style={styles.tagList}>
                   {tags.map((tag) => (
                     <Pressable
