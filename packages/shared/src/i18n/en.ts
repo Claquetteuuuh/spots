@@ -217,6 +217,7 @@ export const en = {
     withinKm: "Within {{km}} km",
     needLocation: "Turn on location to filter by distance",
     noSpotsMatch: "No spot matches these filters here",
+    youAreHere: "You are here",
     locateMe: "Locate me",
     searchAddress: "Search for an address...",
     orEnterCoords: "Or enter coordinates",

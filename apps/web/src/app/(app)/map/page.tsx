@@ -24,6 +24,7 @@ import {
   type MapScope,
 } from "@trs/shared/map";
 import { useAuth } from "@/lib/auth-context";
+import { useLivePosition } from "@/lib/use-live-position";
 import { useT } from "@/lib/use-t";
 
 // Leaflet must be loaded without SSR
@@ -52,6 +53,8 @@ export default function MapPage() {
   const [position, setPosition] = useState<LatLng | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [center, setCenter] = useState<MapCenter | null>(null);
+  // Live dot and heading; `position` above stays the snapshot filters work from.
+  const { position: livePosition, requestHeadingPermission } = useLivePosition();
 
   const viewportRef = useRef<MapBounds | null>(null);
   const fetchedRef = useRef<FetchedArea | null>(null);
@@ -174,6 +177,12 @@ export default function MapPage() {
     locateMe();
   }, [locateMe]);
 
+  // The button is a tap, which is what iOS wants before it shares the compass.
+  const locateMeFromTap = useCallback(() => {
+    void requestHeadingPermission();
+    locateMe();
+  }, [requestHeadingPermission, locateMe]);
+
   const openSpot = useCallback(
     (pin: MapPin) => {
       router.push(`/spot/${pin.id}`);
@@ -186,6 +195,7 @@ export default function MapPage() {
       cluster: (count) => t("map.spotsInCluster", { count: String(count) }),
       untitled: t("spots.untitled"),
       open: t("map.openSpot"),
+      youAreHere: t("map.youAreHere"),
     }),
     [t],
   );
@@ -243,6 +253,7 @@ export default function MapPage() {
         <SpotMap
           pins={visiblePins}
           center={center}
+          userPosition={livePosition}
           labels={labels}
           onSpotClick={openSpot}
           onViewportChange={handleViewportChange}
@@ -257,7 +268,7 @@ export default function MapPage() {
         {/* Locate me — 40px, hairline, above the FAB as in the app */}
         <button
           type="button"
-          onClick={locateMe}
+          onClick={locateMeFromTap}
           aria-label={t("map.locateMe")}
           className="absolute bottom-[92px] right-5 z-[1000] flex h-10 w-10 cursor-pointer items-center justify-center rounded-md border border-border bg-bg text-text transition-colors hover:bg-bg-secondary"
         >

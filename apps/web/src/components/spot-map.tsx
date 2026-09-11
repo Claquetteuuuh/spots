@@ -8,6 +8,7 @@ import {
   type MapBounds,
   type MapPin,
 } from "@trs/shared/map";
+import type { LivePosition } from "@/lib/use-live-position";
 
 /**
  * A place to move the map to. Pass a fresh object each time — the map
@@ -31,11 +32,14 @@ interface SpotMapLabels {
   cluster: (count: number) => string;
   untitled: string;
   open: string;
+  youAreHere: string;
 }
 
 interface SpotMapProps {
   pins: MapPin[];
   center?: MapCenter | null;
+  /** The photographer's live position; null hides the dot. */
+  userPosition?: LivePosition | null;
   labels: SpotMapLabels;
   onSpotClick?: (pin: MapPin) => void;
   onViewportChange?: (viewport: MapViewport) => void;
@@ -72,11 +76,17 @@ const MAP_CSS = `
 .spot-preview__city{display:block;margin-top:2px;font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spot-preview__chevron{flex:none;width:18px;height:18px;color:var(--color-text-tertiary);transition:color .15s}
 .spot-preview:hover .spot-preview__chevron{color:var(--color-accent)}
+.you-are-here{background:none;border:0;pointer-events:none}
+.you-are-here__wrap{position:relative;width:16px;height:16px}
+.you-are-here__cone{position:absolute;left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;border-radius:50%;background:conic-gradient(from -30deg,var(--color-accent) 0deg,var(--color-accent) 60deg,transparent 60deg);opacity:.28;transform-origin:50% 50%;transition:transform .2s ease-out;-webkit-mask:radial-gradient(circle,transparent 9px,#000 10px);mask:radial-gradient(circle,transparent 9px,#000 10px)}
+.you-are-here__cone[hidden]{display:none}
+.you-are-here__dot{position:absolute;inset:0;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 1px 4px rgba(22,32,58,.35)}
 `;
 
 export default function SpotMap({
   pins,
   center,
+  userPosition,
   labels,
   onSpotClick,
   onViewportChange,
@@ -86,6 +96,10 @@ export default function SpotMap({
   const leafletRef = useRef<Leaflet>(null);
   const layerRef = useRef<Leaflet>(null);
   const clustererRef = useRef<SpotClusterer | null>(null);
+  // The "you are here" dot and its accuracy ring — created once, then moved.
+  const userMarkerRef = useRef<Leaflet>(null);
+  const userCircleRef = useRef<Leaflet>(null);
+  const userPositionRef = useRef<LivePosition | null | undefined>(userPosition);
   // Latest callbacks/copy, so markers never need rebuilding when they change.
   const onSpotClickRef = useRef(onSpotClick);
   const onViewportChangeRef = useRef(onViewportChange);
@@ -173,6 +187,67 @@ export default function SpotMap({
     onViewportChangeRef.current?.({ bounds: toBounds(map), zoom: map.getZoom() });
   }, []);
 
+  /** Move (or create, or remove) the "you are here" dot for the latest position. */
+  const drawUser = useCallback(() => {
+    const map = mapRef.current;
+    const L = leafletRef.current;
+    if (!map || !L) return;
+    const pos = userPositionRef.current;
+
+    if (!pos) {
+      userMarkerRef.current?.remove();
+      userCircleRef.current?.remove();
+      userMarkerRef.current = null;
+      userCircleRef.current = null;
+      return;
+    }
+
+    const latlng: [number, number] = [pos.latitude, pos.longitude];
+    if (!userCircleRef.current) {
+      userCircleRef.current = L.circle(latlng, {
+        radius: pos.accuracy,
+        weight: 1,
+        opacity: 0.35,
+        fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(map);
+      // Theme tokens as inline style, so the ring follows dark mode
+      const el = userCircleRef.current.getElement() as SVGElement | null;
+      if (el) {
+        el.style.stroke = "var(--color-accent)";
+        el.style.fill = "var(--color-accent)";
+      }
+    } else {
+      userCircleRef.current.setLatLng(latlng);
+      userCircleRef.current.setRadius(pos.accuracy);
+    }
+
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = L.marker(latlng, {
+        icon: L.divIcon({
+          className: "you-are-here",
+          html: `<div class="you-are-here__wrap"><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+        title: labelsRef.current.youAreHere,
+        interactive: false,
+        keyboard: false,
+        pane: "you",
+      }).addTo(map);
+    } else {
+      userMarkerRef.current.setLatLng(latlng);
+    }
+
+    const cone = userMarkerRef.current.getElement()?.querySelector(".you-are-here__cone") as
+      | HTMLElement
+      | null;
+    if (cone) {
+      cone.hidden = pos.heading === null;
+      if (pos.heading !== null) cone.style.transform = `rotate(${pos.heading}deg)`;
+    }
+  }, []);
+
   useEffect(() => {
     // Load Leaflet CSS, plus ours
     if (!document.getElementById("leaflet-css")) {
@@ -211,6 +286,8 @@ export default function SpotMap({
       mapRef.current = map;
       leafletRef.current = L;
       layerRef.current = L.layerGroup().addTo(map);
+      // The photographer sits above every pin
+      map.createPane("you").style.zIndex = "650";
 
       const pending = pendingCenterRef.current;
       if (pending) {
@@ -226,6 +303,7 @@ export default function SpotMap({
       // Initial draw + viewport once the map has a size
       setTimeout(() => {
         redraw();
+        drawUser();
         emitViewport();
       }, 100);
     });
@@ -236,6 +314,8 @@ export default function SpotMap({
         mapRef.current.remove();
         mapRef.current = null;
         layerRef.current = null;
+        userMarkerRef.current = null;
+        userCircleRef.current = null;
       }
     };
     // Only initialize once
@@ -258,6 +338,12 @@ export default function SpotMap({
     clustererRef.current = pins.length > 0 ? new SpotClusterer(pins) : null;
     redraw();
   }, [pins, redraw]);
+
+  // The photographer moved or turned.
+  useEffect(() => {
+    userPositionRef.current = userPosition;
+    drawUser();
+  }, [userPosition, drawUser]);
 
   // Below `lg` the map is touch-first like the app: no +/- buttons, pinch
   // to zoom. Desktop keeps Leaflet's zoom control.

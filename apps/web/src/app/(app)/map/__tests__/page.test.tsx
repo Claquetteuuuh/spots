@@ -123,10 +123,18 @@ const settle = () => new Promise((r) => setTimeout(r, 400));
 const ids = () => mapProps.current.pins.map((p: MapPin) => p.id);
 
 function stubGeolocation(coords: { latitude: number; longitude: number } | null) {
+  const fix = { coords: { ...coords, accuracy: 15, heading: null, speed: null } };
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: coords
-      ? { getCurrentPosition: (ok: (p: { coords: typeof coords }) => void) => ok({ coords }) }
+      ? {
+          getCurrentPosition: (ok: (p: typeof fix) => void) => ok(fix),
+          watchPosition: (ok: (p: typeof fix) => void) => {
+            ok(fix);
+            return 1;
+          },
+          clearWatch: () => {},
+        }
       : undefined,
   });
 }
@@ -294,6 +302,24 @@ describe("MapPage", () => {
     expect(mapProps.current.labels.cluster(12)).toBe("map.spotsInCluster");
     expect(mapProps.current.labels.untitled).toBe("spots.untitled");
     expect(mapProps.current.labels.open).toBe("map.openSpot");
+    expect(mapProps.current.labels.youAreHere).toBe("map.youAreHere");
+  });
+
+  it("hands the map the photographer's live position, and none without geolocation", async () => {
+    await renderPage();
+    expect(mapProps.current.userPosition).toBeNull();
+
+    stubGeolocation({ latitude: 48.85, longitude: 2.35 });
+    await renderPage();
+
+    await waitFor(() =>
+      expect(mapProps.current.userPosition).toMatchObject({
+        latitude: 48.85,
+        longitude: 2.35,
+        accuracy: 15,
+        heading: null,
+      }),
+    );
   });
 });
 

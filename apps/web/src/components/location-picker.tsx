@@ -10,18 +10,28 @@ interface LocationPickerProps {
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 const DEFAULT_ZOOM = 5;
+const PLACED_ZOOM = 13;
 
-export default function LocationPicker({
-  latitude,
-  longitude,
-  onChange,
-}: LocationPickerProps) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Leaflet = any;
+
+/**
+ * A map to put a spot on: tap to place, drag to adjust. Coordinates that
+ * arrive from outside — an address search, the GPS, typed numbers — put
+ * the pin down too and bring it into view.
+ */
+export default function LocationPicker({ latitude, longitude, onChange }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markerRef = useRef<any>(null);
+  const mapRef = useRef<Leaflet>(null);
+  const markerRef = useRef<Leaflet>(null);
+  // Places or moves the pin; set once Leaflet is up.
+  const placeRef = useRef<((lat: number, lng: number) => void) | null>(null);
+  const onChangeRef = useRef(onChange);
   const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!document.getElementById("leaflet-css")) {
@@ -32,68 +42,46 @@ export default function LocationPicker({
       document.head.appendChild(link);
     }
 
+    let cancelled = false;
+
     import("leaflet").then((L) => {
-      if (!containerRef.current || mapRef.current) return;
+      if (cancelled || !containerRef.current || mapRef.current) return;
 
-      const center: [number, number] =
-        latitude !== null && longitude !== null
-          ? [latitude, longitude]
-          : DEFAULT_CENTER;
-
+      const hasCoords = latitude !== null && longitude !== null;
       const map = L.map(containerRef.current).setView(
-        center,
-        latitude !== null ? 13 : DEFAULT_ZOOM,
+        hasCoords ? [latitude, longitude] : DEFAULT_CENTER,
+        hasCoords ? PLACED_ZOOM : DEFAULT_ZOOM,
       );
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
       }).addTo(map);
 
+      // The app's pin, in the brand blue — theme tokens, so it follows dark mode
       const icon = L.divIcon({
         className: "custom-marker",
-        html: `<div style="
-          width: 16px;
-          height: 16px;
-          background: #8B7355;
-          border: 3px solid #FAFAF8;
-          border-radius: 2px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        "></div>`,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
+        html: `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 3px var(--color-accent-tint);"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
       });
 
-      if (latitude !== null && longitude !== null) {
-        markerRef.current = L.marker([latitude, longitude], {
-          icon,
-          draggable: true,
-        }).addTo(map);
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        markerRef.current.on("dragend", (e: any) => {
+      placeRef.current = (lat, lng) => {
+        if (markerRef.current) {
+          markerRef.current.setLatLng([lat, lng]);
+          return;
+        }
+        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
+        markerRef.current.on("dragend", (e: Leaflet) => {
           const pos = e.target.getLatLng();
-          onChange(pos.lat, pos.lng);
+          onChangeRef.current(pos.lat, pos.lng);
         });
-      }
+      };
+      if (hasCoords) placeRef.current(latitude, longitude);
 
       map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
         const { lat, lng } = e.latlng;
-        onChange(lat, lng);
-
-        if (markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
-        } else {
-          markerRef.current = L.marker([lat, lng], {
-            icon,
-            draggable: true,
-          }).addTo(map);
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          markerRef.current.on("dragend", (ev: any) => {
-            const pos = ev.target.getLatLng();
-            onChange(pos.lat, pos.lng);
-          });
-        }
+        placeRef.current?.(lat, lng);
+        onChangeRef.current(lat, lng);
       });
 
       mapRef.current = map;
@@ -101,37 +89,29 @@ export default function LocationPicker({
     });
 
     return () => {
+      cancelled = true;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
         markerRef.current = null;
+        placeRef.current = null;
       }
     };
     // Initialize once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update marker when coords change externally (e.g. geolocation)
+  // Coordinates from outside: put the pin down (or move it) and make sure
+  // it is on screen, without yanking the map when it already is.
   useEffect(() => {
-    if (
-      !isReady ||
-      !mapRef.current ||
-      latitude === null ||
-      longitude === null
-    )
-      return;
-
-    if (markerRef.current) {
-      markerRef.current.setLatLng([latitude, longitude]);
+    const map = mapRef.current;
+    if (!isReady || !map || latitude === null || longitude === null) return;
+    placeRef.current?.(latitude, longitude);
+    const latlng: [number, number] = [latitude, longitude];
+    if (!map.getBounds().contains(latlng) || map.getZoom() < PLACED_ZOOM) {
+      map.setView(latlng, Math.max(map.getZoom(), PLACED_ZOOM));
     }
-    mapRef.current.setView([latitude, longitude], 13);
   }, [latitude, longitude, isReady]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ minHeight: "300px" }}
-    />
-  );
+  return <div ref={containerRef} className="h-full w-full" style={{ minHeight: "300px" }} />;
 }

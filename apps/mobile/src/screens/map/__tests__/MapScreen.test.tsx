@@ -27,11 +27,29 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(),
 }));
 
+/** Live watchers hand their callbacks out so tests can feed fixes and headings. */
+const mockLive: {
+  position: ((p: { coords: Record<string, number | null> }) => void) | null;
+  heading: ((h: { trueHeading: number; magHeading: number; accuracy: number }) => void) | null;
+  removePosition: jest.Mock;
+  removeHeading: jest.Mock;
+} = { position: null, heading: null, removePosition: jest.fn(), removeHeading: jest.fn() };
+
 jest.mock("expo-location", () => ({
+  Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
+  getForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
   getCurrentPositionAsync: jest.fn(() =>
     Promise.resolve({ coords: { latitude: 48.8566, longitude: 2.3522 } }),
   ),
+  watchPositionAsync: jest.fn((_opts: unknown, cb: typeof mockLive.position) => {
+    mockLive.position = cb;
+    return Promise.resolve({ remove: mockLive.removePosition });
+  }),
+  watchHeadingAsync: jest.fn((cb: typeof mockLive.heading) => {
+    mockLive.heading = cb;
+    return Promise.resolve({ remove: mockLive.removeHeading });
+  }),
 }));
 
 jest.mock("react-native-safe-area-context", () => {
@@ -82,10 +100,23 @@ jest.mock("react-native-maps", () => {
   const Marker = (props: any) =>
     ReactActual.createElement(
       Pressable,
-      { onPress: props.onPress, testID: props.testID, accessibilityLabel: props.accessibilityLabel },
+      {
+        onPress: props.onPress,
+        testID: props.testID,
+        accessibilityLabel: props.accessibilityLabel,
+        // Surface the native rotation so tests can read it
+        accessibilityValue: props.rotation !== undefined ? { now: props.rotation } : undefined,
+      },
       props.children,
     );
-  return { __esModule: true, default: MapView, Marker, Callout: View, PROVIDER_DEFAULT: null };
+  return {
+    __esModule: true,
+    default: MapView,
+    Marker,
+    Circle: View,
+    Callout: View,
+    PROVIDER_DEFAULT: null,
+  };
 });
 
 import { useAuthStore } from "../../../stores/auth-store";
@@ -157,6 +188,8 @@ jest.setTimeout(15_000);
 beforeEach(() => {
   jest.clearAllMocks();
   mapViewProps.current = null;
+  mockLive.position = null;
+  mockLive.heading = null;
   mockFetchMapPins.mockResolvedValue(true);
   useAuthStore.setState({ user: USER });
   useSpotsStore.setState({
@@ -309,6 +342,46 @@ describe("MapScreen", () => {
     await settleRegion({ ...DEFAULT_REGION, latitudeDelta: 0.2, longitudeDelta: 0.2 });
 
     expect(backgroundOf("pin-dot-mine")).not.toBe(backgroundOf("pin-dot-theirs"));
+  });
+});
+
+describe("MapScreen — you are here", () => {
+  it("shows the live dot once a fix arrives and turns it with the compass", async () => {
+    await render(<MapScreen />);
+    // "Locate me" on mount grants the permission, which starts the watchers
+    await waitFor(() => expect(mockLive.position).not.toBeNull());
+    expect(screen.queryByTestId("user-location")).toBeNull();
+
+    await act(async () => {
+      mockLive.position!({ coords: { latitude: 48.86, longitude: 2.36, accuracy: 8 } });
+    });
+    const dot = screen.getByTestId("user-location");
+    expect(dot.props.accessibilityValue).toEqual({ now: 0 });
+    expect(screen.queryByTestId("user-heading")).toBeNull();
+
+    await act(async () => {
+      mockLive.heading!({ trueHeading: 90, magHeading: 92, accuracy: 1 });
+    });
+    expect(screen.getByTestId("user-heading")).toBeTruthy();
+    expect(screen.getByTestId("user-location").props.accessibilityValue).toEqual({ now: 90 });
+  });
+
+  it("falls back to magnetic north and ignores a compass with no answer", async () => {
+    await render(<MapScreen />);
+    await waitFor(() => expect(mockLive.heading).not.toBeNull());
+    await act(async () => {
+      mockLive.position!({ coords: { latitude: 48.86, longitude: 2.36, accuracy: 8 } });
+    });
+
+    await act(async () => {
+      mockLive.heading!({ trueHeading: -1, magHeading: -1, accuracy: 0 });
+    });
+    expect(screen.queryByTestId("user-heading")).toBeNull();
+
+    await act(async () => {
+      mockLive.heading!({ trueHeading: -1, magHeading: 180, accuracy: 1 });
+    });
+    expect(screen.getByTestId("user-location").props.accessibilityValue).toEqual({ now: 180 });
   });
 });
 

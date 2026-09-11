@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, type MapPressEvent, type Region } from "react-native-maps";
+import MapView, {
+  Circle,
+  Marker,
+  PROVIDER_DEFAULT,
+  type MapPressEvent,
+  type Region,
+} from "react-native-maps";
 import * as Location from "expo-location";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -33,6 +39,7 @@ import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useTabSwitch } from "../../navigation/tab-context";
+import { useLiveLocation } from "../../lib/use-live-location";
 import { MapFiltersSheet } from "../../components/map/MapFiltersSheet";
 import type { MainTabNavigationProp } from "../../navigation/types";
 
@@ -48,6 +55,10 @@ const DEFAULT_REGION: Region = {
 /** Pans settle for this long before the viewport is fetched. */
 const FETCH_DEBOUNCE_MS = 300;
 const PREVIEW_PHOTO = 72;
+// The "you are here" marker: a cone above a dot, the dot at the anchor.
+const YOU_DOT = 16;
+const YOU_CONE_HEIGHT = 34;
+const YOU_CONE_HALF_WIDTH = 18;
 
 /** The last box we fetched: a view inside it, with the same query, needs no request. */
 interface FetchedArea {
@@ -82,6 +93,10 @@ export function MapScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
+  // Live dot and heading, only once "locate me" has the permission and
+  // while this tab is on screen; `position` stays the filters' snapshot.
+  const [locationGranted, setLocationGranted] = useState(false);
+  const live = useLiveLocation(locationGranted && activeIndex === 0);
 
   const fetchedRef = useRef<FetchedArea | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,6 +209,7 @@ export function MapScreen() {
   const locateMe = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
+    setLocationGranted(true);
     const { coords } = await Location.getCurrentPositionAsync({});
     setPosition({ latitude: coords.latitude, longitude: coords.longitude });
     mapRef.current?.animateToRegion(
@@ -436,6 +452,54 @@ export function MapScreen() {
             );
           })}
 
+          {/* You are here: accuracy ring, then the dot — with a cone once the
+              compass answers. The whole marker turns natively (`rotation`),
+              so its bitmap is never redrawn; the cone's presence changes
+              the key so the anchor follows. */}
+          {live ? (
+            <>
+              {live.accuracy && live.accuracy > 20 ? (
+                <Circle
+                  center={{ latitude: live.latitude, longitude: live.longitude }}
+                  radius={live.accuracy}
+                  strokeWidth={1}
+                  strokeColor={`${theme.colors.accent}59`}
+                  fillColor={`${theme.colors.accent}14`}
+                />
+              ) : null}
+              <Marker
+                key={live.heading === null ? "you" : "you-heading"}
+                coordinate={{ latitude: live.latitude, longitude: live.longitude }}
+                anchor={
+                  live.heading === null
+                    ? { x: 0.5, y: 0.5 }
+                    : { x: 0.5, y: YOU_CONE_HEIGHT / (YOU_CONE_HEIGHT + YOU_DOT / 2) }
+                }
+                rotation={live.heading ?? 0}
+                flat
+                tracksViewChanges={false}
+                zIndex={1000}
+                accessibilityLabel={t("map.youAreHere")}
+                testID="user-location"
+              >
+                <View style={styles.youWrap}>
+                  {live.heading !== null ? (
+                    <View
+                      testID="user-heading"
+                      style={[styles.youCone, { borderTopColor: `${theme.colors.accent}40` }]}
+                    />
+                  ) : null}
+                  <View
+                    style={[
+                      styles.youDot,
+                      { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
+                    ]}
+                  />
+                </View>
+              </Marker>
+            </>
+          ) : null}
+
           {/* The open pin's halo is its own marker, so static pins never redraw. */}
           {selectedPin ? (
             <Marker
@@ -622,6 +686,30 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+  },
+  youWrap: {
+    alignItems: "center",
+  },
+  // A translucent wedge whose apex meets the dot's centre
+  youCone: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: YOU_CONE_HALF_WIDTH,
+    borderRightWidth: YOU_CONE_HALF_WIDTH,
+    borderTopWidth: YOU_CONE_HEIGHT,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    marginBottom: -YOU_DOT / 2,
+  },
+  youDot: {
+    width: YOU_DOT,
+    height: YOU_DOT,
+    borderRadius: YOU_DOT / 2,
+    borderWidth: 3,
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   clusterHalo: {
     alignItems: "center",
