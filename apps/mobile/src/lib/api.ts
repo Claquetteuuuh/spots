@@ -10,6 +10,7 @@ import type {
   ReverseGeocodeResult,
   SentFollowRequest,
   Spot,
+  SpotPhoto,
   UploadPhotoResult,
   User,
 } from "../types";
@@ -257,22 +258,41 @@ export async function updateProfile(params: UpdateProfileParams): Promise<User> 
 
 // ─── Upload ──────────────────────────────────────────────────────────
 
-export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<UploadPhotoResult> {
-  const formData = new FormData();
-  const match = /\.(\w+)$/.exec(fileName);
-  const ext = match ? match[1].toLowerCase() : "jpg";
-  const mimeType = ext === "png" ? "image/png" : ext === "heic" ? "image/heic" : "image/jpeg";
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+};
 
-  // React Native's FormData accepts this shape for file uploads.
+/** MIME type for a picked file, from its extension. Unknown → JPEG. */
+export function mimeTypeFor(fileName: string): string {
+  const match = /\.(\w+)$/.exec(fileName);
+  const ext = match ? match[1].toLowerCase() : "";
+  return MIME_BY_EXTENSION[ext] ?? "image/jpeg";
+}
+
+/** React Native's FormData accepts this shape for file uploads. */
+function photoFormData(uri: string, fileName: string): FormData {
+  const formData = new FormData();
   formData.append("photo", {
     uri,
     name: fileName,
-    type: mimeType,
+    type: mimeTypeFor(fileName),
   } as unknown as Blob);
+  return formData;
+}
 
-  const { data } = await client.post<UploadPhotoResult>(API_ROUTES.upload.photo, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
+export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<UploadPhotoResult> {
+  const { data } = await client.post<UploadPhotoResult>(
+    API_ROUTES.upload.photo,
+    photoFormData(uri, fileName),
+    MULTIPART,
+  );
   return data;
 }
 
@@ -283,6 +303,35 @@ export async function uploadPhoto(uri: string, fileName = "photo.jpg"): Promise<
 export async function discardUploads(keys: string[]): Promise<void> {
   if (keys.length === 0) return;
   await client.delete(API_ROUTES.upload.photo, { data: { keys } });
+}
+
+// ─── Community photos ────────────────────────────────────────────────
+
+export async function getSpotPhotos(
+  spotId: string,
+  cursor?: string,
+  limit = 20,
+): Promise<Paginated<SpotPhoto>> {
+  const { data } = await client.get<Paginated<SpotPhoto>>(API_ROUTES.spots.photos(spotId), {
+    params: { cursor, limit },
+  });
+  return data;
+}
+
+export async function addSpotPhoto(
+  spotId: string,
+  uri: string,
+  caption?: string,
+  fileName = "photo.jpg",
+): Promise<SpotPhoto> {
+  const formData = photoFormData(uri, fileName);
+  if (caption) formData.append("caption", caption);
+  const { data } = await client.post<SpotPhoto>(API_ROUTES.spots.photos(spotId), formData, MULTIPART);
+  return data;
+}
+
+export async function deleteSpotPhoto(spotId: string, photoId: string): Promise<void> {
+  await client.delete(API_ROUTES.spots.photo(spotId, photoId));
 }
 
 // ─── Follow requests ────────────────────────────────────────────────

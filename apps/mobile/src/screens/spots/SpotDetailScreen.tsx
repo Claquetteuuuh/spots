@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -20,24 +21,70 @@ import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
+import { useAuthStore } from "../../stores/auth-store";
 import { extractErrorMessage } from "../../lib/error";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
+import { SpotPhotosSection } from "../../components/spots/SpotPhotosSection";
 import type { RootStackScreenProps } from "../../navigation/types";
 import type { Spot } from "../../types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) {
+export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"SpotDetail">) {
   const { spotId } = route.params;
   const { t } = useTranslation();
   const theme = useTheme();
   const fetchSpotById = useSpotsStore((s) => s.fetchSpotById);
+  const deleteSpot = useSpotsStore((s) => s.deleteSpot);
+  const user = useAuthStore((s) => s.user);
 
   const [spot, setSpot] = useState<Spot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
+
+  const isOwner = !!spot && !!user && spot.userId === user.id;
+
+  const handleDelete = useCallback(() => {
+    if (!spot) return;
+    Alert.alert(t("spots.deleteConfirm"), t("spots.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: () => {
+          deleteSpot(spot.id)
+            .then(() => navigation.goBack())
+            .catch((err) =>
+              Alert.alert(
+                t("common.error"),
+                extractErrorMessage(err, t("spots.errors.deleteFailed")),
+              ),
+            );
+        },
+      },
+    ]);
+  }, [spot, deleteSpot, navigation, t]);
+
+  // The owner gets a trash icon in the native header — the web's author row.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: isOwner
+        ? () => (
+            <Pressable
+              onPress={handleDelete}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.delete")}
+              testID="delete-spot"
+            >
+              <Ionicons name="trash-outline" size={22} color={theme.colors.text} />
+            </Pressable>
+          )
+        : undefined,
+    });
+  }, [navigation, isOwner, handleDelete, t, theme.colors.text]);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,6 +360,9 @@ export function SpotDetailScreen({ route }: RootStackScreenProps<"SpotDetail">) 
               </Text>
             </View>
           </Pressable>
+
+          {/* Community photos */}
+          <SpotPhotosSection spotId={spot.id} ownerId={spot.userId} />
 
           {/* Fullscreen map modal */}
           <Modal visible={mapExpanded} animationType="slide" onRequestClose={() => setMapExpanded(false)}>

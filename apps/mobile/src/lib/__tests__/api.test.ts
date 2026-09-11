@@ -224,6 +224,55 @@ describe("API client", () => {
     });
   });
 
+  describe("mimeTypeFor", () => {
+    it("maps the file extension to an image MIME type", () => {
+      expect(api.mimeTypeFor("photo.png")).toBe("image/png");
+      expect(api.mimeTypeFor("IMG_0001.HEIC")).toBe("image/heic");
+      expect(api.mimeTypeFor("shot.heif")).toBe("image/heif");
+      expect(api.mimeTypeFor("shot.webp")).toBe("image/webp");
+      expect(api.mimeTypeFor("photo.jpeg")).toBe("image/jpeg");
+    });
+
+    it("falls back to JPEG when there is no usable extension", () => {
+      expect(api.mimeTypeFor("photo")).toBe("image/jpeg");
+      expect(api.mimeTypeFor("archive.zip")).toBe("image/jpeg");
+    });
+  });
+
+  describe("community photos", () => {
+    it("getSpotPhotos fetches a paginated page for the spot", async () => {
+      const mockData = { items: [{ id: "p1" }], nextCursor: "p1" };
+      jest.spyOn(client, "get").mockResolvedValueOnce({ data: mockData });
+
+      const result = await api.getSpotPhotos("s1", "c1", 10);
+
+      expect(client.get).toHaveBeenCalledWith("/api/spots/s1/photos", {
+        params: { cursor: "c1", limit: 10 },
+      });
+      expect(result).toEqual(mockData);
+    });
+
+    it("addSpotPhoto posts multipart form data to the spot's photos route", async () => {
+      const mockPhoto = { id: "p1", photoUrl: "https://cdn.example.com/p1.webp", caption: "Golden hour" };
+      jest.spyOn(client, "post").mockResolvedValueOnce({ data: mockPhoto });
+
+      const result = await api.addSpotPhoto("s1", "file:///photo.jpg", "Golden hour");
+
+      expect(client.post).toHaveBeenCalledWith(
+        "/api/spots/s1/photos",
+        expect.any(FormData),
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      expect(result).toEqual(mockPhoto);
+    });
+
+    it("deleteSpotPhoto sends DELETE to the photo route", async () => {
+      jest.spyOn(client, "delete").mockResolvedValueOnce({});
+      await api.deleteSpotPhoto("s1", "p1");
+      expect(client.delete).toHaveBeenCalledWith("/api/spots/s1/photos/p1");
+    });
+  });
+
   describe("geocoding", () => {
     it("reverseGeocode fetches address for coordinates", async () => {
       const mockGeo = { address: "1 Rue de Rivoli", city: "Paris", country: "France" };
