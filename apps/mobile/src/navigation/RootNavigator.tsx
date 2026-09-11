@@ -22,6 +22,7 @@ import { SearchScreen } from "../screens/search/SearchScreen";
 import { NotificationsScreen } from "../screens/notifications/NotificationsScreen";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
 import { SpotDetailScreen } from "../screens/spots/SpotDetailScreen";
+import { EditSpotScreen } from "../screens/spots/EditSpotScreen";
 import { EditProfileScreen } from "../screens/profile/EditProfileScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
 import { OtherProfileScreen } from "../screens/profile/OtherProfileScreen";
@@ -236,6 +237,17 @@ export function RootNavigator() {
               options={{
                 headerShown: true,
                 title: t("spots.details"),
+                headerStyle: { backgroundColor: theme.colors.bg },
+                headerTintColor: theme.colors.text,
+                headerShadowVisible: false,
+              }}
+            />
+            <RootStack.Screen
+              name="EditSpot"
+              component={EditSpotScreen}
+              options={{
+                headerShown: true,
+                title: t("spots.editSpot"),
                 headerStyle: { backgroundColor: theme.colors.bg },
                 headerTintColor: theme.colors.text,
                 headerShadowVisible: false,

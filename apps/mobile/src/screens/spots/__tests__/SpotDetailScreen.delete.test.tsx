@@ -77,7 +77,7 @@ function signIn(id: string) {
 type Props = RootStackScreenProps<"SpotDetail">;
 
 async function renderScreen() {
-  const navigation = { setOptions: jest.fn(), goBack: jest.fn() };
+  const navigation = { setOptions: jest.fn(), goBack: jest.fn(), addListener: jest.fn().mockReturnValue(jest.fn()), navigate: jest.fn() };
   await render(
     <SpotDetailScreen
       route={{ key: "SpotDetail-1", name: "SpotDetail", params: { spotId: "s1" } } as Props["route"]}

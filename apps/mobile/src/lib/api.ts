@@ -191,6 +191,21 @@ export async function getSpotById(id: string): Promise<Spot> {
   return data;
 }
 
+export interface UpdateSpotParams {
+  title?: string;
+  description?: string;
+  colors?: string[];
+  compositions?: CompositionType[];
+  tags?: string[];
+  visibility?: "PRIVATE" | "FOLLOWERS";
+  customComposition?: string;
+}
+
+export async function updateSpot(id: string, params: UpdateSpotParams): Promise<Spot> {
+  const { data } = await client.patch<Spot>(API_ROUTES.spots.detail(id), params);
+  return data;
+}
+
 export async function deleteSpot(id: string): Promise<void> {
   await client.delete(API_ROUTES.spots.detail(id));
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -67,24 +67,54 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
     ]);
   }, [spot, deleteSpot, navigation, t]);
 
-  // The owner gets a trash icon in the native header — the web's author row.
+  const handleEdit = useCallback(() => {
+    if (!spot) return;
+    navigation.navigate("EditSpot", { spotId: spot.id });
+  }, [spot, navigation]);
+
+  // The owner gets edit and trash icons in the native header.
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: isOwner
         ? () => (
-            <Pressable
-              onPress={handleDelete}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t("common.delete")}
-              testID="delete-spot"
-            >
-              <Ionicons name="trash-outline" size={22} color={theme.colors.text} />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Pressable
+                onPress={handleEdit}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.edit")}
+                testID="edit-spot"
+              >
+                <Ionicons name="create-outline" size={22} color={theme.colors.text} />
+              </Pressable>
+              <Pressable
+                onPress={handleDelete}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.delete")}
+                testID="delete-spot"
+              >
+                <Ionicons name="trash-outline" size={22} color={theme.colors.text} />
+              </Pressable>
+            </View>
           )
         : undefined,
     });
-  }, [navigation, isOwner, handleDelete, t, theme.colors.text]);
+  }, [navigation, isOwner, handleEdit, handleDelete, t, theme.colors.text]);
+
+  const initialLoad = useRef(true);
+
+  // Fetch spot on mount and re-fetch when returning from the edit screen.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      // Skip the first focus (that's the initial mount handled below)
+      if (initialLoad.current) return;
+      fetchSpotById(spotId)
+        .then((result) => setSpot(result))
+        .catch(() => {});
+    });
+    return unsubscribe;
+  }, [navigation, spotId, fetchSpotById]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +127,10 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
         if (!cancelled) setError(extractErrorMessage(err, t("common.error")));
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          initialLoad.current = false;
+        }
       });
     return () => {
       cancelled = true;

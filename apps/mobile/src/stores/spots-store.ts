@@ -3,7 +3,7 @@ import i18n from "../lib/i18n";
 import * as api from "../lib/api";
 import { extractErrorMessage } from "../lib/error";
 import type { Spot } from "../types";
-import type { CreateSpotParams } from "../lib/api";
+import type { CreateSpotParams, UpdateSpotParams } from "../lib/api";
 
 interface SpotsState {
   spots: Spot[];
@@ -17,6 +17,7 @@ interface SpotsState {
   fetchMySpots: (userId: string, opts?: { reset?: boolean }) => Promise<void>;
   fetchFeed: (opts?: { reset?: boolean }) => Promise<void>;
   createSpot: (params: CreateSpotParams) => Promise<Spot>;
+  updateSpot: (id: string, params: UpdateSpotParams) => Promise<Spot>;
   deleteSpot: (id: string) => Promise<void>;
   selectSpot: (spot: Spot | null) => void;
   fetchSpotById: (id: string) => Promise<Spot>;
@@ -72,6 +73,23 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
       return spot;
     } catch (err) {
       set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.saveFailed")) });
+      throw err;
+    }
+  },
+
+  updateSpot: async (id, params) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await api.updateSpot(id, params);
+      set((state) => ({
+        spots: state.spots.map((s) => (s.id === id ? updated : s)),
+        feedSpots: state.feedSpots.map((s) => (s.id === id ? updated : s)),
+        selectedSpot: state.selectedSpot?.id === id ? updated : state.selectedSpot,
+        isLoading: false,
+      }));
+      return updated;
+    } catch (err) {
+      set({ isLoading: false, error: extractErrorMessage(err, i18n.t("spots.errors.updateFailed")) });
       throw err;
     }
   },
