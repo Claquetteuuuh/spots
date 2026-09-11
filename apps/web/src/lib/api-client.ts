@@ -427,6 +427,12 @@ export const apiClient = {
       });
     },
 
+    async deletePhoto(spotId: string, photoId: string): Promise<void> {
+      await request<void>(API_ROUTES.spots.photo(spotId, photoId), {
+        method: "DELETE",
+      });
+    },
+
     async feed(
       query?: Partial<SpotQuery>,
     ): Promise<PaginatedResponse<Spot>> {
@@ -525,17 +531,16 @@ export const apiClient = {
       return { url: res.photoUrl, key: res.photoKey };
     },
 
-    async avatar(file: File): Promise<{ url: string; key: string }> {
-      const formData = new FormData();
-      formData.append("avatar", file);
-      const res = await request<{ photoUrl: string; photoKey: string }>(
-        API_ROUTES.upload.avatar,
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-      return { url: res.photoUrl, key: res.photoKey };
+    /**
+     * Throw away staged photos that will never be attached to a spot —
+     * call it when creating the spot fails after the uploads went through.
+     */
+    async discard(keys: string[]): Promise<void> {
+      if (keys.length === 0) return;
+      await request<{ deleted: string[] }>(API_ROUTES.upload.photo, {
+        method: "DELETE",
+        body: JSON.stringify({ keys }),
+      });
     },
   },
 

@@ -68,30 +68,53 @@ pnpm build                    # Build all apps
 ## MANDATORY — Pre-commit checklist (BLOCKING)
 
 **This section is the single most important rule in this file.**
-You MUST run ALL 4 checks below before EVERY `git commit`. No exceptions.
+You MUST run ALL 5 checks below before EVERY `git commit`. No exceptions.
 
 ```bash
-# 1. Pre-commit hooks (linting, secrets, formatting, tests, typecheck)
+# 1. Pre-commit hooks (secrets, formatting, tests, typecheck)
 pre-commit run --all-files
 
-# 2. Grype SCA scan (dependency vulnerabilities)
+# 2. ESLint — CI runs it and pre-commit does not, so run it yourself
+pnpm lint
+
+# 3. Grype SCA scan (dependency vulnerabilities)
 grype dir:. --fail-on high
 
-# 3. Bearer SAST scan (code-level security issues)
+# 4. Bearer SAST scan (code-level security issues)
 bearer scan . --severity critical,high
 
-# 4. Full build
+# 5. Full build
 pnpm build
 ```
 
 **If ANY check fails, DO NOT commit. Fix the issue first, then re-run.**
 
+- ESLint errors → fix the code; warnings are tolerated, errors are not
 - Grype High/Critical → update dependency or add override in root `package.json`
 - Bearer Critical/High → fix the flagged code pattern
 - Medium/Low from grype or bearer are acceptable
 - Pre-commit failures → fix and re-run until all pass
 
 This is not a suggestion — it is a hard gate.
+
+## Testing (MANDATORY)
+
+A regression is the one failure that must never reach users, so every change
+ships with its tests in the same commit — a feature without tests is not
+finished.
+
+- **Unit tests** for every new function, helper, store action and schema
+  (`lib/__tests__`, `stores/__tests__`, `packages/shared/src/__tests__`).
+- **Functional tests for every API route** (`apps/web/src/app/api/__tests__`):
+  happy path, 401/403, 400 validation, 404, and a downstream failure
+  (storage, DB) — all mocked, never against live services.
+- **Component tests** for any UI that holds logic — pickers, forms, dialogs —
+  with `@testing-library/react` on web and `@testing-library/react-native`
+  on mobile.
+- **A regression test for every bug fix**, written to fail before the fix.
+- Cover both platforms: a mobile feature gets mobile tests, a web feature gets
+  web tests.
+- `pnpm test` runs everything and is part of pre-commit and CI.
 
 ## API Conventions
 
@@ -153,6 +176,31 @@ Colour tokens live in `@trs/shared/constants` (`COLORS`, `RADIUS`), which the
 mobile theme reads directly, and are mirrored in `apps/web/src/app/globals.css`
 for Tailwind. Change both together.
 
+## Web ↔ Mobile Parity (MANDATORY)
+
+Every feature ships on both the web app and the mobile app, in the same
+change. A feature built on one platform is not done until it exists on the
+other — UI, API client method, i18n keys, tests. The only exception is when
+the user explicitly says a feature is web-only or mobile-only.
+
+Server-side behaviour (compression, storage cleanup, validation) lives in the
+API and already serves both clients; what needs mirroring is the client side.
+
+## Commits & Versioning
+
+Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`,
+with an optional scope (`fix(ci):`, `feat(mobile):`).
+
+Versions are `vX.Y.Z`, and the commit types in a release decide which number
+moves:
+
+- **X — major**: only the user decides to bump it. Never propose or tag a
+  major version on your own, whatever the size of the change.
+- **Y — feature**: the release contains at least one `feat:`. Resets Z to 0.
+- **Z — bug fix**: the release contains only `fix:` (and chores/docs).
+
+See "Release flow" below for how a version reaches production.
+
 ## Deployment
 
 - **Hosting**: Vercel — project root directory set to `apps/web`
@@ -198,6 +246,6 @@ Optional: `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `RESEND_API_KEY`, 
 - UI text via i18n keys, never hardcoded strings
 - API base URL from env: `NEXT_PUBLIC_API_URL`
 - Auth tokens in SecureStore (mobile) / httpOnly cookies (web)
-- Always write unit tests for new features
+- Tests ship with the change, on both platforms — see "Testing" above
 - Use validation schemas from @trs/shared for all API input
 - Clean imports: @trs/shared for shared code, @/lib/db for Prisma — never relative cross-package

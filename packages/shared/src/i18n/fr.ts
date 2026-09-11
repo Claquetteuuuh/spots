@@ -266,6 +266,8 @@ export const fr = {
     captionPlaceholder: "Qu'avez-vous capturé ici ?",
     uploading: "Envoi en cours...",
     photoAdded: "Photo ajoutée !",
+    deletePhoto: "Supprimer la photo",
+    deleteConfirm: "Supprimer cette photo ? Cette action est irréversible.",
   },
   avatar: {
     pickTitle: "Choisir un avatar",

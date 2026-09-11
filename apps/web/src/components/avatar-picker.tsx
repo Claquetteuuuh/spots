@@ -41,13 +41,21 @@ function randomSeed(): string {
 
 // ─── Component ──────────────────────────────────────────────────────
 
-export function AvatarPicker({
-  open,
+/**
+ * The dialog below mounts fresh each time the picker opens, so its state
+ * initialises from `currentUrl` on mount — no reset effect needed.
+ */
+export function AvatarPicker({ open, ...props }: AvatarPickerProps) {
+  if (!open) return null;
+  return <AvatarPickerDialog {...props} />;
+}
+
+function AvatarPickerDialog({
   onClose,
   onSelect,
   seed,
   currentUrl,
-}: AvatarPickerProps) {
+}: Omit<AvatarPickerProps, "open">) {
   const t = useT();
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -61,16 +69,6 @@ export function AvatarPicker({
     parsed?.bg ?? DICEBEAR_BG_COLORS[0],
   );
   const [currentSeed, setCurrentSeed] = useState(seed);
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (open) {
-      const p = parseDicebearUrl(currentUrl);
-      setSelectedStyle(p?.style ?? DICEBEAR_STYLES[0]);
-      setSelectedBg(p?.bg ?? DICEBEAR_BG_COLORS[0]);
-      setCurrentSeed(seed);
-    }
-  }, [open, currentUrl, seed]);
 
   const previewUrl = useMemo(
     () => dicebearUrl(selectedStyle, currentSeed, selectedBg),
@@ -101,65 +99,93 @@ export function AvatarPicker({
     onClose();
   }, [onSelect, onClose]);
 
-  // Lock body scroll
+  // Lock body scroll while open
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [open]);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   // Escape to close
   useEffect(() => {
-    if (!open) return;
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   return (
     <AnimatePresence>
-      {open && (
+      <motion.div
+        ref={backdropRef}
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        initial={{ backgroundColor: "rgba(0,0,0,0)" }}
+        animate={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        exit={{ backgroundColor: "rgba(0,0,0,0)" }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => {
+          if (e.target === backdropRef.current) onClose();
+        }}
+      >
         <motion.div
-          ref={backdropRef}
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          initial={{ backgroundColor: "rgba(0,0,0,0)" }}
-          animate={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-          exit={{ backgroundColor: "rgba(0,0,0,0)" }}
-          transition={{ duration: 0.2 }}
-          onClick={(e) => {
-            if (e.target === backdropRef.current) onClose();
+          className="fixed inset-0 flex flex-col overflow-hidden bg-bg pb-[env(safe-area-inset-bottom)]
+            lg:relative lg:inset-auto lg:mx-0 lg:w-full lg:max-w-lg lg:max-h-[85vh] lg:rounded-2xl lg:border lg:border-border lg:pb-0"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{
+            type: "spring",
+            damping: 25,
+            stiffness: 300,
+            mass: 0.5,
           }}
         >
-          <motion.div
-            className="fixed inset-0 flex flex-col overflow-hidden bg-bg pb-[env(safe-area-inset-bottom)]
-              lg:relative lg:inset-auto lg:mx-0 lg:w-full lg:max-w-lg lg:max-h-[85vh] lg:rounded-2xl lg:border lg:border-border lg:pb-0"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{
-              type: "spring",
-              damping: 25,
-              stiffness: 300,
-              mass: 0.5,
-            }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("common.close")}
+              className="order-first lg:order-last w-8 h-8 flex items-center justify-center text-text lg:text-text-secondary lg:hover:text-text transition-colors cursor-pointer"
+            >
+              <svg
+                className="h-6 w-6 lg:h-5 lg:w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <h2 className="flex-1 truncate text-center text-base font-semibold text-text">
+              {t("avatar.pickTitle")}
+            </h2>
+            <div className="w-8 order-last lg:order-first" />
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Live preview */}
+            <div className="flex flex-col items-center gap-3 py-6">
+              <img
+                src={previewUrl}
+                alt=""
+                className="h-24 w-24 rounded-full border-2 border-border object-cover"
+              />
               <button
                 type="button"
-                onClick={onClose}
-                aria-label={t("common.close")}
-                className="order-first lg:order-last w-8 h-8 flex items-center justify-center text-text lg:text-text-secondary lg:hover:text-text transition-colors cursor-pointer"
+                onClick={handleRandom}
+                className="flex items-center gap-1.5 text-sm font-semibold text-accent hover:text-accent-dark transition-colors cursor-pointer"
               >
                 <svg
-                  className="h-6 w-6 lg:h-5 lg:w-5"
+                  className="h-4 w-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -168,134 +194,99 @@ export function AvatarPicker({
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
+                {t("avatar.random")}
               </button>
-              <h2 className="flex-1 truncate text-center text-base font-semibold text-text">
-                {t("avatar.pickTitle")}
-              </h2>
-              <div className="w-8 order-last lg:order-first" />
             </div>
 
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Live preview */}
-              <div className="flex flex-col items-center gap-3 py-6">
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="h-24 w-24 rounded-full border-2 border-border object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={handleRandom}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-accent hover:text-accent-dark transition-colors cursor-pointer"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+            {/* Style picker — label */}
+            <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              {t("avatar.style")}
+            </p>
+
+            {/* Style grid */}
+            <div className="grid grid-cols-3 gap-3 px-4 pb-5">
+              {styleGrid.map(({ style, url }) => {
+                const active = style === selectedStyle;
+                return (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => setSelectedStyle(style)}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl p-2 transition-colors cursor-pointer ${
+                      active
+                        ? "bg-accent-tint ring-2 ring-accent"
+                        : "bg-bg-secondary hover:bg-bg-tertiary"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    <img
+                      src={url}
+                      alt=""
+                      className="h-14 w-14 rounded-full object-cover"
                     />
-                  </svg>
-                  {t("avatar.random")}
-                </button>
-              </div>
-
-              {/* Style picker — label */}
-              <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                {t("avatar.style")}
-              </p>
-
-              {/* Style grid */}
-              <div className="grid grid-cols-3 gap-3 px-4 pb-5">
-                {styleGrid.map(({ style, url }) => {
-                  const active = style === selectedStyle;
-                  return (
-                    <button
-                      key={style}
-                      type="button"
-                      onClick={() => setSelectedStyle(style)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl p-2 transition-colors cursor-pointer ${
-                        active
-                          ? "bg-accent-tint ring-2 ring-accent"
-                          : "bg-bg-secondary hover:bg-bg-tertiary"
+                    <span
+                      className={`text-[11px] font-medium truncate max-w-full ${
+                        active ? "text-accent-dark" : "text-text-secondary"
                       }`}
                     >
-                      <img
-                        src={url}
-                        alt=""
-                        className="h-14 w-14 rounded-full object-cover"
-                      />
-                      <span
-                        className={`text-[11px] font-medium truncate max-w-full ${
-                          active ? "text-accent-dark" : "text-text-secondary"
-                        }`}
-                      >
-                        {style}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Background colour picker */}
-              <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                {t("avatar.bgColor")}
-              </p>
-              <div className="flex gap-3 px-4 pb-6">
-                {DICEBEAR_BG_COLORS.map((bg) => {
-                  const active = bg === selectedBg;
-                  return (
-                    <button
-                      key={bg}
-                      type="button"
-                      onClick={() => setSelectedBg(bg)}
-                      className={`h-9 w-9 rounded-full transition-all cursor-pointer ${
-                        active
-                          ? "ring-2 ring-accent ring-offset-2 ring-offset-bg scale-110"
-                          : "hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: `#${bg}` }}
-                      aria-label={`#${bg}`}
-                    />
-                  );
-                })}
-              </div>
+                      {style}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Footer actions */}
-            <div className="flex flex-col gap-2 px-4 py-3 border-t border-border">
+            {/* Background colour picker */}
+            <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              {t("avatar.bgColor")}
+            </p>
+            <div className="flex gap-3 px-4 pb-6">
+              {DICEBEAR_BG_COLORS.map((bg) => {
+                const active = bg === selectedBg;
+                return (
+                  <button
+                    key={bg}
+                    type="button"
+                    onClick={() => setSelectedBg(bg)}
+                    className={`h-9 w-9 rounded-full transition-all cursor-pointer ${
+                      active
+                        ? "ring-2 ring-accent ring-offset-2 ring-offset-bg scale-110"
+                        : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: `#${bg}` }}
+                    aria-label={`#${bg}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer actions */}
+          <div className="flex flex-col gap-2 px-4 py-3 border-t border-border">
+            <Button
+              type="button"
+              fullWidth
+              size="md"
+              onClick={handleSave}
+            >
+              {t("common.save")}
+            </Button>
+            {currentUrl && (
               <Button
                 type="button"
                 fullWidth
                 size="md"
-                onClick={handleSave}
+                variant="ghost"
+                onClick={handleRemove}
               >
-                {t("common.save")}
+                {t("avatar.removeAvatar")}
               </Button>
-              {currentUrl && (
-                <Button
-                  type="button"
-                  fullWidth
-                  size="md"
-                  variant="ghost"
-                  onClick={handleRemove}
-                >
-                  {t("avatar.removeAvatar")}
-                </Button>
-              )}
-            </div>
-          </motion.div>
+            )}
+          </div>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 }

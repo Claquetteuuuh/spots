@@ -261,7 +261,7 @@ export default function ProfilePage({
         avatar spans the desktop rows and the bio block drops under the
         avatar row on small screens.
       */}
-      <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 lg:items-start lg:gap-x-12">
+      <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-4 lg:mt-0 lg:items-start lg:gap-x-12">
         {/* Avatar */}
         <div className="shrink-0 lg:row-span-3">
           <Avatar

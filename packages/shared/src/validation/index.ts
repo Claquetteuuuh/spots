@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COMPOSITION_TYPES } from "../constants";
+import { COMPOSITION_TYPES, DICEBEAR_ORIGIN } from "../constants";
 
 // ─── Auth ────────────────────────────────────────────────────────────
 
@@ -109,7 +109,15 @@ export const updateProfileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
   bio: z.string().max(500).optional(),
-  avatarUrl: z.string().url().nullable().optional(),
+  // Avatars are generated, never uploaded — anything but a DiceBear URL
+  // would be an arbitrary image hot-linked into every profile row.
+  avatarUrl: z
+    .string()
+    .url()
+    .max(500)
+    .startsWith(`${DICEBEAR_ORIGIN}/`, "Avatar must be a DiceBear URL")
+    .nullable()
+    .optional(),
   locale: z.enum(["fr", "en"]).optional(),
   isPrivate: z.boolean().optional(),
 });

@@ -10,7 +10,7 @@ import {
 } from "@/lib/api-utils";
 import { getUserFromRequest } from "@/lib/auth";
 import { reverseGeocode } from "@/lib/geocode";
-import { deleteFile } from "@/lib/storage";
+import { deleteFiles } from "@/lib/storage";
 
 const SPOT_AUTHOR_SELECT = {
   id: true,
@@ -130,7 +130,13 @@ export const PATCH = withAuth<RouteParams>(async (request, authUser, { params })
 export const DELETE = withAuth<RouteParams>(async (_request, authUser, { params }) => {
   const { id } = await params;
 
-  const existing = await prisma.spot.findUnique({ where: { id } });
+  const existing = await prisma.spot.findUnique({
+    where: { id },
+    include: {
+      images: { select: { photoKey: true } },
+      spotPhotos: { select: { photoKey: true } },
+    },
+  });
   if (!existing) {
     throw new ApiError("Spot not found", 404);
   }
@@ -138,12 +144,26 @@ export const DELETE = withAuth<RouteParams>(async (_request, authUser, { params 
     throw new ApiError("You do not have permission to delete this spot", 403);
   }
 
+  // Everything this spot put in the bucket: the cover, the gallery, and
+  // every community photo posted under it. Collected up front — the DB
+  // cascade takes those rows with the spot.
+  const keys = [
+    existing.photoKey,
+    ...existing.images.map((image) => image.photoKey),
+    ...existing.spotPhotos.map((photo) => photo.photoKey),
+  ];
+
   await prisma.spot.delete({ where: { id } });
 
-  // Clean up photo from R2 — fire-and-forget so the API response isn't delayed
-  deleteFile(existing.photoKey).catch((err) => {
-    console.error(`Failed to delete R2 object ${existing.photoKey}:`, err);
-  });
+  // Awaited on purpose: a serverless function can be frozen the moment it
+  // responds, and a fire-and-forget delete would leave the files behind —
+  // exactly what this is here to prevent. The rows are already gone, so a
+  // storage failure is logged rather than surfaced.
+  try {
+    await deleteFiles(keys);
+  } catch (error) {
+    console.error(`Failed to delete R2 objects for spot ${id}:`, error);
+  }
 
   return successResponse({ id });
 });

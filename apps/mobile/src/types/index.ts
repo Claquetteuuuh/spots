@@ -119,6 +119,18 @@ export interface UploadPhotoResult {
   photoKey: string;
 }
 
+/** A photo another user added under a spot. */
+export interface SpotPhoto {
+  id: string;
+  spotId: string;
+  userId: string;
+  photoUrl: string;
+  photoKey: string;
+  caption: string | null;
+  createdAt: string;
+  user: Pick<User, "id" | "username" | "name" | "avatarUrl">;
+}
+
 export interface MapBounds {
   swLat: number;
   swLng: number;
