@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_PATHS = ["/map", "/spot", "/profile", "/settings", "/feed", "/search", "/explore"];
 const AUTH_PATHS = ["/login", "/register"];
+/** The landing page — authenticated users skip it and go straight to the app. */
+const LANDING_PATH = "/";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,9 +20,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages and the landing page
   const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
-  if (isAuthPage && (token || refreshToken)) {
+  if ((isAuthPage || pathname === LANDING_PATH) && (token || refreshToken)) {
     return NextResponse.redirect(new URL("/map", request.url));
   }
 
