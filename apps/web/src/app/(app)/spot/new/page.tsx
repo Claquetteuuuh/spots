@@ -125,6 +125,7 @@ function AddSpotForm() {
   const searchParams = useSearchParams();
   const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // The step lives in the URL, so the browser's back button (and the phone's
   // back gesture) walks back through the form instead of leaving it and
@@ -266,8 +267,9 @@ function AddSpotForm() {
       setError(null);
     }
 
-    // Reset input so the same file(s) can be re-selected
+    // Reset inputs so the same file(s) can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
   }
 
   function removePhoto(index: number) {
@@ -965,7 +967,7 @@ function AddSpotForm() {
                     </div>
                   ))}
 
-                  {/* Add more tile */}
+                  {/* Add more tile — gallery */}
                   {photos.length < MAX_PHOTOS ? (
                     <button
                       type="button"
@@ -986,6 +988,22 @@ function AddSpotForm() {
                           strokeLinejoin="round"
                           d="M12 4.5v15m7.5-7.5h-15"
                         />
+                      </svg>
+                    </button>
+                  ) : null}
+
+                  {/* Add more tile — camera (mobile browsers only) */}
+                  {photos.length < MAX_PHOTOS ? (
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      aria-label={t("spots.takePhoto")}
+                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent lg:hidden"
+                    >
+                      {/* Camera icon (Ionicons camera-outline) */}
+                      <svg className="h-6 w-6" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+                        <path d="M350.54 148.68l-26.62-42.06C318.31 97.08 310.62 92 302 92h-92c-8.62 0-16.31 5.08-21.92 14.62l-26.62 42.06C155.85 155.23 148.62 160 140 160H80a32 32 0 00-32 32v208a32 32 0 0032 32h352a32 32 0 0032-32V192a32 32 0 00-32-32h-60c-8.65 0-15.85-4.77-21.46-11.32z" />
+                        <circle cx="256" cy="272" r="80" />
                       </svg>
                     </button>
                   ) : null}
@@ -1017,13 +1035,24 @@ function AddSpotForm() {
                     {t("spots.upToPhotos", { count: MAX_PHOTOS })} <span className="text-error">*</span>
                   </span>
                 </button>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {t("spots.pickPhoto")}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {t("spots.pickPhoto")}
+                  </Button>
+                  {/* Camera button — only useful on mobile browsers where capture triggers the native camera */}
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    className="lg:hidden"
+                    onClick={() => cameraInputRef.current?.click()}
+                  >
+                    {t("spots.takePhoto")}
+                  </Button>
+                </div>
                 <p className="text-center text-xs text-text-tertiary">
                   JPEG, PNG, WebP · {MAX_PHOTO_SIZE_MB}MB max · {t("spots.upToPhotos", { count: String(MAX_PHOTOS) })}
                 </p>
@@ -1035,6 +1064,15 @@ function AddSpotForm() {
               type="file"
               accept={ACCEPTED_IMAGE_TYPES.join(",")}
               multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {/* Separate input with capture="environment" — forces the native camera on mobile browsers */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />

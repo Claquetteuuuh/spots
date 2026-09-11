@@ -74,7 +74,8 @@ describe("AddSpotPage", () => {
     await act(async () => {
       render(<AddSpotPage />);
     });
-    expect(screen.getByText("Take a photo")).toBeInTheDocument();
+    // "Take a photo" appears in both the step indicator and the camera button
+    expect(screen.getAllByText("Take a photo").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Map")).toBeInTheDocument();
     expect(screen.getByText("Spot details")).toBeInTheDocument();
   });
