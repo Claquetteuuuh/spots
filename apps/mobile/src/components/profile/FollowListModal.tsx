@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -20,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
+import { Avatar } from "../Avatar";
 import { useAuthStore } from "../../stores/auth-store";
 import * as api from "../../lib/api";
 import { Button } from "../ui/Button";
@@ -85,7 +85,6 @@ export function FollowListModal({
     setTab(initialTab);
     indicatorX.value = withSpring(tabIndex(initialTab) * tabWidth, SPRING_CONFIG);
     pagerRef.current?.setPage(tabIndex(initialTab));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
 
   const loadData = useCallback(async () => {
@@ -181,21 +180,7 @@ export function FollowListModal({
         onPress={() => navigateToProfile(item.username)}
         style={[styles.userRow, { borderBottomColor: theme.colors.border }]}
       >
-        {item.avatarUrl ? (
-          <Image source={{ uri: item.avatarUrl }} style={styles.userAvatar} />
-        ) : (
-          <View
-            style={[
-              styles.userAvatar,
-              styles.avatarPlaceholder,
-              { backgroundColor: theme.colors.bgTertiary },
-            ]}
-          >
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 16, fontWeight: "600" }}>
-              {item.name?.charAt(0)?.toUpperCase() ?? "?"}
-            </Text>
-          </View>
-        )}
+        <Avatar url={item.avatarUrl} name={item.name} size={44} />
 
         <View style={styles.userInfo}>
           <Text
@@ -246,21 +231,7 @@ export function FollowListModal({
         onPress={() => navigateToProfile(item.following.username)}
         style={[styles.userRow, { borderBottomColor: theme.colors.border }]}
       >
-        {item.following.avatarUrl ? (
-          <Image source={{ uri: item.following.avatarUrl }} style={styles.userAvatar} />
-        ) : (
-          <View
-            style={[
-              styles.userAvatar,
-              styles.avatarPlaceholder,
-              { backgroundColor: theme.colors.bgTertiary },
-            ]}
-          >
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 16, fontWeight: "600" }}>
-              {item.following.name?.charAt(0)?.toUpperCase() ?? "?"}
-            </Text>
-          </View>
-        )}
+        <Avatar url={item.following.avatarUrl} name={item.following.name} size={44} />
 
         <View style={styles.userInfo}>
           <Text
@@ -461,15 +432,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  avatarPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
   },
   userInfo: {
     flex: 1,

@@ -3,7 +3,6 @@ import { API_ROUTES, type CompositionType } from "@trs/shared/constants";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
 import type {
   AuthResponse,
-  FollowRequest,
   ForwardGeocodeResult,
   MapBounds,
   NotificationsData,
@@ -246,6 +245,7 @@ export interface UpdateProfileParams {
   name?: string;
   username?: string;
   bio?: string;
+  avatarUrl?: string | null;
   locale?: "fr" | "en";
   isPrivate?: boolean;
 }
