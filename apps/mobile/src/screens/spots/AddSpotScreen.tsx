@@ -24,7 +24,7 @@ import { WebView } from "react-native-webview";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useTabSwitch } from "../../navigation/tab-context";
-import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
+import { COMPOSITION_TYPES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
 import { useTheme, type Theme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
@@ -32,6 +32,7 @@ import { uploadPhoto, discardUploads, reverseGeocode, forwardGeocode, searchTags
 import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { AccessibilityPicker } from "../../components/spots/AccessibilityPicker";
 import type { ForwardGeocodeResult } from "../../types";
 
 const TOTAL_STEPS = 5;
@@ -191,6 +192,7 @@ export function AddSpotScreen() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
+  const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
   const [customComposition, setCustomComposition] = useState("");
 
   // Color wheel modal
@@ -476,6 +478,7 @@ export function AddSpotScreen() {
     setTags([]);
     setTagInput("");
     setVisibility("FOLLOWERS");
+    setAccessibility(null);
     setCustomComposition("");
     setEyedropperDataUri(null);
     setSubmitError(null);
@@ -559,6 +562,7 @@ export function AddSpotScreen() {
         compositions: selectedCompositions,
         tags,
         visibility,
+        accessibility: accessibility ?? undefined,
         customComposition: customComposition.trim() || undefined,
       });
       resetWizard();
@@ -1451,6 +1455,23 @@ export function AddSpotScreen() {
                     </Text>
                   </Pressable>
                 </View>
+              </View>
+
+              {/* Accessibility — optional, easiest level first */}
+              <View style={{ marginTop: theme.spacing.lg }}>
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.xs,
+                    fontWeight: theme.typography.weight.medium,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                    marginBottom: theme.spacing.sm,
+                  }}
+                >
+                  {t("spots.accessibilityTitle")}
+                </Text>
+                <AccessibilityPicker value={accessibility} onChange={setAccessibility} />
               </View>
             </View>
           ) : null}

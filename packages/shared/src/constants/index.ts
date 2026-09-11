@@ -136,6 +136,34 @@ export const API_ROUTES = {
   },
 } as const;
 
+// ─── Spot accessibility ──────────────────────────────────────────────
+
+/** How hard a spot is to reach, from a short stroll to private land. */
+export const SPOT_ACCESSIBILITY = ["EASY", "MODERATE", "HARD", "RESTRICTED", "PRIVATE"] as const;
+export type SpotAccessibility = (typeof SPOT_ACCESSIBILITY)[number];
+
+// ─── Map filters ─────────────────────────────────────────────────────
+
+/**
+ * Colour families a spot's hex colours are bucketed into for filtering,
+ * each with a swatch to draw it. Order is the order shown.
+ */
+export const COLOR_FAMILIES = [
+  { key: "red", swatch: "#C44536" },
+  { key: "orange", swatch: "#D98A3C" },
+  { key: "yellow", swatch: "#D4A017" },
+  { key: "green", swatch: "#4F8A5B" },
+  { key: "blue", swatch: "#4A6FA5" },
+  { key: "purple", swatch: "#6B5B8D" },
+  { key: "pink", swatch: "#D98CA6" },
+  { key: "brown", swatch: "#8B7355" },
+  { key: "neutral", swatch: "#B8BCC4" },
+] as const;
+export type ColorFamily = (typeof COLOR_FAMILIES)[number]["key"];
+
+/** "Around me" radii offered by the map filter, in km. */
+export const PROXIMITY_RADII_KM = [1, 5, 20, 50] as const;
+
 // ─── Pagination ──────────────────────────────────────────────────────
 
 export const DEFAULT_PAGE_SIZE = 20;

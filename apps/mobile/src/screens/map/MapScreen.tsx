@@ -7,16 +7,22 @@ import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  EMPTY_FILTERS,
   MAP_PINS_LIMIT,
   SpotClusterer,
   boundsContain,
   clusterMarkerSize,
+  countActiveFilters,
+  filterPinsByColor,
+  filtersToQuery,
   formatClusterCount,
   longitudeDeltaFromZoom,
   padBounds,
   regionToBounds,
   zoomFromLongitudeDelta,
+  type LatLng,
   type MapBounds,
+  type MapFilters,
   type MapItem,
   type MapPin,
   type MapScope,
@@ -25,6 +31,7 @@ import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useTabSwitch } from "../../navigation/tab-context";
+import { MapFiltersSheet } from "../../components/map/MapFiltersSheet";
 import type { MainTabNavigationProp } from "../../navigation/types";
 
 // Central Paris — a reasonable default when location permission is denied
@@ -40,10 +47,11 @@ const DEFAULT_REGION: Region = {
 const FETCH_DEBOUNCE_MS = 300;
 const PREVIEW_PHOTO = 72;
 
-/** The last box we fetched: a view inside it needs no request. */
+/** The last box we fetched: a view inside it, with the same query, needs no request. */
 interface FetchedArea {
   bounds: MapBounds;
   scope: MapScope;
+  query: string;
   truncated: boolean;
 }
 
@@ -56,15 +64,28 @@ export function MapScreen() {
   // The id, not the object: a refreshed session must not refetch the map.
   const userId = useAuthStore((s) => s.user?.id);
   const mapPins = useSpotsStore((s) => s.mapPins);
+  const isMapLoading = useSpotsStore((s) => s.isMapLoading);
   const fetchMapPins = useSpotsStore((s) => s.fetchMapPins);
 
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
   const [scope, setScope] = useState<MapScope>("all");
+  const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [position, setPosition] = useState<LatLng | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
 
   const fetchedRef = useRef<FetchedArea | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The server-side filters, keyed so a change reads as a new data set.
+  // Colour families are matched here on the pins instead.
+  const serverQuery = useMemo(() => filtersToQuery(filters, position), [filters, position]);
+  const serverKey = JSON.stringify(serverQuery);
+  const serverQueryRef = useRef(serverQuery);
+  useEffect(() => {
+    serverQueryRef.current = serverQuery;
+  }, [serverQuery]);
 
   /**
    * Fetch pins for a view. Pads the box so small pans stay inside the last
@@ -74,27 +95,34 @@ export function MapScreen() {
   const loadPins = useCallback(
     (bounds: MapBounds, nextScope: MapScope, force = false) => {
       if (!userId) return;
+      const query = serverQueryRef.current;
+      const key = JSON.stringify(query);
       const last = fetchedRef.current;
       if (
         !force &&
         last &&
         last.scope === nextScope &&
+        last.query === key &&
         !last.truncated &&
         boundsContain(last.bounds, bounds)
       ) {
         return;
       }
       const padded = padBounds(bounds);
-      void fetchMapPins({ bounds: padded, scope: nextScope, limit: MAP_PINS_LIMIT }).then(
-        (applied) => {
-          if (!applied) return;
-          fetchedRef.current = {
-            bounds: padded,
-            scope: nextScope,
-            truncated: useSpotsStore.getState().mapTruncated,
-          };
-        },
-      );
+      void fetchMapPins({
+        bounds: padded,
+        scope: nextScope,
+        limit: MAP_PINS_LIMIT,
+        filters: query,
+      }).then((applied) => {
+        if (!applied) return;
+        fetchedRef.current = {
+          bounds: padded,
+          scope: nextScope,
+          query: key,
+          truncated: useSpotsStore.getState().mapTruncated,
+        };
+      });
     },
     [userId, fetchMapPins],
   );
@@ -112,11 +140,11 @@ export function MapScreen() {
     [loadPins, scope],
   );
 
-  // First load, and a new scope: fetch the current view right away.
+  // First load, a new scope or a new filter set: fetch the current view right away.
   useEffect(() => {
     loadPins(regionToBounds(region), scope, true);
     // `region` is deliberately left out — pans go through the debounce.
-  }, [scope, loadPins]);
+  }, [scope, serverKey, loadPins]);
 
   useEffect(
     () => () => {
@@ -128,11 +156,12 @@ export function MapScreen() {
   const locateMe = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
-    const position = await Location.getCurrentPositionAsync({});
+    const { coords } = await Location.getCurrentPositionAsync({});
+    setPosition({ latitude: coords.latitude, longitude: coords.longitude });
     mapRef.current?.animateToRegion(
       {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
       },
@@ -144,11 +173,19 @@ export function MapScreen() {
     void locateMe();
   }, []);
 
+  // Colour families are filtered here; the rest came filtered from the server.
+  const visiblePins = useMemo(
+    () => filterPinsByColor(mapPins, filters.colors),
+    [mapPins, filters.colors],
+  );
+  const activeFilters = countActiveFilters(filters);
+  const nothingMatches = !isMapLoading && activeFilters > 0 && visiblePins.length === 0;
+
   // Build the cluster index once per pin set (the costly part), then group
   // for the current view — cheap, so it can follow every pan.
   const clusterer = useMemo(
-    () => (mapPins.length > 0 ? new SpotClusterer(mapPins) : null),
-    [mapPins],
+    () => (visiblePins.length > 0 ? new SpotClusterer(visiblePins) : null),
+    [visiblePins],
   );
   const items = useMemo<MapItem[]>(() => {
     if (!clusterer) return [];
@@ -194,8 +231,13 @@ export function MapScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
-      {/* Segmented toggle */}
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+      {/* Segmented toggle + filters */}
+      <View
+        style={[
+          styles.header,
+          { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+        ]}
+      >
         <View
           style={[
             styles.toggleRow,
@@ -231,6 +273,39 @@ export function MapScreen() {
             </Pressable>
           ))}
         </View>
+
+        <Pressable
+          onPress={() => setFiltersOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("map.filters")}
+          testID="map-filters-button"
+          style={[
+            styles.filterButton,
+            {
+              borderColor: activeFilters > 0 ? theme.colors.accent : theme.colors.border,
+              backgroundColor: activeFilters > 0 ? theme.colors.accentTint : theme.colors.bg,
+            },
+          ]}
+        >
+          <Ionicons
+            name="options-outline"
+            size={18}
+            color={activeFilters > 0 ? theme.colors.accent : theme.colors.text}
+          />
+          {activeFilters > 0 ? (
+            <View style={[styles.filterBadge, { backgroundColor: theme.colors.accent }]}>
+              <Text
+                style={{
+                  color: theme.colors.onAccent,
+                  fontSize: 11,
+                  fontWeight: theme.typography.weight.semibold,
+                }}
+              >
+                {activeFilters}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
       <View style={styles.mapWrapper}>
@@ -338,6 +413,14 @@ export function MapScreen() {
           ) : null}
         </MapView>
 
+        {nothingMatches ? (
+          <View style={[styles.hint, { backgroundColor: theme.colors.bg }]} pointerEvents="none">
+            <Text style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.xs }}>
+              {t("map.noSpotsMatch")}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Preview card — the photo, the title, the city; tap to open the spot. */}
         {selectedPin ? (
           <Pressable
@@ -426,6 +509,15 @@ export function MapScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <MapFiltersSheet
+        visible={filtersOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setFiltersOpen(false)}
+        hasPosition={position !== null}
+        onRequestPosition={() => void locateMe()}
+      />
     </SafeAreaView>
   );
 }
@@ -434,17 +526,53 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   toggleRow: {
     flexDirection: "row",
     padding: 2,
-    alignSelf: "center",
   },
   toggleButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
+  filterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   mapWrapper: {
     flex: 1,
+  },
+  hint: {
+    position: "absolute",
+    top: 12,
+    alignSelf: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   pin: {
     width: 14,

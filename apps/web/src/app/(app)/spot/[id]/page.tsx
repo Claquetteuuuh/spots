@@ -512,6 +512,17 @@ export default function SpotDetailPage({
             )}
             {spot.visibility === "PRIVATE" ? t("spots.visibilityPrivate") : t("spots.visibilityFollowers")}
           </div>
+
+          {/* Accessibility — the level in the same voice as visibility, its hint after */}
+          {spot.accessibility ? (
+            <p className="mt-2 text-[13px] text-text-secondary">
+              <span className="font-medium uppercase tracking-[0.4px] text-text">
+                {t(`spots.accessibilityLevel.${spot.accessibility}`)}
+              </span>
+              {" — "}
+              {t(`spots.accessibilityHint.${spot.accessibility}`)}
+            </p>
+          ) : null}
         </div>
 
         {/* Mini map — tap to expand. The app's 140px rounded thumb inside the

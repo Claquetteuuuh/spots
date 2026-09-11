@@ -6,11 +6,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { MapCenter, MapViewport, SpotMapLabels } from "@/components/spot-map";
+import { MapFiltersMenu } from "@/components/map-filters";
 import {
+  EMPTY_FILTERS,
   MAP_PINS_LIMIT,
   boundsContain,
+  countActiveFilters,
+  filterPinsByColor,
+  filtersToQuery,
   padBounds,
+  type LatLng,
   type MapBounds,
+  type MapFilters,
   type MapPin,
   type MapScope,
 } from "@trs/shared/map";
@@ -23,10 +30,11 @@ const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
 /** Pans settle for this long before the viewport is fetched. */
 const FETCH_DEBOUNCE_MS = 300;
 
-/** The last box we fetched: a view inside it needs no request. */
+/** The last box we fetched: a view inside it, with the same query, needs no request. */
 interface FetchedArea {
   bounds: MapBounds;
   scope: MapScope;
+  query: string;
   truncated: boolean;
 }
 
@@ -38,6 +46,8 @@ export default function MapPage() {
   const router = useRouter();
   const [pins, setPins] = useState<MapPin[]>([]);
   const [scope, setScope] = useState<MapScope>("all");
+  const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
+  const [position, setPosition] = useState<LatLng | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [center, setCenter] = useState<MapCenter | null>(null);
 
@@ -47,6 +57,15 @@ export default function MapPage() {
   // Responses arriving out of order are dropped, not drawn.
   const requestSeqRef = useRef(0);
 
+  // The server-side filters, keyed so a change reads as a new data set.
+  // Colour families are matched here on the pins instead.
+  const serverQuery = useMemo(() => filtersToQuery(filters, position), [filters, position]);
+  const serverKey = JSON.stringify(serverQuery);
+  const serverQueryRef = useRef(serverQuery);
+  useEffect(() => {
+    serverQueryRef.current = serverQuery;
+  }, [serverQuery]);
+
   /**
    * Fetch pins for a view. Pads the box so small pans stay inside the last
    * fetched area and skip the request — unless that fetch hit the limit,
@@ -55,11 +74,14 @@ export default function MapPage() {
   const loadPins = useCallback(
     async (bounds: MapBounds, nextScope: MapScope, force = false) => {
       if (!userId) return;
+      const query = serverQueryRef.current;
+      const key = JSON.stringify(query);
       const last = fetchedRef.current;
       if (
         !force &&
         last &&
         last.scope === nextScope &&
+        last.query === key &&
         !last.truncated &&
         boundsContain(last.bounds, bounds)
       ) {
@@ -72,11 +94,17 @@ export default function MapPage() {
       try {
         const result = await apiClient.spots.map({
           ...padded,
+          ...query,
           scope: nextScope,
           limit: MAP_PINS_LIMIT,
         });
         if (seq !== requestSeqRef.current) return;
-        fetchedRef.current = { bounds: padded, scope: nextScope, truncated: result.truncated };
+        fetchedRef.current = {
+          bounds: padded,
+          scope: nextScope,
+          query: key,
+          truncated: result.truncated,
+        };
         setPins(result.items);
       } catch (err) {
         if (seq === requestSeqRef.current) console.error("Failed to load map spots:", err);
@@ -97,11 +125,11 @@ export default function MapPage() {
     [loadPins, scope],
   );
 
-  // A new scope is a new data set: refetch the current view right away.
+  // A new scope or filter set is a new data set: refetch the current view right away.
   useEffect(() => {
     const bounds = viewportRef.current;
     if (bounds) loadPins(bounds, scope, true);
-  }, [scope, loadPins]);
+  }, [scope, serverKey, loadPins]);
 
   useEffect(
     () => () => {
@@ -115,9 +143,10 @@ export default function MapPage() {
   const locateMe = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      ({ coords }) => {
+        setPosition({ latitude: coords.latitude, longitude: coords.longitude });
         // Always a fresh object, so re-locating from the same place still moves the map.
-        setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setCenter({ lat: coords.latitude, lng: coords.longitude });
       },
       () => {},
       { timeout: 10_000, maximumAge: 60_000 },
@@ -144,6 +173,9 @@ export default function MapPage() {
     [t],
   );
 
+  const visiblePins = useMemo(() => filterPinsByColor(pins, filters.colors), [pins, filters.colors]);
+  const nothingMatches = !isLoading && countActiveFilters(filters) > 0 && visiblePins.length === 0;
+
   const scopes = [
     { key: "all", label: t("map.allSpots") },
     { key: "mine", label: t("map.mySpots") },
@@ -154,8 +186,8 @@ export default function MapPage() {
     // Below `lg` the screen is the viewport minus the tab bar, as in the app;
     // from `lg` it sits under the 3.5rem desktop header.
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-50px-env(safe-area-inset-bottom))] lg:h-[calc(100vh-3.5rem)]">
-      {/* Segmented control — the screen's only chrome, centred like the app's */}
-      <div className="relative z-10 flex shrink-0 justify-center bg-bg px-4 py-2">
+      {/* Segmented control + filters — the screen's only chrome, centred like the app's */}
+      <div className="relative z-10 flex shrink-0 items-center justify-center gap-2 bg-bg px-4 py-2">
         <div className="flex items-center rounded-md bg-bg-secondary p-[2px]">
           {scopes.map(({ key, label }) => (
             <button
@@ -174,23 +206,36 @@ export default function MapPage() {
           ))}
         </div>
 
+        <MapFiltersMenu
+          filters={filters}
+          onChange={setFilters}
+          hasPosition={position !== null}
+          onRequestPosition={locateMe}
+        />
+
         {/* Desktop only: the app has no count */}
         <span className="absolute right-4 top-1/2 hidden -translate-y-1/2 text-xs text-text-tertiary lg:block">
           {isLoading
             ? t("common.loading")
-            : t("users.spots", { count: String(pins.length) })}
+            : t("users.spots", { count: String(visiblePins.length) })}
         </span>
       </div>
 
       {/* Map — isolate z-index so Leaflet internals don't overlap the bottom nav */}
       <div className="relative z-0 min-h-0 flex-1">
         <SpotMap
-          pins={pins}
+          pins={visiblePins}
           center={center}
           labels={labels}
           onSpotClick={openSpot}
           onViewportChange={handleViewportChange}
         />
+
+        {nothingMatches ? (
+          <p className="pointer-events-none absolute left-1/2 top-3 z-[1000] -translate-x-1/2 rounded-full bg-bg px-3 py-1.5 text-xs text-text-secondary shadow-float">
+            {t("map.noSpotsMatch")}
+          </p>
+        ) : null}
 
         {/* Locate me — 40px, hairline, above the FAB as in the app */}
         <button

@@ -116,6 +116,9 @@ const pin = (
   city: "Paris",
   userId: "owner-1",
   isOwn: true,
+  colors: ["#C44536"],
+  compositions: ["SYMMETRY"],
+  accessibility: null,
   ...extra,
 });
 
@@ -169,6 +172,7 @@ describe("MapScreen", () => {
         bounds: padBounds(regionToBounds(DEFAULT_REGION)),
         scope: "all",
         limit: MAP_PINS_LIMIT,
+        filters: {},
       }),
     );
   });
@@ -287,5 +291,82 @@ describe("MapScreen", () => {
     await settleRegion({ ...DEFAULT_REGION, latitudeDelta: 0.2, longitudeDelta: 0.2 });
 
     expect(backgroundOf("pin-dot-mine")).not.toBe(backgroundOf("pin-dot-theirs"));
+  });
+});
+
+describe("MapScreen — filters", () => {
+  const WIDE = { ...DEFAULT_REGION, latitudeDelta: 0.2, longitudeDelta: 0.2 };
+
+  it("filters pins by colour family on the client, badge counts it, reset restores", async () => {
+    // Both inside the default view, ~2 km apart — far enough not to cluster
+    useSpotsStore.setState({
+      mapPins: [
+        pin("red", 48.8566, 2.3522, { colors: ["#C44536"] }),
+        pin("sea", 48.84, 2.33, { colors: ["#2C5F7C"] }),
+      ],
+    });
+    await render(<MapScreen />);
+    await settleRegion(DEFAULT_REGION);
+    await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("pin-red")).toBeTruthy();
+    expect(screen.getByTestId("pin-sea")).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getByLabelText("colorFamilies.blue"));
+
+    expect(screen.queryByTestId("pin-red")).toBeNull();
+    expect(screen.getByTestId("pin-sea")).toBeTruthy();
+    expect(screen.getByText("1")).toBeTruthy(); // the badge
+    // Colour is client-side: no new request
+    await outlastDebounce();
+    expect(mockFetchMapPins).toHaveBeenCalledTimes(1);
+
+    await fireEvent.press(screen.getByText("map.filtersReset"));
+    expect(screen.getByTestId("pin-red")).toBeTruthy();
+  });
+
+  it("sends composition and accessibility filters to the server right away", async () => {
+    await render(<MapScreen />);
+    await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(1));
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getByText("compositions.SYMMETRY"));
+    await fireEvent.press(screen.getByText("spots.accessibilityLevel.EASY"));
+
+    await waitFor(() =>
+      expect(mockFetchMapPins).toHaveBeenLastCalledWith(
+        expect.objectContaining({ filters: { compositions: "SYMMETRY", accessibility: "EASY" } }),
+      ),
+    );
+  });
+
+  it("fetches around the photographer when a radius is picked", async () => {
+    await render(<MapScreen />);
+    // The mount locate resolves to Paris (expo-location mock)
+    await waitFor(() => expect(mockFetchMapPins).toHaveBeenCalledTimes(1));
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getAllByText("map.withinKm")[1]); // 5 km
+
+    await waitFor(() =>
+      expect(mockFetchMapPins).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          filters: { nearLat: 48.8566, nearLng: 2.3522, radiusKm: 5 },
+        }),
+      ),
+    );
+    expect(screen.queryByText("map.needLocation")).toBeNull();
+  });
+
+  it("says so when nothing matches the filters here", async () => {
+    useSpotsStore.setState({ mapPins: [pin("red", 48.8566, 2.3522)] });
+    await render(<MapScreen />);
+    await settleRegion(WIDE);
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getByLabelText("colorFamilies.green"));
+    await fireEvent.press(screen.getByTestId("map-filters-done"));
+
+    expect(screen.getByText("map.noSpotsMatch")).toBeTruthy();
   });
 });

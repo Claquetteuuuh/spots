@@ -21,6 +21,9 @@ const pin = (id: string, latitude: number, longitude: number): MapPin => ({
   city: "Paris",
   userId: "u1",
   isOwn: true,
+  colors: [],
+  compositions: [],
+  accessibility: null,
 });
 
 const PARIS = { swLat: 48.8, swLng: 2.2, neLat: 48.9, neLng: 2.45 };

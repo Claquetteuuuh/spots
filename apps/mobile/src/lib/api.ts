@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { API_ROUTES, type CompositionType } from "@trs/shared/constants";
-import { MAP_PINS_LIMIT, type MapPin, type MapScope } from "@trs/shared/map";
+import { API_ROUTES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
+import { MAP_PINS_LIMIT, type MapFilterQuery, type MapPin, type MapScope } from "@trs/shared/map";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
 import type {
   AuthResponse,
@@ -180,6 +180,7 @@ export interface CreateSpotParams {
   photos?: { url: string; key: string }[];
   visibility?: "PRIVATE" | "FOLLOWERS";
   customComposition?: string;
+  accessibility?: SpotAccessibility | null;
 }
 
 export async function createSpot(params: CreateSpotParams): Promise<Spot> {
@@ -200,6 +201,7 @@ export interface UpdateSpotParams {
   tags?: string[];
   visibility?: "PRIVATE" | "FOLLOWERS";
   customComposition?: string;
+  accessibility?: SpotAccessibility | null;
 }
 
 export async function updateSpot(id: string, params: UpdateSpotParams): Promise<Spot> {
@@ -222,6 +224,8 @@ export interface GetMapPinsParams {
   bounds: MapBounds;
   scope?: MapScope;
   limit?: number;
+  /** Server-side filters (compositions, accessibility, "around me"). */
+  filters?: MapFilterQuery;
 }
 
 export interface MapPinsPage {
@@ -235,9 +239,10 @@ export async function getMapPins({
   bounds,
   scope = "all",
   limit = MAP_PINS_LIMIT,
+  filters = {},
 }: GetMapPinsParams): Promise<MapPinsPage> {
   const { data } = await client.get<MapPinsPage>(API_ROUTES.spots.map, {
-    params: { ...bounds, scope, limit },
+    params: { ...bounds, ...filters, scope, limit },
   });
   return data;
 }

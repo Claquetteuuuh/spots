@@ -1,4 +1,4 @@
-import type { CompositionType } from "@trs/shared/constants";
+import type { CompositionType, SpotAccessibility } from "@trs/shared/constants";
 
 export type { CompositionType };
 
@@ -76,6 +76,7 @@ export interface Spot {
   priceInfo?: string | null;
   visibility?: "PRIVATE" | "FOLLOWERS";
   customComposition?: string | null;
+  accessibility?: SpotAccessibility | null;
 
   colors: string[];
   compositions: CompositionType[];

@@ -359,6 +359,30 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
             </Text>
           </View>
 
+          {/* Accessibility — the level in the same voice as visibility, its hint after */}
+          {spot.accessibility ? (
+            <Text
+              style={{
+                marginTop: theme.spacing.xs,
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontWeight: theme.typography.weight.medium,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.4,
+                }}
+              >
+                {t(`spots.accessibilityLevel.${spot.accessibility}`)}
+              </Text>
+              {" — "}
+              {t(`spots.accessibilityHint.${spot.accessibility}`)}
+            </Text>
+          ) : null}
+
           {/* Mini map — tap to expand */}
           <Pressable
             onPress={() => setMapExpanded(true)}

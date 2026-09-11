@@ -1,5 +1,5 @@
-import { API_ROUTES } from "@trs/shared/constants";
-import type { MapBounds, MapPin, MapScope } from "@trs/shared/map";
+import { API_ROUTES, type SpotAccessibility } from "@trs/shared/constants";
+import type { MapBounds, MapFilterQuery, MapPin, MapScope } from "@trs/shared/map";
 import type {
   RegisterInput,
   LoginInput,
@@ -250,6 +250,7 @@ export interface Spot {
   priceInfo: string | null;
   visibility: "PRIVATE" | "FOLLOWERS";
   customComposition: string | null;
+  accessibility: SpotAccessibility | null;
   colors: string[];
   compositions: string[];
   tags: string[];
@@ -442,7 +443,7 @@ export const apiClient = {
 
     /** Lightweight pins inside a viewport — own spots first, then followed. */
     async map(
-      query: MapBounds & { scope?: MapScope; limit?: number },
+      query: MapBounds & MapFilterQuery & { scope?: MapScope; limit?: number },
     ): Promise<MapPinsResponse> {
       const params = new URLSearchParams();
       for (const [k, v] of Object.entries(query)) {

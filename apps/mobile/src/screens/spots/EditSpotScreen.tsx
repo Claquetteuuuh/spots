@@ -14,11 +14,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { COMPOSITION_TYPES, type CompositionType } from "@trs/shared/constants";
+import { COMPOSITION_TYPES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
 import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { extractErrorMessage } from "../../lib/error";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
+import { AccessibilityPicker } from "../../components/spots/AccessibilityPicker";
 import type { RootStackScreenProps } from "../../navigation/types";
 import type { Spot } from "../../types";
 
@@ -61,6 +62,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
   const [selectedCompositions, setSelectedCompositions] = useState<string[]>([]);
   const [customComposition, setCustomComposition] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +76,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
         setSelectedCompositions(result.compositions ?? []);
         setCustomComposition(result.customComposition ?? "");
         setSelectedColors(result.colors ?? []);
+        setAccessibility(result.accessibility ?? null);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -99,6 +102,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
         compositions: selectedCompositions as CompositionType[],
         customComposition: selectedCompositions.includes("OTHER") ? (customComposition || undefined) : undefined,
         colors: selectedColors,
+        accessibility,
       });
       Alert.alert(t("spots.editSuccess"));
       navigation.goBack();
@@ -107,7 +111,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
     } finally {
       setIsSaving(false);
     }
-  }, [spot, title, description, selectedCompositions, customComposition, selectedColors, updateSpot, navigation, t]);
+  }, [spot, title, description, selectedCompositions, customComposition, selectedColors, accessibility, updateSpot, navigation, t]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -279,6 +283,10 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
 
           {/* Colors */}
           <View style={{ gap: theme.spacing.sm }}>
+            <SectionLabel text={t("spots.accessibilityTitle")} color={theme.colors.textSecondary} size={theme.typography.size.xs} />
+            <AccessibilityPicker value={accessibility} onChange={setAccessibility} />
+            <View style={{ height: theme.spacing.lg }} />
+
             <SectionLabel text={t("spots.colors")} color={theme.colors.textSecondary} size={theme.typography.size.xs} />
             <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs }}>
               {selectedColors.length}/{MAX_COLORS}

@@ -23,7 +23,7 @@ const VIEWER = { userId: "user-1", email: "alice@example.com", username: "alice"
 
 const BOX = { swLat: "48.8", swLng: "2.2", neLat: "48.9", neLng: "2.45" };
 
-const row = (id: string, userId: string) => ({
+const row = (id: string, userId: string, extra: Record<string, unknown> = {}) => ({
   id,
   userId,
   latitude: 48.85,
@@ -31,6 +31,10 @@ const row = (id: string, userId: string) => ({
   title: id,
   photoUrl: `https://cdn.example.com/${id}.jpg`,
   city: "Paris",
+  colors: ["#C44536"],
+  compositions: ["SYMMETRY"],
+  accessibility: "EASY",
+  ...extra,
 });
 
 /** `[request, context]` — spread into the handler, which `withAuth` types as two-arg. */
@@ -190,5 +194,78 @@ describe("GET /api/spots/map", () => {
     const res = await GET(...makeRequest(BOX));
 
     expect(res.status).toBe(500);
+  });
+});
+
+describe("GET /api/spots/map — filters", () => {
+  it("carries colours, compositions and accessibility on every pin", async () => {
+    mockSpotFindMany.mockResolvedValueOnce([row("m1", VIEWER.userId, { accessibility: null })]);
+
+    const json = await (await GET(...makeRequest(BOX))).json();
+
+    expect(json.data.items[0]).toMatchObject({
+      colors: ["#C44536"],
+      compositions: ["SYMMETRY"],
+      accessibility: null,
+    });
+  });
+
+  it("narrows both queries by compositions and accessibility", async () => {
+    mockFollowFindMany.mockResolvedValue([{ followingId: "user-2" }]);
+
+    await GET(
+      ...makeRequest({ ...BOX, compositions: "SYMMETRY,DIAGONAL", accessibility: "EASY,MODERATE" }),
+    );
+
+    const narrowed = expect.objectContaining({
+      compositions: { hasSome: ["SYMMETRY", "DIAGONAL"] },
+      accessibility: { in: ["EASY", "MODERATE"] },
+    });
+    expect(mockSpotFindMany).toHaveBeenNthCalledWith(1, expect.objectContaining({ where: narrowed }));
+    expect(mockSpotFindMany).toHaveBeenNthCalledWith(2, expect.objectContaining({ where: narrowed }));
+  });
+
+  it("rejects an unknown composition or accessibility value", async () => {
+    expect((await GET(...makeRequest({ ...BOX, compositions: "SPIRAL" }))).status).toBe(400);
+    expect((await GET(...makeRequest({ ...BOX, accessibility: "IMPOSSIBLE" }))).status).toBe(400);
+  });
+
+  it("shrinks the box to the radius and drops rows outside the circle", async () => {
+    // 2 km around central Paris, viewport is the whole city
+    const near = { nearLat: "48.8566", nearLng: "2.3522", radiusKm: "2" };
+    mockSpotFindMany.mockResolvedValueOnce([
+      row("close", VIEWER.userId, { latitude: 48.86, longitude: 2.36 }),
+      // Inside the bounding square's corner, but ~2.7 km away
+      row("corner", VIEWER.userId, { latitude: 48.8735, longitude: 2.3775 }),
+    ]);
+
+    const res = await GET(...makeRequest({ ...BOX, ...near }));
+    const json = await res.json();
+
+    const [{ where }] = mockSpotFindMany.mock.calls[0];
+    expect(where.latitude.gte).toBeGreaterThan(48.8);
+    expect(where.latitude.lte).toBeLessThan(48.9);
+    expect(where.longitude.gte).toBeGreaterThan(2.2);
+    expect(where.longitude.lte).toBeLessThan(2.45);
+    expect(json.data.items.map((p: { id: string }) => p.id)).toEqual(["close"]);
+  });
+
+  it("answers empty without querying when the radius lies outside the viewport", async () => {
+    // Lyon, 2 km — nowhere near the Paris viewport
+    const res = await GET(
+      ...makeRequest({ ...BOX, nearLat: "45.764", nearLng: "4.8357", radiusKm: "2" }),
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data).toEqual({ items: [], truncated: false });
+    expect(mockSpotFindMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the radius comes without a position", async () => {
+    expect((await GET(...makeRequest({ ...BOX, radiusKm: "5" }))).status).toBe(400);
+    expect((await GET(...makeRequest({ ...BOX, nearLat: "48.85", nearLng: "2.35" }))).status).toBe(
+      400,
+    );
   });
 });

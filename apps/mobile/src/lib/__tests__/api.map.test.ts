@@ -49,4 +49,27 @@ describe("API client — getMapPins", () => {
     });
     expect(result.truncated).toBe(true);
   });
+
+  it("spreads the server-side filters into the query", async () => {
+    jest
+      .spyOn(client, "get")
+      .mockResolvedValueOnce({ data: { items: [], truncated: false } });
+
+    await api.getMapPins({
+      bounds: BOX,
+      filters: { compositions: "SYMMETRY", nearLat: 48.85, nearLng: 2.35, radiusKm: 5 },
+    });
+
+    expect(client.get).toHaveBeenCalledWith("/api/spots/map", {
+      params: {
+        ...BOX,
+        compositions: "SYMMETRY",
+        nearLat: 48.85,
+        nearLng: 2.35,
+        radiusKm: 5,
+        scope: "all",
+        limit: 500,
+      },
+    });
+  });
 });

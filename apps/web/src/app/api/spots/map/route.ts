@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/db";
 import { mapPinsQuerySchema } from "@trs/shared/validation";
-import type { MapPin } from "@trs/shared/map";
+import {
+  haversineKm,
+  intersectBounds,
+  radiusToBounds,
+  type LatLng,
+  type MapBounds,
+  type MapPin,
+} from "@trs/shared/map";
 import { successResponse, validateBody, withAuth } from "@/lib/api-utils";
 
-/** Only what a marker and its preview card need — no author, no images. */
+/** Only what a marker, its filters and its preview card need — no author, no images. */
 const PIN_SELECT = {
   id: true,
   latitude: true,
@@ -12,6 +19,9 @@ const PIN_SELECT = {
   photoUrl: true,
   city: true,
   userId: true,
+  colors: true,
+  compositions: true,
+  accessibility: true,
 } as const;
 
 const PIN_ORDER = [{ createdAt: "desc" as const }, { id: "desc" as const }];
@@ -19,21 +29,34 @@ const PIN_ORDER = [{ createdAt: "desc" as const }, { id: "desc" as const }];
 /**
  * Lightweight pins inside a viewport. The viewer's own spots always come
  * first and are never crowded out: followed users' spots only fill
- * whatever budget is left.
+ * whatever budget is left. Composition, accessibility and "around me"
+ * filters narrow both queries; colour families are matched on the client.
  */
 export const GET = withAuth(async (request, authUser) => {
   const q = validateBody(mapPinsQuerySchema, Object.fromEntries(request.nextUrl.searchParams));
 
-  const inBox = {
-    latitude: { gte: q.swLat, lte: q.neLat },
-    longitude: { gte: q.swLng, lte: q.neLng },
+  // "Around me" shrinks the box to the circle's bounding square (cheap,
+  // indexed); the exact distance is checked on the rows that come back.
+  const near: LatLng | null =
+    q.nearLat !== undefined && q.nearLng !== undefined && q.radiusKm !== undefined
+      ? { latitude: q.nearLat, longitude: q.nearLng }
+      : null;
+  const viewport: MapBounds = { swLat: q.swLat, swLng: q.swLng, neLat: q.neLat, neLng: q.neLng };
+  const box = near ? intersectBounds(viewport, radiusToBounds(near, q.radiusKm!)) : viewport;
+  if (!box) return successResponse({ items: [], truncated: false });
+
+  const where = {
+    latitude: { gte: box.swLat, lte: box.neLat },
+    longitude: { gte: box.swLng, lte: box.neLng },
+    ...(q.compositions?.length ? { compositions: { hasSome: q.compositions } } : {}),
+    ...(q.accessibility?.length ? { accessibility: { in: q.accessibility } } : {}),
   };
 
   const [ownRows, following] = await Promise.all([
     q.scope === "following"
       ? Promise.resolve([])
       : prisma.spot.findMany({
-          where: { userId: authUser.userId, ...inBox },
+          where: { userId: authUser.userId, ...where },
           select: PIN_SELECT,
           orderBy: PIN_ORDER,
           take: q.limit,
@@ -46,22 +69,27 @@ export const GET = withAuth(async (request, authUser) => {
         }),
   ]);
 
-  const items: MapPin[] = ownRows.map((r) => ({ ...r, isOwn: true }));
+  const rows: MapPin[] = ownRows.map((r) => ({ ...r, isOwn: true }));
 
-  const remaining = q.limit - items.length;
+  const remaining = q.limit - rows.length;
   if (following.length > 0 && remaining > 0) {
-    const rows = await prisma.spot.findMany({
+    const theirs = await prisma.spot.findMany({
       where: {
         userId: { in: following.map((f) => f.followingId) },
         visibility: "FOLLOWERS",
-        ...inBox,
+        ...where,
       },
       select: PIN_SELECT,
       orderBy: PIN_ORDER,
       take: remaining,
     });
-    items.push(...rows.map((r) => ({ ...r, isOwn: false })));
+    rows.push(...theirs.map((r) => ({ ...r, isOwn: false })));
   }
 
-  return successResponse({ items, truncated: items.length >= q.limit });
+  // Truncation is about what the database handed back, before the corners
+  // of the square outside the circle are trimmed.
+  const truncated = rows.length >= q.limit;
+  const items = near ? rows.filter((p) => haversineKm(near, p) <= q.radiusKm!) : rows;
+
+  return successResponse({ items, truncated });
 });

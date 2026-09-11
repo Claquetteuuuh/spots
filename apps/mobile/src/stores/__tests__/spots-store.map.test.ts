@@ -29,6 +29,9 @@ const pin = (id: string): MapPin => ({
   city: "Paris",
   userId: "u1",
   isOwn: true,
+  colors: [],
+  compositions: [],
+  accessibility: null,
 });
 
 const getMapPins = api.getMapPins as jest.Mock;

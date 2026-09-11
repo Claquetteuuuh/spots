@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/use-t";
-import { COMPOSITION_TYPES } from "@trs/shared/constants";
+import { COMPOSITION_TYPES, type SpotAccessibility } from "@trs/shared/constants";
 import { PAGE_WIDE, PageHeader } from "@/components/page";
 import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
 import { CompositionIcon } from "@/components/composition-icon";
+import { AccessibilityPicker } from "@/components/accessibility-picker";
 
 const SUGGESTED_COLORS = [
   "#FAFAF8", "#F5E6D3",
@@ -50,6 +51,8 @@ export default function EditSpotPage({
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  // The id, not the object: a refreshed session must not reload the form.
+  const userId = user?.id;
   const t = useT();
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +68,7 @@ export default function EditSpotPage({
   const [selectedCompositions, setSelectedCompositions] = useState<string[]>([]);
   const [customComposition, setCustomComposition] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +77,7 @@ export default function EditSpotPage({
       .then((data) => {
         if (cancelled) return;
         // Only the owner can edit
-        if (user && data.userId !== user.id) {
+        if (userId && data.userId !== userId) {
           router.replace(`/spot/${id}`);
           return;
         }
@@ -83,6 +87,7 @@ export default function EditSpotPage({
         setSelectedCompositions(data.compositions ?? []);
         setCustomComposition(data.customComposition ?? "");
         setSelectedColors(data.colors ?? []);
+        setAccessibility(data.accessibility ?? null);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : t("common.error"));
@@ -94,7 +99,7 @@ export default function EditSpotPage({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user, router]);
+  }, [id, userId, router]);
 
   function toggleComposition(comp: string) {
     setSelectedCompositions((prev) =>
@@ -152,6 +157,7 @@ export default function EditSpotPage({
         compositions: selectedCompositions as typeof COMPOSITION_TYPES[number][],
         customComposition: selectedCompositions.includes("OTHER") ? (customComposition || undefined) : undefined,
         colors: selectedColors,
+        accessibility,
       });
       setSpot(updated);
       setSuccessMessage(t("spots.editSuccess"));
@@ -162,7 +168,7 @@ export default function EditSpotPage({
     } finally {
       setIsSaving(false);
     }
-  }, [spot, title, description, selectedCompositions, customComposition, selectedColors, id, router, t]);
+  }, [spot, title, description, selectedCompositions, customComposition, selectedColors, accessibility, id, router, t]);
 
   if (isLoading) {
     return (
@@ -282,6 +288,12 @@ export default function EditSpotPage({
               />
             </div>
           ) : null}
+        </div>
+
+        {/* Accessibility */}
+        <div>
+          <SectionLabel>{t("spots.accessibilityTitle")}</SectionLabel>
+          <AccessibilityPicker value={accessibility} onChange={setAccessibility} />
         </div>
 
         {/* Colors */}

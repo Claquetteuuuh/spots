@@ -215,4 +215,21 @@ describe("EditSpotScreen", () => {
       expect(mockGoBack).toHaveBeenCalled();
     });
   });
+
+  it("saves the accessibility level picked in the form", async () => {
+    serveUpdateSpot({ ...SPOT, accessibility: "HARD" });
+
+    await renderScreen();
+    await screen.findByDisplayValue("Golden hour bridge");
+
+    await fireEvent.press(screen.getByTestId("accessibility-HARD"));
+    await pressSave();
+
+    await waitFor(() => {
+      expect(mockedApi.updateSpot).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({ accessibility: "HARD" }),
+      );
+    });
+  });
 });

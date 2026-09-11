@@ -1,8 +1,9 @@
 import Supercluster from "supercluster";
+import type { ColorFamily, CompositionType, SpotAccessibility } from "../constants";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-/** The minimal spot payload the map needs to draw a marker and a preview. */
+/** The minimal spot payload the map needs to draw a marker, filter it and preview it. */
 export interface MapPin {
   id: string;
   latitude: number;
@@ -12,6 +13,9 @@ export interface MapPin {
   city: string | null;
   userId: string;
   isOwn: boolean;
+  colors: string[];
+  compositions: CompositionType[];
+  accessibility: SpotAccessibility | null;
 }
 
 export interface MapBounds {
@@ -19,6 +23,11 @@ export interface MapBounds {
   swLng: number;
   neLat: number;
   neLng: number;
+}
+
+export interface LatLng {
+  latitude: number;
+  longitude: number;
 }
 
 /** A react-native-maps style region (center + spans). */
@@ -79,6 +88,17 @@ export function boundsContain(outer: MapBounds, inner: MapBounds): boolean {
   );
 }
 
+/** The overlap of two boxes, or null when they don't touch. */
+export function intersectBounds(a: MapBounds, b: MapBounds): MapBounds | null {
+  const r = {
+    swLat: Math.max(a.swLat, b.swLat),
+    swLng: Math.max(a.swLng, b.swLng),
+    neLat: Math.min(a.neLat, b.neLat),
+    neLng: Math.min(a.neLng, b.neLng),
+  };
+  return r.swLat <= r.neLat && r.swLng <= r.neLng ? r : null;
+}
+
 export function regionToBounds(r: MapRegion): MapBounds {
   return {
     swLat: clampLat(r.latitude - r.latitudeDelta / 2),
@@ -100,6 +120,133 @@ export function zoomFromLongitudeDelta(longitudeDelta: number, viewportWidthPx =
 
 export function longitudeDeltaFromZoom(zoom: number): number {
   return 360 / Math.pow(2, zoom);
+}
+
+// ─── Distance ────────────────────────────────────────────────────────
+
+const EARTH_RADIUS_KM = 6371;
+const KM_PER_DEGREE = 111.32;
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+/** Great-circle distance between two points, in km. */
+export function haversineKm(a: LatLng, b: LatLng): number {
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * A box holding a circle of `km` around `center` — a cheap pre-filter.
+ * A degree of latitude is a touch shorter than the equatorial figure at
+ * mid latitudes, so 1 % is added to be sure nothing inside is cut off.
+ */
+export function radiusToBounds(center: LatLng, km: number): MapBounds {
+  const safeKm = km * 1.01;
+  const dLat = safeKm / KM_PER_DEGREE;
+  const dLng = safeKm / (KM_PER_DEGREE * Math.max(Math.cos(toRad(center.latitude)), 0.01));
+  return {
+    swLat: clampLat(center.latitude - dLat),
+    swLng: clampLng(center.longitude - dLng),
+    neLat: clampLat(center.latitude + dLat),
+    neLng: clampLng(center.longitude + dLng),
+  };
+}
+
+// ─── Colour families ─────────────────────────────────────────────────
+
+/** Parse "#RRGGBB" into HSL (h in degrees, s and l in 0–1). */
+export function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return { h: 0, s: 0, l };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = Math.round(h * 60);
+  if (h < 0) h += 360;
+  return { h, s, l };
+}
+
+/**
+ * Bucket a hex colour into a family. Pale, dark and washed-out colours are
+ * "neutral"; muted warm darks are "brown"; the rest goes by hue.
+ */
+export function colorFamilyOf(hex: string): ColorFamily {
+  const hsl = hexToHsl(hex);
+  if (!hsl) return "neutral";
+  const { h, s, l } = hsl;
+  if (l >= 0.85 || l <= 0.1 || s < 0.1) return "neutral";
+  if (h >= 15 && h < 45 && l < 0.6 && s < 0.5) return "brown";
+  if (h < 15 || h >= 340) return "red";
+  if (h < 40) return "orange";
+  if (h < 70) return "yellow";
+  if (h < 170) return "green";
+  if (h < 255) return "blue";
+  if (h < 310) return "purple";
+  return "pink";
+}
+
+// ─── Filters ─────────────────────────────────────────────────────────
+
+export interface MapFilters {
+  colors: ColorFamily[];
+  compositions: CompositionType[];
+  accessibility: SpotAccessibility[];
+  /** "Around me" radius in km, or null for anywhere. */
+  radiusKm: number | null;
+}
+
+export const EMPTY_FILTERS: MapFilters = {
+  colors: [],
+  compositions: [],
+  accessibility: [],
+  radiusKm: null,
+};
+
+export function countActiveFilters(f: MapFilters): number {
+  return f.colors.length + f.compositions.length + f.accessibility.length + (f.radiusKm ? 1 : 0);
+}
+
+export interface MapFilterQuery {
+  compositions?: string;
+  accessibility?: string;
+  nearLat?: number;
+  nearLng?: number;
+  radiusKm?: number;
+}
+
+/**
+ * The server-side part of the filters as query params. Colour families are
+ * matched on the client (hex colours are free-form), and a radius needs a
+ * position to be around.
+ */
+export function filtersToQuery(f: MapFilters, near: LatLng | null): MapFilterQuery {
+  const q: MapFilterQuery = {};
+  if (f.compositions.length > 0) q.compositions = f.compositions.join(",");
+  if (f.accessibility.length > 0) q.accessibility = f.accessibility.join(",");
+  if (f.radiusKm && near) {
+    q.nearLat = near.latitude;
+    q.nearLng = near.longitude;
+    q.radiusKm = f.radiusKm;
+  }
+  return q;
+}
+
+/** Keep the pins that carry at least one colour in one of the families. */
+export function filterPinsByColor(pins: MapPin[], families: ColorFamily[]): MapPin[] {
+  if (families.length === 0) return pins;
+  const wanted = new Set<ColorFamily>(families);
+  return pins.filter((p) => p.colors.some((hex) => wanted.has(colorFamilyOf(hex))));
 }
 
 // ─── Cluster presentation ────────────────────────────────────────────

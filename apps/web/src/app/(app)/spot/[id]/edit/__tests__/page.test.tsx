@@ -11,8 +11,11 @@ const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
 
+// One router object for the whole test, as in Next — a fresh one each
+// render would re-run every effect that lists it.
+const mockRouter = { push: mockPush, replace: mockReplace, back: mockBack };
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack }),
+  useRouter: () => mockRouter,
 }));
 
 vi.mock("@/lib/use-t", () => ({
@@ -211,5 +214,31 @@ describe("EditSpotPage", () => {
     // DIAGONAL should not be selected
     const diagonalButton = screen.getByText("compositions.DIAGONAL").closest("button")!;
     expect(diagonalButton.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("saves the accessibility level picked in the form", async () => {
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Golden hour bridge")).toBeTruthy();
+    });
+
+    // Nothing rated yet
+    const hard = screen.getByText("spots.accessibilityLevel.HARD").closest("button")!;
+    expect(hard.getAttribute("aria-pressed")).toBe("false");
+
+    hard.click();
+    await waitFor(() => {
+      expect(
+        screen.getByText("spots.accessibilityLevel.HARD").closest("button")!.getAttribute("aria-pressed"),
+      ).toBe("true");
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("common.save"));
+    });
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledWith("s1", expect.objectContaining({ accessibility: "HARD" }));
+    });
   });
 });

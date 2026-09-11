@@ -13,7 +13,9 @@ import {
   ACCEPTED_IMAGE_TYPES,
   MAX_PHOTO_SIZE_BYTES,
   MAX_PHOTO_SIZE_MB,
+  type SpotAccessibility,
 } from "@trs/shared/constants";
+import { AccessibilityPicker } from "@/components/accessibility-picker";
 import { PAGE_WIDE } from "@/components/page";
 import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
 import { CompositionIcon } from "@/components/composition-icon";
@@ -289,6 +291,7 @@ function AddSpotForm() {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<"PRIVATE" | "FOLLOWERS">("FOLLOWERS");
+  const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
   const [showPhotoEyedropper, setShowPhotoEyedropper] = useState(false);
   const [eyedropperReady, setEyedropperReady] = useState(false);
   const [eyedropperPreviewColor, setEyedropperPreviewColor] = useState<string | null>(null);
@@ -946,6 +949,7 @@ function AddSpotForm() {
         description: description || undefined,
         isFree: true,
         visibility,
+        accessibility: accessibility ?? undefined,
         customComposition: selectedCompositions.includes("OTHER") ? (customComposition || undefined) : undefined,
         compositions: selectedCompositions as typeof COMPOSITION_TYPES[number][],
         colors: selectedColors,
@@ -968,6 +972,7 @@ function AddSpotForm() {
     title,
     description,
     visibility,
+    accessibility,
     customComposition,
     selectedCompositions,
     selectedColors,
@@ -1847,6 +1852,12 @@ function AddSpotForm() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Accessibility — optional, easiest level first */}
+            <div>
+              <SectionLabel>{t("spots.accessibilityTitle")}</SectionLabel>
+              <AccessibilityPicker value={accessibility} onChange={setAccessibility} />
             </div>
           </div>
         ) : null}

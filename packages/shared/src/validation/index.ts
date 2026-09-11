@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COMPOSITION_TYPES, DICEBEAR_ORIGIN } from "../constants";
+import { COMPOSITION_TYPES, DICEBEAR_ORIGIN, SPOT_ACCESSIBILITY } from "../constants";
 
 // ─── Auth ────────────────────────────────────────────────────────────
 
@@ -82,9 +82,18 @@ export const createSpotSchema = z.object({
     .optional(),
   visibility: z.enum(["PRIVATE", "FOLLOWERS"]).default("FOLLOWERS"),
   customComposition: z.string().max(100).optional(),
+  // Null clears it — "not rated" is a legitimate answer
+  accessibility: z.enum(SPOT_ACCESSIBILITY).nullable().optional(),
 });
 
 export const updateSpotSchema = createSpotSchema.partial();
+
+/** "A,B" query strings → validated enum arrays. */
+const csvEnum = <T extends readonly [string, ...string[]]>(values: T) =>
+  z
+    .string()
+    .transform((s) => s.split(",").map((v) => v.trim()).filter(Boolean))
+    .pipe(z.array(z.enum(values)).max(20));
 
 export const spotQuerySchema = z.object({
   cursor: z.string().optional(),
@@ -109,8 +118,22 @@ export const mapPinsQuerySchema = z
     neLng: z.coerce.number().min(-180).max(180),
     scope: z.enum(["all", "mine", "following"]).default("all"),
     limit: z.coerce.number().min(1).max(2000).default(500),
+    // Filters — colour families are matched client-side, the rest here
+    compositions: csvEnum(COMPOSITION_TYPES).optional(),
+    accessibility: csvEnum(SPOT_ACCESSIBILITY).optional(),
+    // "Around me": all three or none
+    nearLat: z.coerce.number().min(-90).max(90).optional(),
+    nearLng: z.coerce.number().min(-180).max(180).optional(),
+    radiusKm: z.coerce.number().positive().max(500).optional(),
   })
-  .refine((q) => q.neLat >= q.swLat, { message: "neLat must be >= swLat", path: ["neLat"] });
+  .refine((q) => q.neLat >= q.swLat, { message: "neLat must be >= swLat", path: ["neLat"] })
+  .refine(
+    (q) => {
+      const set = [q.nearLat, q.nearLng, q.radiusKm].filter((v) => v !== undefined).length;
+      return set === 0 || set === 3;
+    },
+    { message: "nearLat, nearLng and radiusKm go together", path: ["radiusKm"] },
+  );
 
 // ─── Users ───────────────────────────────────────────────────────────
 

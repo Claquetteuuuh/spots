@@ -154,6 +154,7 @@ export const POST = withAuth(async (request, authUser) => {
       priceInfo: input.priceInfo,
       visibility: input.visibility,
       customComposition: input.customComposition,
+      accessibility: input.accessibility ?? null,
       colors: input.colors,
       compositions: input.compositions,
       tags: input.tags?.map((t: string) => t.toLowerCase()),
