@@ -167,6 +167,12 @@ interface AuthResponse {
   user: User;
 }
 
+/**
+ * Where the viewer stands with another user: following them, waiting on a
+ * private account to approve the request, or neither.
+ */
+export type FollowStatus = "ACCEPTED" | "PENDING" | null;
+
 export interface User {
   id: string;
   email: string;
@@ -178,6 +184,9 @@ export interface User {
   provider: string;
   isPrivate?: boolean;
   createdAt: string;
+  /** Present on profile and search results for an authenticated viewer. */
+  isFollowing?: boolean;
+  followStatus?: FollowStatus;
   _count?: {
     spots: number;
     followers: number;
@@ -417,10 +426,18 @@ export const apiClient = {
       return request<User>(API_ROUTES.users.profile(username));
     },
 
-    async follow(username: string): Promise<void> {
-      await request<void>(API_ROUTES.users.follow(username), {
-        method: "POST",
-      });
+    /**
+     * Resolves with the resulting status: `ACCEPTED` straight away for a
+     * public account, `PENDING` while a private one decides.
+     */
+    async follow(
+      username: string,
+    ): Promise<{ status: NonNullable<FollowStatus> }> {
+      const follow = await request<{ status: NonNullable<FollowStatus> }>(
+        API_ROUTES.users.follow(username),
+        { method: "POST" },
+      );
+      return { status: follow.status };
     },
 
     async unfollow(username: string): Promise<void> {

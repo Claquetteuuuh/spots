@@ -15,24 +15,28 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 /**
  * Buttons are pills — the roundest thing in the interface after the wordmark's
- * dot. Only `primary` carries brand colour; everything else is a neutral
- * surface, so there is never a question about which action is the main one.
+ * dot. Only `primary` carries brand colour as a fill; `ghost` is the app's
+ * inline text action and reads in brand colour too. Variants are expressed
+ * purely through fill and a hairline border, never a shadow — this mirrors the
+ * mobile app's Button one for one.
  */
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-accent text-on-accent hover:bg-accent-dark active:bg-accent-dark disabled:opacity-40",
+    "border border-accent bg-accent text-on-accent hover:border-accent-dark hover:bg-accent-dark active:bg-accent-dark",
   secondary:
-    "bg-bg-secondary text-text hover:bg-bg-tertiary active:bg-bg-tertiary disabled:opacity-40",
-  ghost:
-    "bg-transparent text-text hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-40",
-  danger:
-    "bg-error text-white hover:brightness-95 active:brightness-90 disabled:opacity-40",
+    "border border-border bg-bg-secondary text-text hover:bg-bg-tertiary active:bg-bg-tertiary",
+  ghost: "border border-transparent bg-transparent text-accent hover:bg-bg-secondary active:bg-bg-tertiary",
+  danger: "border border-error bg-error text-white hover:brightness-95 active:brightness-90",
 };
 
+/**
+ * `md` and `lg` are the app's two sizes (12/24px at 15px, 16/24px at 16px).
+ * `sm` is web-only, for compact desktop rows.
+ */
 const sizeClasses: Record<Size, string> = {
   sm: "px-3.5 py-1.5 text-sm",
-  md: "px-5 py-2.5 text-sm",
-  lg: "px-7 py-3.5 text-base",
+  md: "px-6 py-3 text-[15px]",
+  lg: "px-6 py-4 text-base",
 };
 
 export function Button({
@@ -48,11 +52,12 @@ export function Button({
   return (
     <button
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`
-        inline-flex items-center justify-center gap-2
-        rounded-full font-semibold
+        relative inline-flex items-center justify-center gap-2
+        rounded-full font-semibold tracking-[0.2px]
         transition-colors duration-150
-        cursor-pointer disabled:cursor-not-allowed
+        cursor-pointer disabled:cursor-not-allowed disabled:opacity-50
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${fullWidth ? "w-full" : ""}
@@ -60,12 +65,15 @@ export function Button({
       `}
       {...props}
     >
+      {/* Like the app, the spinner replaces the label — but the label keeps
+          its footprint so the pill doesn't shrink under the cursor. */}
       {loading ? (
         <svg
-          className="h-4 w-4 animate-spin"
+          className="absolute h-4 w-4 animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <circle
             className="opacity-25"
@@ -82,7 +90,7 @@ export function Button({
           />
         </svg>
       ) : null}
-      {children}
+      {loading ? <span className="invisible">{children}</span> : children}
     </button>
   );
 }

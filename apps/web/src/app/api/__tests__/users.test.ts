@@ -6,6 +6,9 @@ const mockUserFindUnique = vi.fn();
 const mockUserFindMany = vi.fn();
 const mockFollowCreate = vi.fn();
 const mockFollowFindUnique = vi.fn();
+// GET /api/users/search resolves the viewer's follow state for a whole page
+// of results with a single `follow.findMany`.
+const mockFollowFindMany = vi.fn();
 const mockFollowDelete = vi.fn();
 // GET /api/users/[username] counts accepted followers/following separately
 // from the raw `_count` relation totals (which include pending requests).
@@ -19,6 +22,7 @@ vi.mock("@/lib/db", () => ({
     follow: {
       create: (...args: unknown[]) => mockFollowCreate(...args),
       findUnique: (...args: unknown[]) => mockFollowFindUnique(...args),
+      findMany: (...args: unknown[]) => mockFollowFindMany(...args),
       delete: (...args: unknown[]) => mockFollowDelete(...args),
       count: (...args: unknown[]) => mockFollowCount(...args),
     },
@@ -63,6 +67,7 @@ function resetPrismaMocks() {
   mockUserFindUnique.mockResolvedValue(null);
   mockUserFindMany.mockResolvedValue([]);
   mockFollowFindUnique.mockResolvedValue(null);
+  mockFollowFindMany.mockResolvedValue([]);
   mockFollowCount.mockResolvedValue(0);
 }
 
@@ -183,11 +188,13 @@ describe("GET /api/users/[username]", () => {
 describe("GET /api/users/search", () => {
   beforeEach(() => {
     resetPrismaMocks();
+    // Search is open to anyone; tests opt into a viewer explicitly.
+    mockGetUserFromRequest.mockResolvedValue(null);
   });
 
   it("returns matching users", async () => {
     mockUserFindMany.mockResolvedValue([
-      { id: "u1", username: "alice", name: "Alice", avatarUrl: null, bio: null },
+      { id: "u1", username: "alice", name: "Alice", avatarUrl: null, bio: null, isPrivate: false },
     ]);
 
     const req = new NextRequest("http://localhost/api/users/search?q=ali");
@@ -197,6 +204,46 @@ describe("GET /api/users/search", () => {
     expect(res.status).toBe(200);
     expect(json.data).toHaveLength(1);
     expect(json.data[0].username).toBe("alice");
+    // An anonymous viewer follows nobody, and no follow lookup is needed.
+    expect(json.data[0].isFollowing).toBe(false);
+    expect(json.data[0].followStatus).toBeNull();
+    expect(mockFollowFindMany).not.toHaveBeenCalled();
+  });
+
+  it("includes the viewer's follow state for each result", async () => {
+    mockGetUserFromRequest.mockResolvedValue({
+      userId: "viewer-1",
+      email: "viewer@example.com",
+      username: "viewer",
+    });
+    mockUserFindMany.mockResolvedValue([
+      { id: "u1", username: "alice", name: "Alice", avatarUrl: null, bio: null, isPrivate: false },
+      { id: "u2", username: "bob", name: "Bob", avatarUrl: null, bio: null, isPrivate: true },
+      { id: "u3", username: "carol", name: "Carol", avatarUrl: null, bio: null, isPrivate: false },
+    ]);
+    mockFollowFindMany.mockResolvedValue([
+      { followingId: "u1", status: "ACCEPTED" },
+      { followingId: "u2", status: "PENDING" },
+    ]);
+
+    const req = new NextRequest("http://localhost/api/users/search?q=a", {
+      headers: { Authorization: "Bearer mock-token" },
+    });
+    const res = await SearchUsers(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    // One query for the whole page, scoped to the viewer and the result ids.
+    expect(mockFollowFindMany).toHaveBeenCalledOnce();
+    expect(mockFollowFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { followerId: "viewer-1", followingId: { in: ["u1", "u2", "u3"] } },
+      }),
+    );
+    expect(json.data[0]).toMatchObject({ username: "alice", isFollowing: true, followStatus: "ACCEPTED" });
+    // A pending request to a private account is not yet "following".
+    expect(json.data[1]).toMatchObject({ username: "bob", isFollowing: false, followStatus: "PENDING", isPrivate: true });
+    expect(json.data[2]).toMatchObject({ username: "carol", isFollowing: false, followStatus: null });
   });
 
   it("returns empty array when no match", async () => {

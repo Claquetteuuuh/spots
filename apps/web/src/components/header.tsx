@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Wordmark } from "@/components/wordmark";
+import { TabIcon } from "@/components/tab-icons";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
@@ -71,8 +72,11 @@ export function Header() {
 
   return (
     <>
-      {/* ── Top bar ────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur-md">
+      {/* ── Top bar — desktop only ──────────────────────────────────
+          The app has no global bar: each screen owns its top edge. Below
+          `lg` the pages draw their own headers (see PageHeader) and this
+          one stays out of the way. */}
+      <header className="sticky top-0 z-50 hidden border-b border-border bg-bg/90 backdrop-blur-md lg:block">
         <nav className="mx-auto grid h-14 w-full max-w-4xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
           {/* Logo */}
           <Link
@@ -82,9 +86,10 @@ export function Header() {
             <Wordmark className="text-xl" />
           </Link>
 
-          {/* Destinations — centre column, desktop only */}
+          {/* Destinations — centre column, desktop only (phones and tablets
+              use the bottom tab bar, like the app) */}
           {isAuthenticated ? (
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="hidden items-center gap-2 lg:flex">
               {/* Map */}
               <Link
                 href="/map"
@@ -174,9 +179,9 @@ export function Header() {
           {/* Account — right column */}
           <div className="flex items-center justify-end gap-3">
             {isAuthenticated ? (
-              // On a phone the profile lives in the bottom tab bar; a second
-              // avatar up here would just be the same destination twice.
-              <div className="relative hidden md:block" ref={menuRef}>
+              // On a phone or tablet the profile lives in the bottom tab bar;
+              // a second avatar up here would just be the same destination twice.
+              <div className="relative hidden lg:block" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-xs font-medium transition-all ring-2 ${
@@ -262,85 +267,55 @@ export function Header() {
         </nav>
       </header>
 
-      {/* ── Mobile bottom tab bar (authenticated only) ─────────────── */}
+      {/* ── Bottom tab bar (phone + tablet, authenticated only) ────────
+          A copy of the app's tab bar (RootNavigator.tsx): five tabs in the
+          same order, the same Ionicons glyphs filled when focused, text
+          colour for the focused tab, a solid surface with a hairline on top,
+          50px tall plus the home-indicator inset. Tablets keep it too — the
+          app looks the same on an iPad — so the desktop header only takes
+          over from `lg`. */}
       {isAuthenticated && user ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/90 backdrop-blur-md md:hidden">
-          <div className="flex items-center justify-around h-14">
-            {/* Map */}
-            <Link
-              href="/map"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-isActive("/map") ? "text-accent" : "text-text-tertiary"
-              }`}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/map") ? 2 : 1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-              </svg>
-            </Link>
-
-            {/* Search */}
-            <Link
-              href="/search"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-isActive("/search") ? "text-accent" : "text-text-tertiary"
-              }`}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/search") ? 2 : 1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-            </Link>
-
-            {/* Add */}
-            <Link
-              href="/spot/new"
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-isActive("/spot/new") ? "text-accent" : "text-text-tertiary"
-              }`}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/spot/new") ? 2 : 1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-            </Link>
-
-            {/* Notifications */}
-            <Link
-              href="/notifications"
-              className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-isActive("/notifications") ? "text-accent" : "text-text-tertiary"
-              }`}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={isActive("/notifications") ? 2 : 1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-              </svg>
-              {pendingCount > 0 ? (
-                <span className="absolute top-1.5 left-1/2 ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white">
-                  {pendingCount > 9 ? "9+" : pendingCount}
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-bg pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <div className="flex h-[50px] items-center pt-2" role="tablist">
+            {(
+              [
+                { name: "map", href: "/map", active: isActive("/map"), label: t("spots.map") },
+                { name: "search", href: "/search", active: isActive("/search"), label: t("common.search") },
+                { name: "add", href: "/spot/new", active: isActive("/spot/new"), label: t("spots.addSpot") },
+                {
+                  name: "notifications",
+                  href: "/notifications",
+                  active: isActive("/notifications"),
+                  label: t("notifications.title"),
+                },
+                {
+                  name: "profile",
+                  href: `/profile/${user.username}`,
+                  active: pathname?.startsWith("/profile") ?? false,
+                  label: t("users.profile"),
+                },
+              ] as const
+            ).map((tab) => (
+              <Link
+                key={tab.name}
+                href={tab.href}
+                role="tab"
+                aria-selected={tab.active}
+                aria-label={tab.label}
+                className={`flex h-full flex-1 items-center justify-center transition-colors ${
+                  tab.active ? "text-text" : "text-text-tertiary"
+                }`}
+              >
+                <span className="relative">
+                  <TabIcon name={tab.name} focused={tab.active} />
+                  {tab.name === "notifications" && pendingCount > 0 ? (
+                    <span className="absolute -top-1 -right-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white">
+                      {pendingCount > 9 ? "9+" : pendingCount}
+                    </span>
+                  ) : null}
                 </span>
-              ) : null}
-            </Link>
-
-            {/* Profile */}
-            <Link
-              href={`/profile/${user.username}`}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-pathname?.startsWith("/profile") ? "text-accent" : "text-text-tertiary"
-              }`}
-            >
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt=""
-                  className={`h-6 w-6 rounded-full object-cover ring-1 ${
-                    pathname?.startsWith("/profile") ? "ring-accent" : "ring-transparent"
-                  }`}
-                />
-              ) : (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={pathname?.startsWith("/profile") ? 2 : 1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
-              )}
-            </Link>
+              </Link>
+            ))}
           </div>
         </nav>
       ) : null}

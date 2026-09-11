@@ -1,9 +1,11 @@
 "use client";
 
 import { startTransition, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient, getToken } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/locale-context";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@/lib/locale";
@@ -15,66 +17,102 @@ import { getTheme, setTheme, type ThemeMode } from "@/lib/theme";
 
 function ChevronRight({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  );
+}
+
+function LockIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+  );
+}
+
+function GlobeIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
+    </svg>
+  );
+}
+
+function LogoutIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
     </svg>
   );
 }
 
 /* ── Extracted sub-components (must be top-level for React rules) ── */
 
-function SettingsRow({
+/**
+ * The app's settings Section: a plain 15px title over a tinted card with a
+ * hairline border — grouping by surface, not by rules between rows.
+ */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[15px] font-semibold text-text">{title}</h2>
+      <div className="space-y-4 rounded-sm border border-border bg-bg-secondary p-4">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The app's settings Row: icon, label, the current value trailing on the
+ * right, chevron. Pressing it changes the value in place.
+ */
+function Row({
   icon,
   label,
-  detail,
+  value,
   onClick,
-  danger,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
-  detail?: string;
-  onClick?: () => void;
-  danger?: boolean;
+  value: string;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer
-        ${danger ? "text-error" : "text-text"}
-        hover:bg-bg-secondary active:bg-bg-tertiary`}
+      className="flex w-full cursor-pointer items-center py-1 text-left"
     >
-      <span className={`shrink-0 ${danger ? "text-error" : "text-text-secondary"}`}>
-        {icon}
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-sm">{label}</span>
-        {detail ? (
-          <span className="block text-xs text-text-tertiary mt-0.5 truncate">
-            {detail}
-          </span>
-        ) : null}
-      </span>
-      {!danger ? (
-        <ChevronRight className="h-4 w-4 text-text-tertiary shrink-0" />
-      ) : null}
+      <span className="shrink-0 text-text-secondary">{icon}</span>
+      <span className="ml-3 min-w-0 flex-1 truncate text-[13px] text-text">{label}</span>
+      <span className="shrink-0 text-[13px] text-text-secondary">{value}</span>
+      <ChevronRight className="ml-1 h-4 w-4 shrink-0 text-text-tertiary" />
     </button>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+type Message = { type: "success" | "error"; text: string } | null;
+
+function FormMessage({ message }: { message: Message }) {
+  if (!message) return null;
   return (
-    <div className="pt-6 pb-1.5">
-      <p className="text-sm font-semibold text-text-secondary">
-        {title}
-      </p>
-    </div>
+    <p className={`text-[13px] ${message.type === "success" ? "text-success" : "text-error"}`}>
+      {message.text}
+    </p>
   );
 }
 
-/* ── Sub-panels (inline modals like Instagram) ───────────────────── */
-
-type Panel = "main" | "account" | "theme" | "language";
+const THEME_ORDER: ThemeMode[] = ["system", "light", "dark"];
 
 export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
@@ -82,26 +120,17 @@ export default function SettingsPage() {
   const router = useRouter();
   const t = useT();
 
-  const [panel, setPanel] = useState<Panel>("main");
-
-  // Account info state
-  const [email, setEmail] = useState("");
+  // Account info
   const [username, setUsername] = useState("");
   const [isSavingAccount, setIsSavingAccount] = useState(false);
-  const [accountMessage, setAccountMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [accountMessage, setAccountMessage] = useState<Message>(null);
 
-  // Password state
+  // Password
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<Message>(null);
 
   // Privacy
   const [isPrivate, setIsPrivate] = useState(false);
@@ -113,7 +142,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       startTransition(() => {
-        setEmail(user.email ?? "");
         setUsername(user.username ?? "");
         setIsPrivate((user as unknown as { isPrivate?: boolean }).isPrivate ?? false);
       });
@@ -126,9 +154,17 @@ export default function SettingsPage() {
     });
   }, []);
 
-  function handleThemeChange(mode: ThemeMode) {
-    setThemeMode(mode);
-    setTheme(mode);
+  // Like the app, the rows cycle their value in place: system → light → dark,
+  // and through the supported locales.
+  function handleCycleTheme() {
+    const next = THEME_ORDER[(THEME_ORDER.indexOf(themeMode) + 1) % THEME_ORDER.length];
+    setThemeMode(next);
+    setTheme(next);
+  }
+
+  function handleCycleLanguage() {
+    const idx = SUPPORTED_LOCALES.indexOf(locale);
+    setLocale(SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length]);
   }
 
   const handleAccountSubmit = useCallback(
@@ -145,7 +181,7 @@ export default function SettingsPage() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ email, username }),
+          body: JSON.stringify({ username }),
         });
 
         if (!res.ok) {
@@ -164,7 +200,7 @@ export default function SettingsPage() {
         setIsSavingAccount(false);
       }
     },
-    [email, username, refreshUser, t],
+    [username, refreshUser, t],
   );
 
   const handlePasswordSubmit = useCallback(
@@ -174,6 +210,10 @@ export default function SettingsPage() {
 
       if (newPassword !== confirmPassword) {
         setPasswordMessage({ type: "error", text: t("settings.passwordMismatch") });
+        return;
+      }
+      if (newPassword.length < 8) {
+        setPasswordMessage({ type: "error", text: t("auth.errors.passwordTooShort") });
         return;
       }
 
@@ -221,207 +261,15 @@ export default function SettingsPage() {
   }
 
   function handleLogout() {
+    if (!window.confirm(t("settings.logOutConfirm"))) return;
     logout();
     router.push("/");
   }
 
-  const goBackToMain = useCallback(() => {
-    setPanel("main");
-    setAccountMessage(null);
-    setPasswordMessage(null);
-  }, []);
+  const email = user?.email ?? "";
+  // Password change is only for email/password accounts — OAuth users have none.
+  const canChangePassword = user?.provider === "EMAIL";
 
-  /* ─────────────────────────────────────────────────────────────── */
-  /* Account Panel                                                   */
-  /* ─────────────────────────────────────────────────────────────── */
-  if (panel === "account") {
-    const isOAuthOnly = user?.provider !== "EMAIL";
-
-    return (
-      <div className={PAGE_COLUMN}>
-        <PageHeader title={t("settings.accountInfo")} onBack={goBackToMain} />
-
-        {/* Email + Username form */}
-        <form onSubmit={handleAccountSubmit} className="px-4 py-5 space-y-4">
-          <SectionHeader title={t("settings.personalInfo")} />
-
-          <Input
-            label={t("settings.emailLabel")}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            label={t("settings.usernameLabel")}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
-          {accountMessage ? (
-            <p className={`text-sm ${accountMessage.type === "success" ? "text-success" : "text-error"}`}>
-              {accountMessage.text}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={isSavingAccount}
-            className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
-          >
-            {isSavingAccount ? t("common.loading") : t("settings.saveChanges")}
-          </button>
-        </form>
-
-        {/* Password section — only for email users */}
-        {!isOAuthOnly ? (
-          <form onSubmit={handlePasswordSubmit} className="px-4 pb-5 space-y-4 border-t border-border">
-            <SectionHeader title={t("settings.changePassword")} />
-
-            <Input
-              label={t("settings.currentPassword")}
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-            <Input
-              label={t("settings.newPasswordLabel")}
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              hint={t("auth.errors.passwordTooShort")}
-            />
-            <Input
-              label={t("settings.confirmPassword")}
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-
-            {passwordMessage ? (
-              <p className={`text-sm ${passwordMessage.type === "success" ? "text-success" : "text-error"}`}>
-                {passwordMessage.text}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={isSavingPassword || !currentPassword || !newPassword || !confirmPassword}
-              className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
-            >
-              {isSavingPassword ? t("common.loading") : t("settings.changePassword")}
-            </button>
-          </form>
-        ) : null}
-      </div>
-    );
-  }
-
-  /* ─────────────────────────────────────────────────────────────── */
-  /* Theme Panel                                                     */
-  /* ─────────────────────────────────────────────────────────────── */
-  if (panel === "theme") {
-    const options: { key: ThemeMode; label: string; icon: React.ReactNode }[] = [
-      {
-        key: "system",
-        label: t("settings.themeSystem"),
-        icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25Z" />
-          </svg>
-        ),
-      },
-      {
-        key: "light",
-        label: t("settings.themeLight"),
-        icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-          </svg>
-        ),
-      },
-      {
-        key: "dark",
-        label: t("settings.themeDark"),
-        icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-          </svg>
-        ),
-      },
-    ];
-
-    return (
-      <div className={PAGE_COLUMN}>
-        <PageHeader title={t("settings.theme")} onBack={goBackToMain} />
-        <div className="py-2">
-          {options.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => handleThemeChange(key)}
-              className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
-            >
-              <span className="text-text-secondary">{icon}</span>
-              <span className="flex-1 text-sm text-text">{label}</span>
-              {/* Radio indicator */}
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors
-                  ${themeMode === key ? "border-accent" : "border-border-dark"}`}
-              >
-                {themeMode === key ? (
-                  <span className="h-2.5 w-2.5 rounded-full bg-accent" />
-                ) : null}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ─────────────────────────────────────────────────────────────── */
-  /* Language Panel                                                  */
-  /* ─────────────────────────────────────────────────────────────── */
-  if (panel === "language") {
-    return (
-      <div className={PAGE_COLUMN}>
-        <PageHeader title={t("settings.language")} onBack={goBackToMain} />
-        <div className="py-2">
-          {SUPPORTED_LOCALES.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setLocale(key)}
-              aria-pressed={locale === key}
-              className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary"
-            >
-              <span className="w-8 shrink-0 rounded-full bg-bg-secondary py-1 text-center text-[11px] font-semibold uppercase text-text-secondary">
-                {key}
-              </span>
-              <span className="flex-1 text-sm text-text">
-                {LOCALE_LABELS[key]}
-              </span>
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors
-                  ${locale === key ? "border-accent" : "border-border-dark"}`}
-              >
-                {locale === key ? (
-                  <span className="h-2.5 w-2.5 rounded-full bg-accent" />
-                ) : null}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ─────────────────────────────────────────────────────────────── */
-  /* Main Settings Panel                                             */
-  /* ─────────────────────────────────────────────────────────────── */
   const themeLabel =
     themeMode === "dark"
       ? t("settings.themeDark")
@@ -429,101 +277,137 @@ export default function SettingsPage() {
         ? t("settings.themeLight")
         : t("settings.themeSystem");
 
-  const langLabel = LOCALE_LABELS[locale];
-
   return (
     <div className={PAGE_COLUMN}>
-      <PageHeader title={t("settings.title")} />
+      <PageHeader title={t("settings.title")} back={false} />
 
-      {/* Account section */}
-      <SectionHeader title={t("settings.account")} />
+      {/* The app's screen: 16px padding, 24px between sections, 64px under the last. */}
+      <div className="space-y-6 pb-16 pt-4">
+        {/* Account info — inline, like the app */}
+        <Section title={t("settings.accountInfo")}>
+          <form onSubmit={handleAccountSubmit} className="space-y-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium uppercase tracking-[0.5px] text-text-secondary">
+                {t("settings.emailLabel")}
+              </span>
+              <p className="px-3 py-2.5 text-[13px] text-text-secondary">{email}</p>
+            </div>
+            <Input
+              label={t("settings.usernameLabel")}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="none"
+              autoComplete="username"
+            />
+            <FormMessage message={accountMessage} />
+            <Button type="submit" fullWidth loading={isSavingAccount}>
+              {t("settings.saveChanges")}
+            </Button>
+          </form>
+        </Section>
 
-      <SettingsRow
-        icon={
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-          </svg>
-        }
-        label={t("settings.accountInfo")}
-        detail={t("settings.accountInfoDesc")}
-        onClick={() => setPanel("account")}
-      />
+        {/* Change password — hidden for OAuth users */}
+        {canChangePassword ? (
+          <Section title={t("settings.changePassword")}>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <Input
+                label={t("settings.currentPassword")}
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <Input
+                label={t("settings.newPasswordLabel")}
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <Input
+                label={t("settings.confirmPassword")}
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <FormMessage message={passwordMessage} />
+              <Button
+                type="submit"
+                fullWidth
+                loading={isSavingPassword}
+                disabled={!currentPassword || !newPassword || !confirmPassword}
+              >
+                {t("settings.changePassword")}
+              </Button>
+            </form>
+          </Section>
+        ) : null}
 
-      {/* Privacy section */}
-      <SectionHeader title={t("settings.privacy")} />
+        {/* Privacy */}
+        <Section title={t("settings.privacy")}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isPrivate}
+            onClick={handleTogglePrivacy}
+            disabled={isSavingPrivacy}
+            className="flex w-full cursor-pointer items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="flex items-center gap-2">
+                <LockIcon className="h-5 w-5 shrink-0 text-text-secondary" />
+                <span className="text-[13px] font-semibold text-text">
+                  {t("settings.privateAccount")}
+                </span>
+              </span>
+              <span className="ml-7 text-xs text-text-secondary">
+                {isPrivate ? t("settings.privateAccountShort") : t("settings.publicAccountShort")}
+              </span>
+            </span>
+            {/* Switch: accent track when on, no shadow on the thumb */}
+            <span
+              aria-hidden="true"
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                isPrivate ? "bg-accent" : "bg-border-dark"
+              }`}
+            >
+              <span
+                className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-bg transition-transform ${
+                  isPrivate ? "translate-x-[22px]" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+          </button>
+        </Section>
 
-      <button
-        type="button"
-        onClick={handleTogglePrivacy}
-        disabled={isSavingPrivacy}
-        className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-3.5 rounded-lg px-4 py-3 text-left transition-colors cursor-pointer hover:bg-bg-secondary active:bg-bg-tertiary disabled:opacity-50"
-      >
-        <span className="shrink-0 text-text-secondary">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-          </svg>
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-sm text-text">{t("settings.privateAccount")}</span>
-          <span className="block text-xs text-text-tertiary mt-0.5">
-            {isPrivate ? t("settings.privateAccountShort") : t("settings.publicAccountShort")}
-          </span>
-        </span>
-        {/* Toggle */}
-        <span
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-            isPrivate ? "bg-accent" : "bg-border-dark"
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform mt-0.5 ${
-              isPrivate ? "translate-x-[22px]" : "translate-x-0.5"
-            }`}
+        {/* Preferences */}
+        <Section title={t("settings.preferences")}>
+          <Row
+            icon={<MoonIcon />}
+            label={t("settings.theme")}
+            value={themeLabel}
+            onClick={handleCycleTheme}
           />
-        </span>
-      </button>
+          <Row
+            icon={<GlobeIcon />}
+            label={t("settings.language")}
+            value={LOCALE_LABELS[locale]}
+            onClick={handleCycleLanguage}
+          />
+        </Section>
 
-      {/* Preferences section */}
-      <SectionHeader title={t("settings.preferences")} />
-
-      <SettingsRow
-        icon={
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-          </svg>
-        }
-        label={t("settings.theme")}
-        detail={themeLabel}
-        onClick={() => setPanel("theme")}
-      />
-
-      <SettingsRow
-        icon={
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
-          </svg>
-        }
-        label={t("settings.language")}
-        detail={langLabel}
-        onClick={() => setPanel("language")}
-      />
-
-      {/* Divider + Logout */}
-      <div className="mt-6 border-t border-border">
-        <SettingsRow
-          icon={
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-            </svg>
-          }
-          label={t("auth.logout")}
+        {/* Logout — the app's outlined destructive button, with a confirm step */}
+        <button
+          type="button"
           onClick={handleLogout}
-          danger
-        />
-      </div>
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm border border-error py-3.5 text-[13px] font-semibold text-error transition-colors hover:bg-error-light"
+        >
+          <LogoutIcon className="h-[18px] w-[18px]" />
+          {t("auth.logout")}
+        </button>
 
-      <div className="px-4 py-6 text-center">
-        <p className="text-sm text-text-tertiary">spots v1.0.0</p>
+        <p className="hidden text-center text-sm text-text-tertiary lg:block">spots v1.0.0</p>
       </div>
     </div>
   );

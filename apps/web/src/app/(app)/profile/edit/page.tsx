@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiClient, getToken } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_AVATAR_SIZE_BYTES } from "@trs/shared/constants";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/use-t";
 import { PAGE_COLUMN, PageHeader } from "@/components/page";
 import { CharacterCount } from "@/components/ui/limit-hint";
@@ -125,7 +126,13 @@ export default function EditProfilePage() {
     <div className={PAGE_COLUMN}>
       <PageHeader title={t("users.editProfile")} />
 
-      <form onSubmit={handleSubmit} className="px-4 py-5 space-y-4">
+      {/* The app's form: 24px from the screen edge, 16px between fields.
+          `-mx-4` takes the column's own inset back so the 24px is measured
+          from the edge, not stacked on top of it. */}
+      <form
+        onSubmit={handleSubmit}
+        className="-mx-4 px-6 py-6 space-y-4 lg:mx-0 lg:px-4 lg:py-5"
+      >
         {/* Avatar at top */}
         <div className="flex flex-col items-center gap-2 pb-2">
           <div className="relative">
@@ -175,35 +182,43 @@ export default function EditProfilePage() {
           label={t("auth.username")}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          autoCapitalize="none"
+          autoComplete="username"
         />
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="bio" className="text-sm font-medium text-text">
-            Bio
-          </label>
-          <textarea
-            id="bio"
+        <div className="flex flex-col gap-1 [&>p]:text-xs">
+          <Textarea
+            label={t("users.bio")}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            rows={3}
+            rows={4}
             maxLength={500}
-            className="w-full rounded border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg transition-colors"
           />
+          {/* Only speaks up near the limit; sized to the field's own hint. */}
           <CharacterCount value={bio} max={500} />
         </div>
 
         {message ? (
-          <p className={`text-sm ${message.type === "success" ? "text-success" : "text-error"}`}>
+          <p
+            className={`text-center text-[13px] ${
+              message.type === "success" ? "text-success" : "text-error"
+            }`}
+            role={message.type === "error" ? "alert" : "status"}
+          >
             {message.text}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="w-full cursor-pointer rounded-full bg-accent py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-dark disabled:opacity-40"
+        <Button type="submit" fullWidth size="md" loading={isSaving}>
+          {t("common.save")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          fullWidth
+          onClick={() => router.back()}
         >
-          {isSaving ? t("common.loading") : t("common.save")}
-        </button>
+          {t("common.cancel")}
+        </Button>
       </form>
     </div>
   );

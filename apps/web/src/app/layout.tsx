@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type React from "react";
 import { Figtree, Fredoka } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
@@ -47,6 +47,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/**
+ * `viewport-fit=cover` lets the page extend under the iPhone home indicator,
+ * which is what makes `env(safe-area-inset-bottom)` non-zero — the bottom tab
+ * bar pads itself by that amount, exactly like the app's does.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getServerLocale();
 
@@ -56,7 +67,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`h-full antialiased ${fredoka.variable} ${figtree.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-bg text-text pb-14 md:pb-0">
+      {/* The tab-bar clearance lives on the (app) layout's <main>; auth and
+          landing pages have no tab bar and need none. */}
+      <body className="min-h-full flex flex-col bg-bg text-text">
         <ThemeInit />
         <LocaleProvider initialLocale={locale}>
           <AuthProvider>{children}</AuthProvider>

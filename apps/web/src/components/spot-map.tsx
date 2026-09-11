@@ -10,8 +10,20 @@ interface MapBounds {
   neLng: number;
 }
 
+/**
+ * A place to move the map to. Pass a fresh object each time — the map
+ * re-centres on every new one, so "locate me" answers even when the
+ * photographer hasn't moved.
+ */
+interface MapCenter {
+  lat: number;
+  lng: number;
+  zoom?: number;
+}
+
 interface SpotMapProps {
   spots: Spot[];
+  center?: MapCenter | null;
   onSpotClick?: (spot: Spot) => void;
   onBoundsChange?: (bounds: MapBounds) => void;
 }
@@ -19,11 +31,21 @@ interface SpotMapProps {
 // Default center: Paris
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 const DEFAULT_ZOOM = 5;
+// Roughly the app's 0.05° region once the photographer is located.
+const LOCATE_ZOOM = 13;
 
-export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapProps) {
+export default function SpotMap({ spots, center, onSpotClick, onBoundsChange }: SpotMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
+  // Latest click handler, so markers never need rebuilding when it changes.
+  const onSpotClickRef = useRef(onSpotClick);
+  // A centre asked for before Leaflet finished loading — applied on init.
+  const pendingCenterRef = useRef<MapCenter | null>(null);
+
+  useEffect(() => {
+    onSpotClickRef.current = onSpotClick;
+  }, [onSpotClick]);
 
   useEffect(() => {
     // Load Leaflet CSS
@@ -39,7 +61,7 @@ export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapP
     import("leaflet").then((L) => {
       if (!containerRef.current || mapRef.current) return;
 
-      const map = L.map(containerRef.current).setView(
+      const map = L.map(containerRef.current, { attributionControl: false }).setView(
         DEFAULT_CENTER,
         DEFAULT_ZOOM,
       );
@@ -48,13 +70,21 @@ export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapP
         attribution: "&copy; OpenStreetMap contributors",
       }).addTo(map);
 
+      // The screen's actions sit bottom-right, like the app's, so credit
+      // OpenStreetMap on the other side rather than under a button.
+      L.control.attribution({ position: "bottomleft" }).addTo(map);
+
       mapRef.current = map;
 
       // Add spots
-      addMarkers(L, map, spots, onSpotClick);
+      addMarkers(L, map, spots, (spot) => onSpotClickRef.current?.(spot));
 
-      // Fit bounds if we have spots
-      if (spots.length > 0) {
+      const pending = pendingCenterRef.current;
+      if (pending) {
+        pendingCenterRef.current = null;
+        map.setView([pending.lat, pending.lng], pending.zoom ?? LOCATE_ZOOM);
+      } else if (spots.length > 0) {
+        // Fit bounds if we have spots
         const bounds = L.latLngBounds(
           spots.map((s) => [s.latitude, s.longitude] as [number, number]),
         );
@@ -89,11 +119,24 @@ export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Move to a requested centre (the photographer's location)
+  useEffect(() => {
+    if (!center) return;
+    const map = mapRef.current;
+    if (!map) {
+      pendingCenterRef.current = center;
+      return;
+    }
+    map.flyTo([center.lat, center.lng], center.zoom ?? LOCATE_ZOOM, { duration: 0.8 });
+  }, [center]);
+
   // Update markers when spots change
   useEffect(() => {
     if (!mapRef.current) return;
 
     import("leaflet").then((L) => {
+      if (!mapRef.current) return;
+
       // Remove existing markers
       mapRef.current.eachLayer(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,15 +147,16 @@ export default function SpotMap({ spots, onSpotClick, onBoundsChange }: SpotMapP
         },
       );
 
-      addMarkers(L, mapRef.current, spots, onSpotClick);
+      addMarkers(L, mapRef.current, spots, (spot) => onSpotClickRef.current?.(spot));
     });
-  }, [spots, onSpotClick]);
+  }, [spots]);
 
+  // Below `lg` the map is touch-first like the app: no +/- buttons, pinch
+  // to zoom. Desktop keeps Leaflet's zoom control.
   return (
     <div
       ref={containerRef}
-      className="h-full w-full"
-      style={{ minHeight: "400px" }}
+      className="h-full w-full [&_.leaflet-control-zoom]:hidden lg:[&_.leaflet-control-zoom]:block"
     />
   );
 }
@@ -123,47 +167,33 @@ function addMarkers(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map: any,
   spots: Spot[],
-  onSpotClick?: (spot: Spot) => void,
+  onSpotClick: (spot: Spot) => void,
 ) {
-  // Custom icon using design tokens
+  // The app's pin: a 14px spot in the brand blue, ringed by the page
+  // background so it reads on any tile. Theme tokens, so it follows dark mode.
   const icon = L.divIcon({
     className: "custom-marker",
     html: `<div style="
-      width: 12px;
-      height: 12px;
-      background: #8B7355;
-      border: 2px solid #FAFAF8;
-      border-radius: 2px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      box-sizing: border-box;
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      background: var(--color-accent);
+      border: 2px solid var(--color-bg);
     "></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
   });
 
   for (const spot of spots) {
-    const marker = L.marker([spot.latitude, spot.longitude], { icon }).addTo(
-      map,
-    );
+    const marker = L.marker([spot.latitude, spot.longitude], {
+      icon,
+      title: spot.title ?? undefined,
+    }).addTo(map);
 
-    // Popup with photo preview
-    const popupContent = `
-      <div style="max-width: 200px; font-family: system-ui, sans-serif;">
-        <img src="${spot.photoUrl}" alt="" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 2px;" />
-        <p style="margin: 6px 0 2px; font-size: 13px; font-weight: 500; color: #1A1A18;">
-          ${spot.title ?? "Untitled"}
-        </p>
-        ${spot.city ? `<p style="margin: 0; font-size: 11px; color: #6B6960;">${spot.city}</p>` : ""}
-        <a href="/spot/${spot.id}" style="display: inline-block; margin-top: 6px; font-size: 12px; color: #8B7355; text-decoration: none;">
-          View details →
-        </a>
-      </div>
-    `;
-    marker.bindPopup(popupContent);
-
-    if (onSpotClick) {
-      marker.on("click", () => onSpotClick(spot));
-    }
+    // Tapping a spot opens it, as in the app — no popup in between.
+    marker.on("click", () => onSpotClick(spot));
   }
 }
 
-export type { MapBounds };
+export type { MapBounds, MapCenter };

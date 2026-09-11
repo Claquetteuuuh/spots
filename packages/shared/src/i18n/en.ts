@@ -16,6 +16,7 @@ export const en = {
     search: "Search",
     back: "Back",
     next: "Next",
+    close: "Close",
     done: "Done",
     or: "or",
     free: "Free",
@@ -79,6 +80,8 @@ export const en = {
     priceInfo: "Pricing details",
     tags: "Tags",
     tagsPlaceholder: "Add a tag...",
+    tagsHint: "Press Enter or comma to add (max {{count}})",
+    cover: "Cover",
     errors: {
       loadFailed: "Unable to load spots",
       feedFailed: "Unable to load feed",
@@ -176,6 +179,7 @@ export const en = {
     setCoordinates: "Set coordinates",
     noResults: "No results found",
     clickMapHint: "Tap the map to place the spot",
+    clearLocation: "Clear location",
     tapToExpand: "Tap to expand",
   },
   settings: {

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { ForwardGeocodeResult } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
 import {
   COMPOSITION_TYPES,
@@ -16,6 +16,7 @@ import {
 } from "@trs/shared/constants";
 import { PAGE_WIDE } from "@/components/page";
 import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
+import { CompositionIcon } from "@/components/composition-icon";
 
 const LocationPicker = dynamic(() => import("@/components/location-picker"), {
   ssr: false,
@@ -64,6 +65,48 @@ interface EyedropperView {
   x: number;
   y: number;
 }
+
+/**
+ * The app's section label: 12px uppercase, tracked, secondary — the same
+ * treatment the shared Input gives its own label, so a labelled field and a
+ * labelled group of buttons read as one system. Required sections carry a
+ * red asterisk, as in the app.
+ */
+function SectionLabel({
+  children,
+  required = false,
+  htmlFor,
+  className = "",
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+  className?: string;
+}) {
+  const classes = `block text-xs font-medium uppercase tracking-[0.5px] text-text-secondary ${className}`;
+  const content = (
+    <>
+      {children}
+      {required ? (
+        <>
+          {" "}
+          <span className="text-error">*</span>
+        </>
+      ) : null}
+    </>
+  );
+  return htmlFor ? (
+    <label htmlFor={htmlFor} className={classes}>
+      {content}
+    </label>
+  ) : (
+    <p className={classes}>{content}</p>
+  );
+}
+
+/** The app's tinted tool surface: an equal-width, hairline-bordered button with an icon and a short label. */
+const toolButtonClasses =
+  "flex flex-1 items-center justify-center gap-2 rounded-sm border border-border bg-bg-secondary px-2 py-3 text-sm text-text transition-colors cursor-pointer hover:bg-bg-tertiary disabled:cursor-not-allowed disabled:opacity-40";
 
 /** Keep the scaled photo covering its box: no empty gaps once zoomed in, centred when it fits. */
 function clampView(v: EyedropperView, canvas: HTMLCanvasElement | null, box: HTMLDivElement | null): EyedropperView {
@@ -410,6 +453,21 @@ function AddSpotForm() {
     if (Number.isNaN(lat) || Number.isNaN(lng)) return;
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
     applyLocation(lat, lng);
+  }
+
+  /** The × on the chosen-location row: forget the point and everything derived from it. */
+  function clearLocation() {
+    setLatitude(null);
+    setLongitude(null);
+    setAddress(null);
+    setCity(null);
+    setCountry(null);
+    setManualLat("");
+    setManualLng("");
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowDropdown(false);
+    setIsTypingAddress(false);
   }
 
   // ── Compositions ──────────────────────────────────────────────────
@@ -778,14 +836,36 @@ function AddSpotForm() {
   }
 
   return (
-    <div className={`${PAGE_WIDE} py-8`}>
-      {/* Header */}
-      <h1 className="text-2xl font-semibold tracking-tight text-text">
+    <div className={`${PAGE_WIDE} pt-4 lg:py-8`}>
+      {/* Header — the app's own screen title: 22px bold, no back, no actions */}
+      <h1 className="text-[22px] font-bold text-text lg:text-2xl lg:font-semibold lg:tracking-tight">
         {t("spots.addSpot")}
       </h1>
 
-      {/* Step indicator */}
-      <div className="mt-6 flex items-center gap-2">
+      {/* Step indicator — the app's flat bars below lg: one 2px bar per step,
+          brand blue for the current and visited steps, hairline otherwise.
+          The bars carry no text, so each is a button with a label for the
+          screen reader, and visited ones still take you back. */}
+      <div className="mt-1 flex gap-1 lg:hidden" aria-label={t("spots.addSpot")}>
+        {steps.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => goToStep(s.key)}
+            disabled={i > furthestStep}
+            aria-label={`${i + 1}. ${s.label}`}
+            aria-current={step === s.key ? "step" : undefined}
+            className="flex-1 cursor-pointer py-2 disabled:cursor-not-allowed"
+          >
+            <span
+              className={`block h-0.5 ${i <= currentIndex ? "bg-accent" : "bg-border"}`}
+            />
+          </button>
+        ))}
+      </div>
+
+      {/* Desktop keeps its labelled steps */}
+      <div className="mt-6 hidden items-center gap-2 lg:flex">
         {steps.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             {i > 0 ? (
@@ -816,7 +896,7 @@ function AddSpotForm() {
 
       {/* Error */}
       {error ? (
-        <div className="mt-4 rounded-lg border border-error/20 bg-error-light px-4 py-3 space-y-1">
+        <div className="mt-4 rounded-sm border border-error/20 bg-error-light px-4 py-3 space-y-1">
           {error.split("\n").map((line, i) => (
             <p key={i} className="text-sm text-error flex items-start gap-2">
               <span className="shrink-0 mt-0.5">⚠</span>
@@ -827,13 +907,13 @@ function AddSpotForm() {
       ) : null}
 
       {/* Step content */}
-      <div className="mt-8">
+      <div className="mt-6 lg:mt-8">
         {/* ── STEP 1: Photos ────────────────────────────────────────── */}
         {step === "photo" ? (
-          <div>
+          <div className="space-y-3">
             {photos.length > 0 ? (
-              <div>
-                {/* Photo grid — drag-to-reorder */}
+              <>
+                {/* Photo grid — the app's 3-up squares, drag-to-reorder */}
                 <div className="grid grid-cols-3 gap-2">
                   {photos.map((photo, index) => (
                     <div
@@ -844,12 +924,12 @@ function AddSpotForm() {
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, index)}
                       onDragEnd={handleDragEnd}
-                      className={`relative aspect-square overflow-hidden rounded-lg border cursor-grab active:cursor-grabbing transition-all ${
+                      className={`relative aspect-square overflow-hidden rounded-sm cursor-grab active:cursor-grabbing transition-all ${
                         dragOverIndex === index && dragIndex !== index
                           ? "border-2 border-dashed border-accent"
                           : dragIndex === index
-                            ? "opacity-40 border-border"
-                            : "border-border"
+                            ? "border border-border opacity-40"
+                            : "border border-border"
                       }`}
                     >
                       <img
@@ -860,13 +940,13 @@ function AddSpotForm() {
 
                       {/* Cover badge */}
                       {index === 0 ? (
-                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-on-accent rounded-lg">
-                          Cover
+                        <span className="absolute top-1 left-1 rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                          {t("spots.cover")}
                         </span>
                       ) : null}
 
                       {/* Order number */}
-                      <span className="absolute bottom-1.5 left-1.5 flex h-5 w-5 items-center justify-center text-[10px] font-semibold bg-bg/80 backdrop-blur-sm text-text rounded-lg border border-border">
+                      <span className="absolute bottom-1 left-1 rounded-sm bg-black/50 px-[5px] py-0.5 text-[10px] font-semibold text-white">
                         {index + 1}
                       </span>
 
@@ -877,26 +957,29 @@ function AddSpotForm() {
                           e.stopPropagation();
                           removePhoto(index);
                         }}
-                        className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-lg bg-bg/80 backdrop-blur-sm text-text-secondary hover:text-error transition-colors cursor-pointer border border-border"
+                        aria-label={`${t("common.delete")} ${index + 1}`}
+                        className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-sm font-bold leading-none text-white transition-colors cursor-pointer hover:bg-black/70"
                       >
                         ×
                       </button>
                     </div>
                   ))}
 
-                  {/* Add more button */}
+                  {/* Add more tile */}
                   {photos.length < MAX_PHOTOS ? (
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer bg-bg-secondary"
+                      aria-label={t("spots.pickPhoto")}
+                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent"
                     >
                       <svg
-                        className="h-6 w-6 text-text-tertiary"
+                        className="h-6 w-6"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
                         strokeWidth={1.5}
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -904,43 +987,47 @@ function AddSpotForm() {
                           d="M12 4.5v15m7.5-7.5h-15"
                         />
                       </svg>
-                      <span className="text-[10px] text-text-tertiary">
-                        {photos.length}/{MAX_PHOTOS}
-                      </span>
                     </button>
                   ) : null}
                 </div>
 
-                <p className="mt-3 text-xs text-text-tertiary">
-                  {t("spots.dragToReorder")}
+                {photos.length < MAX_PHOTOS ? (
+                  <p className="text-center text-xs text-text-tertiary">
+                    {t("spots.dragToReorder")}
+                  </p>
+                ) : (
+                  <p className="text-center text-xs text-text-secondary">
+                    {t("spots.maxPhotosReached")}
+                  </p>
+                )}
+
+                <p className="text-center text-xs text-text-tertiary">
+                  {photos.length}/{MAX_PHOTOS}
                 </p>
-              </div>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full aspect-[4/3] rounded-lg border-2 border-dashed border-border hover:border-accent flex flex-col items-center justify-center gap-3 transition-colors cursor-pointer bg-bg-secondary"
-              >
-                <svg
-                  className="h-10 w-10 text-text-tertiary"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
+              <>
+                {/* Empty state — the app's tinted 4:3 placeholder, then one full-width pick button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex w-full aspect-[4/3] items-center justify-center rounded-sm border border-border bg-bg-secondary transition-colors cursor-pointer hover:border-border-dark"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
-                  />
-                </svg>
-                <span className="text-sm text-text-secondary">
-                  {t("spots.pickPhoto")} <span className="text-error">*</span>
-                </span>
-                <span className="text-xs text-text-tertiary">
+                  <span className="text-[15px] text-text-tertiary">
+                    {t("spots.upToPhotos", { count: MAX_PHOTOS })} <span className="text-error">*</span>
+                  </span>
+                </button>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {t("spots.pickPhoto")}
+                </Button>
+                <p className="text-center text-xs text-text-tertiary">
                   JPEG, PNG, WebP · {MAX_PHOTO_SIZE_MB}MB max · {t("spots.upToPhotos", { count: String(MAX_PHOTOS) })}
-                </span>
-              </button>
+                </p>
+              </>
             )}
 
             <input
@@ -956,14 +1043,15 @@ function AddSpotForm() {
 
         {/* ── STEP 2: Location ──────────────────────────────────────── */}
         {step === "location" ? (
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-text">
-              {t("map.title")} <span className="text-error">*</span>
-            </label>
-            {/* Address search */}
-            <div className="relative" ref={dropdownRef}>
+          <div className="space-y-4">
+            {/* Address search — results sit inline under the field, as in the app */}
+            <div className="space-y-1" ref={dropdownRef}>
+              <SectionLabel htmlFor="address-search" required>
+                {t("map.title")}
+              </SectionLabel>
               <div className="relative">
-                <input
+                <Input
+                  id="address-search"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
@@ -978,44 +1066,45 @@ function AddSpotForm() {
                     if (searchResults.length > 0) setShowDropdown(true);
                   }}
                   placeholder={t("map.searchAddress")}
-                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors pr-9"
+                  autoComplete="off"
+                  className="pr-11"
                 />
                 {/* Search icon / spinner */}
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary">
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary">
                   {isSearching ? (
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                   ) : (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                     </svg>
                   )}
                 </span>
               </div>
 
-              {/* Dropdown results */}
+              {/* Results card */}
               {showDropdown ? (
-                <div className="absolute left-0 right-0 top-full mt-1 z-10 border border-border rounded-lg bg-bg overflow-hidden">
+                <div className="divide-y divide-border overflow-hidden rounded-sm border border-border bg-bg-secondary">
                   {searchResults.length > 0 ? (
                     searchResults.map((result, i) => (
                       <button
                         key={`${result.latitude}-${result.longitude}-${i}`}
                         type="button"
                         onClick={() => selectSearchResult(result)}
-                        className="w-full text-left px-3 py-2.5 text-sm hover:bg-bg-secondary transition-colors cursor-pointer border-b border-border last:border-b-0"
+                        className="w-full cursor-pointer px-3 py-2 text-left text-[13px] transition-colors hover:bg-bg-tertiary"
                       >
-                        <p className="text-text truncate">{result.displayName}</p>
+                        <p className="line-clamp-2 text-text">{result.displayName}</p>
                         {result.city || result.country ? (
-                          <p className="text-xs text-text-tertiary mt-0.5">
+                          <p className="mt-0.5 text-xs text-text-tertiary">
                             {[result.city, result.country].filter(Boolean).join(", ")}
                           </p>
                         ) : null}
                       </button>
                     ))
                   ) : !isSearching ? (
-                    <p className="px-3 py-2.5 text-sm text-text-tertiary">
+                    <p className="px-3 py-2 text-center text-xs text-text-tertiary">
                       {t("map.noResults")}
                     </p>
                   ) : null}
@@ -1023,45 +1112,50 @@ function AddSpotForm() {
               ) : null}
             </div>
 
-            {/* Coordinates + locate me */}
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-text-tertiary mb-1 block">
-                  {t("map.latitudePlaceholder")}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min={-90}
-                  max={90}
-                  value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  onBlur={handleSetManualCoords}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
-                  placeholder="-90 … 90"
-                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-text-tertiary mb-1 block">
-                  {t("map.longitudePlaceholder")}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min={-180}
-                  max={180}
-                  value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  onBlur={handleSetManualCoords}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
-                  placeholder="-180 … 180"
-                  className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-                />
+            {/* Manual coordinates — label, lat/lng row, then the two full-width actions */}
+            <div className="space-y-2">
+              <SectionLabel>{t("map.orEnterCoords")}</SectionLabel>
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    value={manualLat}
+                    onChange={(e) => setManualLat(e.target.value)}
+                    onBlur={handleSetManualCoords}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
+                    placeholder={t("map.latitudePlaceholder")}
+                    aria-label={t("map.latitudePlaceholder")}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Input
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    value={manualLng}
+                    onChange={(e) => setManualLng(e.target.value)}
+                    onBlur={handleSetManualCoords}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSetManualCoords(); }}
+                    placeholder={t("map.longitudePlaceholder")}
+                    aria-label={t("map.longitudePlaceholder")}
+                  />
+                </div>
               </div>
               <Button
                 variant="secondary"
-                size="sm"
+                fullWidth
+                onClick={handleSetManualCoords}
+                disabled={!manualLat.trim() || !manualLng.trim()}
+              >
+                {t("map.setCoordinates")}
+              </Button>
+              <Button
+                variant="ghost"
+                fullWidth
                 onClick={useMyLocation}
                 loading={isLocating}
               >
@@ -1069,29 +1163,36 @@ function AddSpotForm() {
               </Button>
             </div>
 
-            {/* Map */}
-            <div className="h-[400px] rounded-lg border border-border overflow-hidden">
-              <LocationPicker
-                latitude={latitude}
-                longitude={longitude}
-                onChange={handleLocationChange}
-              />
+            {/* Map picker — hint above, the app's 200px box on phones and tablets */}
+            <div className="space-y-2">
+              <p className="text-center text-xs text-text-tertiary">
+                {t("map.clickMapHint")}
+              </p>
+              <div className="h-[200px] overflow-hidden rounded-sm border border-border lg:h-[400px]">
+                <LocationPicker
+                  latitude={latitude}
+                  longitude={longitude}
+                  onChange={handleLocationChange}
+                />
+              </div>
             </div>
-            <p className="text-xs text-text-tertiary">
-              {t("map.clickMapHint")}
-            </p>
 
-            {/* Coordinate display */}
+            {/* Chosen location — a tinted row: the dot stands for the place */}
             {latitude !== null && longitude !== null ? (
-              <div className="flex items-center gap-4 text-sm">
-                <span className="font-mono text-text-secondary">
-                  {latitude.toFixed(6)}, {longitude.toFixed(6)}
+              <div className="flex items-center gap-2 rounded-sm border border-border bg-bg-secondary px-2 py-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-text">
+                  {[city, country].filter(Boolean).join(", ") ||
+                    `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`}
                 </span>
-                {city || country ? (
-                  <span className="text-text-tertiary">
-                    {[city, country].filter(Boolean).join(", ")}
-                  </span>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={clearLocation}
+                  aria-label={t("map.clearLocation")}
+                  className="cursor-pointer px-1 text-[13px] leading-none text-text-tertiary transition-colors hover:text-text"
+                >
+                  ×
+                </button>
               </div>
             ) : null}
           </div>
@@ -1101,44 +1202,39 @@ function AddSpotForm() {
         {step === "details" ? (
           <div className="space-y-6">
             {/* Title & Description */}
-            <Input
-              label={t("spots.spotTitle")}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t("spots.spotTitlePlaceholder")}
-              hint="200 characters max"
-            />
+            <div className="space-y-1">
+              <Input
+                label={t("spots.spotTitle")}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t("spots.spotTitlePlaceholder")}
+                maxLength={200}
+              />
+              <CharacterCount value={title} max={200} />
+            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="description"
-                className="text-sm font-medium text-text"
-              >
-                {t("spots.description")}
-              </label>
-              <textarea
+            <div className="space-y-1">
+              <Textarea
                 id="description"
+                label={t("spots.description")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={t("spots.descriptionPlaceholder")}
                 rows={3}
                 maxLength={2000}
-                className="w-full rounded-2xl border border-border bg-bg-secondary px-3 py-2.5 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent focus:bg-bg-secondary transition-colors"
               />
               <CharacterCount value={description} max={2000} />
             </div>
 
-            {/* Compositions */}
+            {/* Compositions — the app's 3-up grid of square cells */}
             <div>
-              <label className="text-sm font-medium text-text">
-                {t("spots.composition")}
-              </label>
+              <SectionLabel>{t("spots.composition")}</SectionLabel>
               <SelectionCount
                 count={selectedCompositions.length}
                 max={MAX_COMPOSITIONS}
                 className="mt-0.5"
               />
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 grid grid-cols-3 gap-2 lg:grid-cols-6">
                 {COMPOSITION_TYPES.map((comp) => {
                   const selected = selectedCompositions.includes(comp);
                   return (
@@ -1146,13 +1242,20 @@ function AddSpotForm() {
                       key={comp}
                       type="button"
                       onClick={() => toggleComposition(comp)}
-                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors cursor-pointer ${
+                      aria-pressed={selected}
+                      className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-md p-2 transition-colors cursor-pointer ${
                         selected
-                          ? "border-accent bg-accent-tint text-accent-dark"
-                          : "border-border bg-bg text-text-secondary hover:border-border-dark"
+                          ? "border-2 border-accent bg-bg-secondary text-text"
+                          : "border border-border bg-bg text-text-secondary hover:border-border-dark"
                       }`}
                     >
-                      {t(`compositions.${comp}`)}
+                      <CompositionIcon
+                        type={comp}
+                        className={`h-7 w-7 ${selected ? "text-accent" : "text-text-secondary"}`}
+                      />
+                      <span className="line-clamp-2 text-center text-xs leading-tight">
+                        {t(`compositions.${comp}`)}
+                      </span>
                     </button>
                   );
                 })}
@@ -1161,33 +1264,28 @@ function AddSpotForm() {
               {/* Custom composition input when OTHER is selected */}
               {selectedCompositions.includes("OTHER") ? (
                 <div className="mt-3">
-                  <input
+                  <Input
+                    label={t("spots.customComposition")}
                     value={customComposition}
                     onChange={(e) => setCustomComposition(e.target.value)}
                     placeholder={t("spots.customCompositionPlaceholder")}
                     maxLength={100}
-                    className="w-full rounded-lg border border-border bg-bg-secondary px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                   />
-                  <p className="mt-1 text-xs text-text-tertiary">
-                    {t("spots.customComposition")}
-                  </p>
                 </div>
               ) : null}
             </div>
 
             {/* Colors */}
             <div>
-              <label className="text-sm font-medium text-text">
-                {t("spots.colors")}
-              </label>
+              <SectionLabel>{t("spots.colors")}</SectionLabel>
               <SelectionCount
                 count={selectedColors.length}
                 max={MAX_COLORS}
                 className="mt-0.5"
               />
 
-              {/* Preset swatches */}
-              <div className="mt-2 flex flex-wrap gap-2">
+              {/* Preset swatches — 44px squares; the chosen ones take a 2px text-coloured border */}
+              <div className="mt-2 flex flex-wrap gap-3">
                 {SUGGESTED_COLORS.map((color) => {
                   const selected = selectedColors.includes(color);
                   return (
@@ -1195,10 +1293,10 @@ function AddSpotForm() {
                       key={color}
                       type="button"
                       onClick={() => toggleColor(color)}
-                      className={`h-8 w-8 rounded-lg border-2 transition-all cursor-pointer ${
-                        selected
-                          ? "border-accent scale-110"
-                          : "border-transparent hover:scale-105"
+                      aria-pressed={selected}
+                      aria-label={color}
+                      className={`h-11 w-11 rounded-sm transition-colors cursor-pointer ${
+                        selected ? "border-2 border-text" : "border border-border"
                       }`}
                       style={{ backgroundColor: color }}
                       title={color}
@@ -1207,38 +1305,8 @@ function AddSpotForm() {
                 })}
               </div>
 
-              {/* Selected colors with remove */}
-              {selectedColors.length > 0 ? (
-                <div className="mt-3">
-                  <p className="text-xs text-text-secondary uppercase tracking-wide mb-1.5">
-                    {t("spots.selectedColors")} ({selectedColors.length}/10)
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                  {selectedColors.map((c) => (
-                    <span
-                      key={c}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono text-text-tertiary bg-bg-secondary rounded-lg border border-border"
-                    >
-                      <span
-                        className="inline-block h-3 w-3 rounded-lg border border-border"
-                        style={{ backgroundColor: c }}
-                      />
-                      {c}
-                      <button
-                        type="button"
-                        onClick={() => removeColor(c)}
-                        className="text-text-tertiary hover:text-error transition-colors cursor-pointer ml-0.5"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Color tools row */}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              {/* Color tools row — equal-width tinted surfaces */}
+              <div className="mt-3 flex gap-2">
                 {/* Native color picker — "change" event fires only on close */}
                 <input
                   ref={colorPickerRef}
@@ -1250,12 +1318,12 @@ function AddSpotForm() {
                   type="button"
                   onClick={() => colorPickerRef.current?.click()}
                   disabled={selectedColors.length >= MAX_COLORS}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={toolButtonClasses}
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="h-[18px] w-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
                   </svg>
-                  {t("spots.pickColor")}
+                  <span className="text-center">{t("spots.pickColor")}</span>
                 </button>
 
                 {/* Eyedropper from screen — only in supported browsers */}
@@ -1264,29 +1332,27 @@ function AddSpotForm() {
                     type="button"
                     onClick={handleEyeDropper}
                     disabled={selectedColors.length >= MAX_COLORS}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={toolButtonClasses}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="h-[18px] w-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m15 11-1 1-2-2 1-1m4 0 2-2a1.414 1.414 0 0 0-2-2l-2 2m-4 4-5.5 5.5a2.121 2.121 0 1 0 3 3L15 11Z" />
                     </svg>
-                    {t("spots.eyedropper")}
+                    <span className="text-center">{t("spots.eyedropper")}</span>
                   </button>
                 ) : null}
 
-                {/* Eyedropper from selected photos */}
-                {photos.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={openPhotoEyedropper}
-                    disabled={selectedColors.length >= MAX_COLORS}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.41a2.25 2.25 0 0 1 3.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                    </svg>
-                    {t("spots.pickFromPhoto")}
-                  </button>
-                ) : null}
+                {/* Eyedropper from the spot's own photos — present like the app's, disabled without a photo */}
+                <button
+                  type="button"
+                  onClick={openPhotoEyedropper}
+                  disabled={photos.length === 0 || selectedColors.length >= MAX_COLORS}
+                  className={toolButtonClasses}
+                >
+                  <svg className="h-[18px] w-[18px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.41a2.25 2.25 0 0 1 3.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                  </svg>
+                  <span className="text-center">{t("spots.pickFromPhoto")}</span>
+                </button>
               </div>
 
               {/* Photo eyedropper overlay */}
@@ -1428,110 +1494,145 @@ function AddSpotForm() {
                 </div>
               ) : null}
 
-              {/* Manual color input */}
-              <div className="mt-2 flex items-center gap-2">
+              {/* Manual color input (web only) — the shared field with a live preview swatch */}
+              <div className="mt-3 flex items-center gap-2">
                 {colorInputPreview ? (
                   <span
-                    className="h-8 w-8 rounded-lg border border-border flex-shrink-0"
+                    className="h-9 w-9 shrink-0 rounded-sm border border-border"
                     style={{ backgroundColor: colorInputPreview }}
+                    aria-hidden="true"
                   />
                 ) : (
-                  <span className="h-8 w-8 rounded-lg border border-dashed border-border flex-shrink-0 bg-bg-secondary" />
+                  <span className="h-9 w-9 shrink-0 rounded-sm border border-dashed border-border bg-bg-secondary" aria-hidden="true" />
                 )}
-                <input
-                  type="text"
-                  value={colorInput}
-                  onChange={(e) => handleColorInputChange(e.target.value)}
-                  onKeyDown={handleColorInputKeyDown}
-                  placeholder={t("spots.colorInputPlaceholder")}
-                  className="flex-1 min-w-0 rounded-lg border border-border bg-bg-secondary px-3 py-1.5 text-xs font-mono text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-                />
-                <button
-                  type="button"
+                <div className="min-w-0 flex-1">
+                  <Input
+                    type="text"
+                    value={colorInput}
+                    onChange={(e) => handleColorInputChange(e.target.value)}
+                    onKeyDown={handleColorInputKeyDown}
+                    placeholder={t("spots.colorInputPlaceholder")}
+                    aria-label={t("spots.colorInputPlaceholder")}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
                   onClick={addColorFromInput}
                   disabled={!colorInputPreview || selectedColors.length >= MAX_COLORS}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-text-secondary hover:bg-bg-secondary transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {t("spots.addColor")}
-                </button>
+                </Button>
               </div>
+
+              {/* Selected colors — 36px swatches, each with a floating × bubble */}
+              {selectedColors.length > 0 ? (
+                <div className="mt-4">
+                  <SectionLabel>
+                    {t("spots.selectedColors")} ({selectedColors.length}/{MAX_COLORS})
+                  </SectionLabel>
+                  <div className="mt-1 flex flex-wrap gap-2 pt-1.5 pr-1.5">
+                    {selectedColors.map((c) => (
+                      <div key={c} className="relative">
+                        <span
+                          className="block h-9 w-9 rounded-sm border border-border"
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeColor(c)}
+                          aria-label={`${t("common.delete")} ${c}`}
+                          className="absolute -top-1.5 -right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-text text-[11px] font-bold leading-none text-bg transition-opacity cursor-pointer hover:opacity-80"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            {/* Tags */}
+            {/* Tags — the shared field with a ghost add action beside it, chips below */}
             <div>
-              <label className="text-sm font-medium text-text">
-                {t("spots.tags")}
-              </label>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                Press Enter or comma to add (max 10)
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-sm bg-bg-secondary text-text-secondary border border-border rounded-lg"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="text-text-tertiary hover:text-error transition-colors cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {tags.length < MAX_TAGS ? (
-                  <input
+              <SectionLabel htmlFor="tag-input">{t("spots.tags")}</SectionLabel>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    id="tag-input"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={handleTagKeyDown}
                     onBlur={addTag}
-                    placeholder={
-                      tags.length === 0
-                        ? t("spots.tagsPlaceholder")
-                        : ""
-                    }
-                    className="flex-1 min-w-[120px] border-none bg-transparent text-sm text-text placeholder:text-text-tertiary focus:outline-none"
+                    placeholder={t("spots.tagsPlaceholder")}
+                    maxLength={50}
+                    disabled={tags.length >= MAX_TAGS}
+                    autoComplete="off"
                   />
-                ) : null}
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={addTag}
+                  disabled={!tagInput.trim() || tags.length >= MAX_TAGS}
+                >
+                  {t("common.save")}
+                </Button>
               </div>
+              <p className="mt-1 text-xs text-text-tertiary">
+                {t("spots.tagsHint", { count: MAX_TAGS })}
+              </p>
+              {tags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      aria-label={`${t("common.delete")} ${tag}`}
+                      className="rounded-sm border border-border bg-bg-secondary px-3 py-1.5 text-xs text-text-secondary transition-colors cursor-pointer hover:bg-bg-tertiary"
+                    >
+                      {tag} ×
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            {/* Visibility */}
+            {/* Visibility — two equal buttons, followers first, one selected style */}
             <div>
-              <label className="text-sm font-medium text-text">
-                {t("spots.visibilityTitle")}
-              </label>
-              <div className="mt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setVisibility("PRIVATE")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${
-                    visibility === "PRIVATE"
-                      ? "border-accent text-accent bg-accent/10"
-                      : "border-border text-text-secondary hover:bg-bg-secondary"
-                  }`}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                  {t("spots.visibilityPrivate")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVisibility("FOLLOWERS")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg border transition-colors cursor-pointer ${
-                    visibility === "FOLLOWERS"
-                      ? "border-accent bg-accent-tint text-accent-dark"
-                      : "border-border text-text-secondary hover:bg-bg-secondary"
-                  }`}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                  </svg>
-                  {t("spots.visibilityFollowers")}
-                </button>
+              <SectionLabel>{t("spots.visibilityTitle")}</SectionLabel>
+              <div className="mt-2 flex gap-2">
+                {(["FOLLOWERS", "PRIVATE"] as const).map((option) => {
+                  const selected = visibility === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setVisibility(option)}
+                      aria-pressed={selected}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-sm py-3 text-sm font-medium transition-colors cursor-pointer ${
+                        selected
+                          ? "border-2 border-accent bg-accent-tint text-accent"
+                          : "border border-border bg-bg text-text-secondary hover:bg-bg-secondary"
+                      }`}
+                    >
+                      {option === "FOLLOWERS" ? (
+                        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                      )}
+                      {option === "FOLLOWERS"
+                        ? t("spots.visibilityFollowers")
+                        : t("spots.visibilityPrivate")}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1540,7 +1641,7 @@ function AddSpotForm() {
 
       {/* Validation errors */}
       {validationErrors.length > 0 ? (
-        <div className="mt-6 rounded-lg border border-error/20 bg-error-light px-4 py-3 space-y-1">
+        <div className="mt-6 rounded-sm border border-error/20 bg-error-light px-4 py-3 space-y-1">
           {validationErrors.map((msg, i) => (
             <p key={i} className="text-sm text-error flex items-start gap-2">
               <span className="shrink-0 mt-0.5">⚠</span>
@@ -1550,8 +1651,13 @@ function AddSpotForm() {
         </div>
       ) : null}
 
-      {/* Bottom navigation */}
-      <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+      {/* Bottom navigation — the app's permanent footer: below lg it sticks to
+          the bottom of the viewport, just above the tab bar, with a hairline
+          on top; from lg it is the in-flow row the desktop already had. */}
+      <div
+        className="sticky bottom-[calc(50px+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 flex items-center justify-between border-t border-border bg-bg px-4 py-4
+          lg:static lg:mx-0 lg:mt-8 lg:px-0 lg:pb-0 lg:pt-6"
+      >
         <div>
           {currentIndex > 0 ? (
             <Button

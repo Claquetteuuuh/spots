@@ -7,7 +7,10 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/use-t";
-import { GoogleSignInButton } from "@/components/google-sign-in";
+import {
+  GoogleSignInButton,
+  isGoogleSignInAvailable,
+} from "@/components/google-sign-in";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { Wordmark } from "@/components/wordmark";
 
@@ -49,74 +52,86 @@ function LoginForm() {
     }
   }
 
+  // Below lg this is the app's LoginScreen: vertically centred, 32px gutters,
+  // full width. From lg it keeps the desktop column.
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-10 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center px-8 py-12 lg:px-5">
+      <div className="w-full lg:max-w-sm">
+        <div className="mb-12 flex flex-col items-center">
           <Link href="/" className="inline-block rounded-full text-accent">
-            <Wordmark className="text-4xl" />
+            <Wordmark className="text-[2.5rem]" />
           </Link>
+          <p className="mt-2 text-[13px] text-text-secondary">{t("auth.login")}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <Input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("auth.email")}
-          />
-          <Input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t("auth.password")}
-          />
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-3">
+            <Input
+              label={t("auth.email")}
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Input
+              label={t("auth.password")}
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
 
-          {error ? <p className="text-sm text-error">{error}</p> : null}
+          {error ? (
+            <p className="mt-3 text-center text-[13px] text-error">{error}</p>
+          ) : null}
 
-          <Button type="submit" size="lg" fullWidth loading={isLoading}>
-            {t("auth.login")}
-          </Button>
+          <div className="mt-6">
+            <Button type="submit" size="md" fullWidth loading={isLoading}>
+              {t("auth.login")}
+            </Button>
+          </div>
         </form>
 
-        <div className="mt-7 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-sm text-text-tertiary">{t("common.or")}</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        {isGoogleSignInAvailable ? (
+          <>
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs uppercase tracking-[0.5px] text-text-tertiary">
+                {t("common.or")}
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
 
-        <div className="mt-7">
-          <GoogleSignInButton onSuccess={handleGoogleLogin} />
-        </div>
+            <GoogleSignInButton onSuccess={handleGoogleLogin} />
+          </>
+        ) : null}
 
-        <div className="mt-7 text-center">
+        <div className="mt-6 text-center">
           <Link
             href="/forgot-password"
-            className="rounded-full text-sm text-accent transition-colors hover:text-accent-dark"
+            className="rounded-full text-[13px] text-accent transition-colors hover:text-accent-dark"
           >
             {t("auth.forgotPassword")}
           </Link>
         </div>
 
-        <p className="mt-10 text-center text-sm text-text-secondary">
-          {t("auth.noAccount")}{" "}
+        <div className="mt-8 flex items-center justify-center">
+          <span className="text-[13px] text-text-secondary">{t("auth.noAccount")}</span>
           <Link
             href="/register"
-            className="font-semibold text-accent hover:text-accent-dark"
+            className="rounded-full px-2 py-1 text-[15px] font-semibold tracking-[0.2px] text-accent transition-colors hover:bg-bg-secondary"
           >
             {t("auth.register")}
           </Link>
-        </p>
+        </div>
       </div>
 
       <LocaleToggle className="mt-12" />
     </div>
   );
-
 }
 
 export default function LoginPage() {

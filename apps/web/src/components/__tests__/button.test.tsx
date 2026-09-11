@@ -74,9 +74,16 @@ describe("Button", () => {
     });
     expect(screen.getByRole("button").className).toContain("px-3.5");
 
+    // The app's two sizes: md is 12/24px, lg 16/24px — only the vertical
+    // padding tells them apart.
+    await act(async () => {
+      rerender!(<Button size="md">Btn</Button>);
+    });
+    expect(screen.getByRole("button").className).toContain("py-3");
+
     await act(async () => {
       rerender!(<Button size="lg">Btn</Button>);
     });
-    expect(screen.getByRole("button").className).toContain("px-7");
+    expect(screen.getByRole("button").className).toContain("py-4");
   });
 });

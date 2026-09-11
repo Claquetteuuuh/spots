@@ -16,6 +16,7 @@ export const fr = {
     search: "Rechercher",
     back: "Retour",
     next: "Suivant",
+    close: "Fermer",
     done: "Terminé",
     or: "ou",
     free: "Gratuit",
@@ -79,6 +80,8 @@ export const fr = {
     priceInfo: "Informations tarifaires",
     tags: "Tags",
     tagsPlaceholder: "Ajouter un tag...",
+    tagsHint: "Appuyez sur Entrée ou virgule pour ajouter (max {{count}})",
+    cover: "Couverture",
     errors: {
       loadFailed: "Impossible de charger les spots",
       feedFailed: "Impossible de charger le fil",
@@ -176,6 +179,7 @@ export const fr = {
     setCoordinates: "Définir les coordonnées",
     noResults: "Aucun résultat trouvé",
     clickMapHint: "Appuyez sur la carte pour placer le spot",
+    clearLocation: "Effacer le lieu",
     tapToExpand: "Appuyez pour agrandir",
   },
   settings: {

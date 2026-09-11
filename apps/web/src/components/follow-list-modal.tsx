@@ -17,6 +17,16 @@ interface FollowListModalProps {
   initialTab: Tab;
 }
 
+/** Up to two initials for the avatar placeholder — "Ada Lovelace" → "AL". */
+function initialsOf(name: string | null | undefined) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
 export function FollowListModal({
   open,
   onClose,
@@ -152,23 +162,31 @@ export function FollowListModal({
             if (e.target === backdropRef.current) onClose();
           }}
         >
+          {/* Below lg this is the app's page sheet: the whole screen, no
+              radius, no border, padded for the home indicator. From lg it
+              is the centred dialog it always was. */}
           <motion.div
-            className="relative w-full max-w-md max-h-[70vh] bg-bg border border-border rounded-2xl flex flex-col overflow-hidden mx-4 sm:mx-0"
+            className="fixed inset-0 flex flex-col overflow-hidden bg-bg pb-[env(safe-area-inset-bottom)]
+              lg:relative lg:inset-auto lg:mx-0 lg:w-full lg:max-w-md lg:max-h-[70vh] lg:rounded-2xl lg:border lg:border-border lg:pb-0"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300, mass: 0.5 }}
           >
-            {/* Header */}
+            {/* Header — the app closes its sheet from the left; the desktop
+                dialog keeps its close control on the right. */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div className="w-8" />
-              <h2 className="text-base font-semibold text-text">{username}</h2>
+              <div className="w-8 order-last lg:order-first" />
+              <h2 className="flex-1 truncate text-center text-base font-semibold text-text">
+                {username}
+              </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center text-text-secondary hover:text-text transition-colors cursor-pointer"
+                aria-label={t("common.close")}
+                className="order-first lg:order-last w-8 h-8 flex items-center justify-center text-text lg:text-text-secondary lg:hover:text-text transition-colors cursor-pointer"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-6 w-6 lg:h-5 lg:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -254,12 +272,12 @@ export function FollowListModal({
                                     className="h-11 w-11 rounded-full object-cover shrink-0"
                                   />
                                 ) : (
-                                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent text-sm font-semibold shrink-0">
-                                    {user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary text-sm font-semibold shrink-0">
+                                    {initialsOf(user.name)}
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-text truncate">
+                                  <p className="text-[13px] font-semibold text-text truncate">
                                     {user.username}
                                   </p>
                                   <p className="text-xs text-text-secondary truncate">
@@ -272,7 +290,7 @@ export function FollowListModal({
                                 wasUnfollowed ? (
                                   <Button
                                     variant="primary"
-                                    size="sm"
+                                    size="md"
                                     onClick={() => handleFollow(user)}
                                   >
                                     {t("users.follow")}
@@ -280,7 +298,7 @@ export function FollowListModal({
                                 ) : (
                                   <Button
                                     variant="secondary"
-                                    size="sm"
+                                    size="md"
                                     onClick={() => handleUnfollow(user)}
                                   >
                                     {t("users.unfollow")}

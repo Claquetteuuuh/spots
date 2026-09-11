@@ -41,18 +41,20 @@ export default function MiniMap({ latitude, longitude }: MiniMapProps) {
         map,
       );
 
+      // The app's pin: a 14px accent dot ringed in the page background. Theme
+      // variables rather than hex so it follows dark mode like the main map.
       const icon = L.divIcon({
         className: "custom-marker",
         html: `<div style="
-          width: 12px;
-          height: 12px;
-          background: #8B7355;
-          border: 2px solid #FAFAF8;
-          border-radius: 2px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          width: 14px;
+          height: 14px;
+          box-sizing: border-box;
+          background: var(--color-accent);
+          border: 2px solid var(--color-bg);
+          border-radius: 50%;
         "></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
       });
 
       L.marker([latitude, longitude], { icon, interactive: false }).addTo(map);
@@ -69,11 +71,7 @@ export default function MiniMap({ latitude, longitude }: MiniMapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ minHeight: "160px" }}
-    />
-  );
+  // No minimum height: the parent sizes it (the app's 140px thumb on a phone,
+  // the taller strip on desktop), and a forced 160px would clip the thumb.
+  return <div ref={containerRef} className="h-full w-full" />;
 }
