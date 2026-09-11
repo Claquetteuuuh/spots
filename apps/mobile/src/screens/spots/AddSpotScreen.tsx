@@ -353,7 +353,6 @@ export function AddSpotScreen() {
         return [...prev, { uri: photo.uri, id: makePhotoId() }];
       });
       setIsCameraOpen(false);
-      if (!location) void resolveLocation();
     }
   };
 
@@ -371,7 +370,6 @@ export function AddSpotScreen() {
         .slice(0, MAX_PHOTOS - photos.length)
         .map((asset) => ({ uri: asset.uri, id: makePhotoId() }));
       setPhotos((prev) => [...prev, ...newPhotos]);
-      if (!location) void resolveLocation();
     }
   };
 
