@@ -1,4 +1,4 @@
-import React from "react";
+import React, { act } from "react";
 import { Alert } from "react-native";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -9,6 +9,8 @@ import type { Paginated, SpotPhoto, User } from "../../../types";
 
 // Testing Library for React Native is async by default since v14:
 // `render` and `fireEvent.*` must be awaited.
+// React 19's `act` must wrap callbacks that trigger state updates
+// outside of React's own scheduling (e.g. Alert mock onPress handlers).
 
 jest.mock("react-i18next", () => {
   // One `t` for the whole run: the real hook keeps it stable across renders,
@@ -82,13 +84,29 @@ function pickerReturns(uri: string, fileName: string) {
   } as unknown as ImagePicker.ImagePickerResult);
 }
 
-const renderSection = () => render(<SpotPhotosSection spotId="s1" ownerId={OWNER_ID} />);
+/**
+ * Render the section AND flush the microtask chain spawned by the
+ * `useEffect` data-fetch (`getSpotPhotos(...).then(...).finally(...)`).
+ * Without the trailing `act` the promise callbacks may resolve outside
+ * React 19's act boundary in slower CI runners, leaving the component
+ * stuck on `isLoading = true`.
+ */
+async function renderSection() {
+  await render(<SpotPhotosSection spotId="s1" ownerId={OWNER_ID} />);
+  await act(async () => {});
+}
 
-/** Press the destructive button of the last confirmation dialog. */
-function confirmLastAlert() {
-  const calls = (Alert.alert as jest.Mock).mock.calls;
-  const buttons = calls[calls.length - 1][2] as { style?: string; onPress?: () => void }[];
-  buttons.find((b) => b.style === "destructive")?.onPress?.();
+/**
+ * Press the destructive button of the last confirmation dialog.
+ * Wrapped in `act` because the `onPress` callback triggers state
+ * updates (`setDeletingId`, `setPhotos`, …) outside React's scheduler.
+ */
+async function confirmLastAlert() {
+  await act(async () => {
+    const calls = (Alert.alert as jest.Mock).mock.calls;
+    const buttons = calls[calls.length - 1][2] as { style?: string; onPress?: () => void }[];
+    buttons.find((b) => b.style === "destructive")?.onPress?.();
+  });
 }
 
 describe("SpotPhotosSection", () => {
@@ -104,13 +122,13 @@ describe("SpotPhotosSection", () => {
 
     await renderSection();
 
-    expect(await screen.findByTestId("spot-photo-p1")).toBeTruthy();
+    expect(screen.getByTestId("spot-photo-p1")).toBeTruthy();
     expect(mockedApi.getSpotPhotos).toHaveBeenCalledWith("s1");
   });
 
   it("shows the empty message when nobody has added a photo", async () => {
     await renderSection();
-    expect(await screen.findByText("spotPhotos.noPhotos")).toBeTruthy();
+    expect(screen.getByText("spotPhotos.noPhotos")).toBeTruthy();
   });
 
   it("loads the next page on demand", async () => {
@@ -153,7 +171,7 @@ describe("SpotPhotosSection", () => {
       );
       expect(mockedApi.deleteSpotPhoto).not.toHaveBeenCalled();
 
-      confirmLastAlert();
+      await confirmLastAlert();
 
       await waitFor(() => expect(screen.queryByTestId("spot-photo-p1")).toBeNull());
       expect(mockedApi.deleteSpotPhoto).toHaveBeenCalledWith("s1", "p1");
@@ -182,7 +200,7 @@ describe("SpotPhotosSection", () => {
       await renderSection();
 
       await fireEvent.press(await screen.findByTestId("delete-spot-photo-p1"));
-      confirmLastAlert();
+      await confirmLastAlert();
 
       await waitFor(() =>
         expect(Alert.alert).toHaveBeenLastCalledWith("common.error", expect.any(String)),
