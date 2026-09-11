@@ -38,7 +38,7 @@ jobs:
         run: pnpm test
 
       - name: Apply database migrations
-        run: pnpm --filter @trs/web exec prisma db push --skip-generate
+        run: pnpm --filter @trs/web exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
