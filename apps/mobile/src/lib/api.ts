@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { API_ROUTES, type CompositionType } from "@trs/shared/constants";
+import { MAP_PINS_LIMIT, type MapPin, type MapScope } from "@trs/shared/map";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
 import type {
   AuthResponse,
@@ -213,6 +214,30 @@ export async function deleteSpot(id: string): Promise<void> {
 export async function getFeed(cursor?: string, limit = 20): Promise<Paginated<Spot>> {
   const { data } = await client.get<Paginated<Spot>>(API_ROUTES.spots.feed, {
     params: { cursor, limit },
+  });
+  return data;
+}
+
+export interface GetMapPinsParams {
+  bounds: MapBounds;
+  scope?: MapScope;
+  limit?: number;
+}
+
+export interface MapPinsPage {
+  items: MapPin[];
+  /** The fetch hit the limit — zooming in may reveal more pins. */
+  truncated: boolean;
+}
+
+/** Lightweight pins inside a viewport — own spots first, then followed. */
+export async function getMapPins({
+  bounds,
+  scope = "all",
+  limit = MAP_PINS_LIMIT,
+}: GetMapPinsParams): Promise<MapPinsPage> {
+  const { data } = await client.get<MapPinsPage>(API_ROUTES.spots.map, {
+    params: { ...bounds, scope, limit },
   });
   return data;
 }

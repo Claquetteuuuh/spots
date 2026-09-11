@@ -177,6 +177,8 @@ export const fr = {
     mySpots: "Mes spots",
     followingSpots: "Spots des abonnements",
     allSpots: "Tous les spots",
+    spotsInCluster: "{{count}} spots — touchez pour zoomer",
+    openSpot: "Ouvrir le spot",
     locateMe: "Me localiser",
     searchAddress: "Rechercher une adresse...",
     orEnterCoords: "Ou entrer des coordonnées",

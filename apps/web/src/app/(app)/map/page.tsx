@@ -1,81 +1,113 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import type { Spot } from "@/lib/api-client";
-import type { MapBounds, MapCenter } from "@/components/spot-map";
+import type { MapCenter, MapViewport, SpotMapLabels } from "@/components/spot-map";
+import {
+  MAP_PINS_LIMIT,
+  boundsContain,
+  padBounds,
+  type MapBounds,
+  type MapPin,
+  type MapScope,
+} from "@trs/shared/map";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/use-t";
 
-// react-leaflet must be loaded without SSR
+// Leaflet must be loaded without SSR
 const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
 
-type MapFilter = "mine" | "following";
+/** Pans settle for this long before the viewport is fetched. */
+const FETCH_DEBOUNCE_MS = 300;
+
+/** The last box we fetched: a view inside it needs no request. */
+interface FetchedArea {
+  bounds: MapBounds;
+  scope: MapScope;
+  truncated: boolean;
+}
 
 export default function MapPage() {
   const { user } = useAuth();
+  // The id, not the object: a refreshed session must not refetch the map.
+  const userId = user?.id;
   const t = useT();
   const router = useRouter();
-  const [spots, setSpots] = useState<Spot[]>([]);
-  const [filter, setFilter] = useState<MapFilter>("mine");
+  const [pins, setPins] = useState<MapPin[]>([]);
+  const [scope, setScope] = useState<MapScope>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [center, setCenter] = useState<MapCenter | null>(null);
 
-  // Store the latest bounds so we can re-fetch when filter changes
-  const boundsRef = useRef<MapBounds | null>(null);
+  const viewportRef = useRef<MapBounds | null>(null);
+  const fetchedRef = useRef<FetchedArea | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Responses arriving out of order are dropped, not drawn.
+  const requestSeqRef = useRef(0);
 
-  const loadSpots = useCallback(
-    async (bounds?: MapBounds | null) => {
+  /**
+   * Fetch pins for a view. Pads the box so small pans stay inside the last
+   * fetched area and skip the request — unless that fetch hit the limit,
+   * in which case zooming in may reveal pins we never received.
+   */
+  const loadPins = useCallback(
+    async (bounds: MapBounds, nextScope: MapScope, force = false) => {
+      if (!userId) return;
+      const last = fetchedRef.current;
+      if (
+        !force &&
+        last &&
+        last.scope === nextScope &&
+        !last.truncated &&
+        boundsContain(last.bounds, bounds)
+      ) {
+        return;
+      }
+
+      const padded = padBounds(bounds);
+      const seq = ++requestSeqRef.current;
       setIsLoading(true);
       try {
-        let result;
-        if (filter === "following") {
-          result = await apiClient.spots.feed({
-            ...(bounds ?? {}),
-            limit: 50,
-          });
-        } else if (user) {
-          result = await apiClient.spots.list({
-            userId: user.id,
-            ...(bounds ?? {}),
-            limit: 50,
-          });
-        } else {
-          result = { items: [] };
-        }
-        setSpots(result.items);
+        const result = await apiClient.spots.map({
+          ...padded,
+          scope: nextScope,
+          limit: MAP_PINS_LIMIT,
+        });
+        if (seq !== requestSeqRef.current) return;
+        fetchedRef.current = { bounds: padded, scope: nextScope, truncated: result.truncated };
+        setPins(result.items);
       } catch (err) {
-        console.error("Failed to load map spots:", err);
+        if (seq === requestSeqRef.current) console.error("Failed to load map spots:", err);
       } finally {
-        setIsLoading(false);
+        if (seq === requestSeqRef.current) setIsLoading(false);
       }
     },
-    [filter, user],
+    [userId],
   );
 
-  // Initial load
-  useEffect(() => {
-    loadSpots(boundsRef.current);
-  }, [loadSpots]);
-
-  // Debounced bounds change handler
-  const handleBoundsChange = useCallback(
-    (bounds: MapBounds) => {
-      boundsRef.current = bounds;
-
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-
-      debounceRef.current = setTimeout(() => {
-        loadSpots(bounds);
-      }, 500);
+  // Debounced viewport handler
+  const handleViewportChange = useCallback(
+    ({ bounds }: MapViewport) => {
+      viewportRef.current = bounds;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => loadPins(bounds, scope), FETCH_DEBOUNCE_MS);
     },
-    [loadSpots],
+    [loadPins, scope],
+  );
+
+  // A new scope is a new data set: refetch the current view right away.
+  useEffect(() => {
+    const bounds = viewportRef.current;
+    if (bounds) loadPins(bounds, scope, true);
+  }, [scope, loadPins]);
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
   );
 
   // Centre on the photographer — once on open, like the app, and again on
@@ -97,13 +129,23 @@ export default function MapPage() {
   }, [locateMe]);
 
   const openSpot = useCallback(
-    (spot: Spot) => {
-      router.push(`/spot/${spot.id}`);
+    (pin: MapPin) => {
+      router.push(`/spot/${pin.id}`);
     },
     [router],
   );
 
-  const filters = [
+  const labels = useMemo<SpotMapLabels>(
+    () => ({
+      cluster: (count) => t("map.spotsInCluster", { count: String(count) }),
+      untitled: t("spots.untitled"),
+      open: t("map.openSpot"),
+    }),
+    [t],
+  );
+
+  const scopes = [
+    { key: "all", label: t("map.allSpots") },
     { key: "mine", label: t("map.mySpots") },
     { key: "following", label: t("map.followingSpots") },
   ] as const;
@@ -115,14 +157,14 @@ export default function MapPage() {
       {/* Segmented control — the screen's only chrome, centred like the app's */}
       <div className="relative z-10 flex shrink-0 justify-center bg-bg px-4 py-2">
         <div className="flex items-center rounded-md bg-bg-secondary p-[2px]">
-          {filters.map(({ key, label }) => (
+          {scopes.map(({ key, label }) => (
             <button
               key={key}
               type="button"
-              aria-pressed={filter === key}
-              onClick={() => setFilter(key)}
-              className={`cursor-pointer rounded-sm px-5 py-2 text-[13px] font-medium leading-4 transition-colors ${
-                filter === key
+              aria-pressed={scope === key}
+              onClick={() => setScope(key)}
+              className={`cursor-pointer rounded-sm px-4 py-2 text-[13px] font-medium leading-4 transition-colors ${
+                scope === key
                   ? "bg-text text-bg"
                   : "text-text-secondary hover:text-text"
               }`}
@@ -136,17 +178,18 @@ export default function MapPage() {
         <span className="absolute right-4 top-1/2 hidden -translate-y-1/2 text-xs text-text-tertiary lg:block">
           {isLoading
             ? t("common.loading")
-            : t("users.spots", { count: String(spots.length) })}
+            : t("users.spots", { count: String(pins.length) })}
         </span>
       </div>
 
       {/* Map — isolate z-index so Leaflet internals don't overlap the bottom nav */}
       <div className="relative z-0 min-h-0 flex-1">
         <SpotMap
-          spots={spots}
+          pins={pins}
           center={center}
+          labels={labels}
           onSpotClick={openSpot}
-          onBoundsChange={handleBoundsChange}
+          onViewportChange={handleViewportChange}
         />
 
         {/* Locate me — 40px, hairline, above the FAB as in the app */}

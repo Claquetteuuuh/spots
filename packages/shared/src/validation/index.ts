@@ -97,6 +97,21 @@ export const spotQuerySchema = z.object({
   neLng: z.coerce.number().min(-180).max(180).optional(),
 });
 
+/**
+ * Viewport query for the map: lightweight pins inside a bounding box.
+ * All four bounds are required — the map never loads "everything".
+ */
+export const mapPinsQuerySchema = z
+  .object({
+    swLat: z.coerce.number().min(-90).max(90),
+    swLng: z.coerce.number().min(-180).max(180),
+    neLat: z.coerce.number().min(-90).max(90),
+    neLng: z.coerce.number().min(-180).max(180),
+    scope: z.enum(["all", "mine", "following"]).default("all"),
+    limit: z.coerce.number().min(1).max(2000).default(500),
+  })
+  .refine((q) => q.neLat >= q.swLat, { message: "neLat must be >= swLat", path: ["neLat"] });
+
 // ─── Users ───────────────────────────────────────────────────────────
 
 export const updateProfileSchema = z.object({

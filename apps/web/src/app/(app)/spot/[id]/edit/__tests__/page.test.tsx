@@ -213,4 +213,3 @@ describe("EditSpotPage", () => {
     expect(diagonalButton.getAttribute("aria-pressed")).toBe("false");
   });
 });
-

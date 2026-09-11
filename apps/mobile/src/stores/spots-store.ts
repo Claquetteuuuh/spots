@@ -3,7 +3,8 @@ import i18n from "../lib/i18n";
 import * as api from "../lib/api";
 import { extractErrorMessage } from "../lib/error";
 import type { Spot } from "../types";
-import type { CreateSpotParams, UpdateSpotParams } from "../lib/api";
+import type { CreateSpotParams, GetMapPinsParams, UpdateSpotParams } from "../lib/api";
+import type { MapPin } from "@trs/shared/map";
 
 interface SpotsState {
   spots: Spot[];
@@ -13,9 +14,16 @@ interface SpotsState {
   error: string | null;
   spotsCursor: string | null;
   feedCursor: string | null;
+  /** Pins for the map's last fetched viewport. */
+  mapPins: MapPin[];
+  /** True when that fetch hit the limit — zooming in may reveal more. */
+  mapTruncated: boolean;
+  isMapLoading: boolean;
 
   fetchMySpots: (userId: string, opts?: { reset?: boolean }) => Promise<void>;
   fetchFeed: (opts?: { reset?: boolean }) => Promise<void>;
+  /** Resolves true when the response was applied (false if stale or failed). */
+  fetchMapPins: (params: GetMapPinsParams) => Promise<boolean>;
   createSpot: (params: CreateSpotParams) => Promise<Spot>;
   updateSpot: (id: string, params: UpdateSpotParams) => Promise<Spot>;
   deleteSpot: (id: string) => Promise<void>;
@@ -23,6 +31,9 @@ interface SpotsState {
   fetchSpotById: (id: string) => Promise<Spot>;
   clearError: () => void;
 }
+
+/** Sequence of the latest map request — older responses are dropped. */
+let mapRequestSeq = 0;
 
 export const useSpotsStore = create<SpotsState>()((set, get) => ({
   spots: [],
@@ -32,6 +43,25 @@ export const useSpotsStore = create<SpotsState>()((set, get) => ({
   error: null,
   spotsCursor: null,
   feedCursor: null,
+  mapPins: [],
+  mapTruncated: false,
+  isMapLoading: false,
+
+  // Map failures stay quiet: the last good pins remain on screen and the
+  // next pan tries again. Only the newest response is ever applied.
+  fetchMapPins: async (params) => {
+    const seq = ++mapRequestSeq;
+    set({ isMapLoading: true });
+    try {
+      const page = await api.getMapPins(params);
+      if (seq !== mapRequestSeq) return false;
+      set({ mapPins: page.items, mapTruncated: page.truncated, isMapLoading: false });
+      return true;
+    } catch {
+      if (seq === mapRequestSeq) set({ isMapLoading: false });
+      return false;
+    }
+  },
 
   fetchMySpots: async (userId, opts = {}) => {
     const reset = opts.reset ?? true;

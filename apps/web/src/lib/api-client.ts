@@ -1,4 +1,5 @@
 import { API_ROUTES } from "@trs/shared/constants";
+import type { MapBounds, MapPin, MapScope } from "@trs/shared/map";
 import type {
   RegisterInput,
   LoginInput,
@@ -6,6 +7,12 @@ import type {
   UpdateSpotInput,
   SpotQuery,
 } from "@trs/shared/validation";
+
+export interface MapPinsResponse {
+  items: MapPin[];
+  /** The fetch hit the limit — zooming in may reveal more pins. */
+  truncated: boolean;
+}
 
 // ─── Token helpers ──────────────────────────────────────────────────
 
@@ -431,6 +438,17 @@ export const apiClient = {
       await request<void>(API_ROUTES.spots.photo(spotId, photoId), {
         method: "DELETE",
       });
+    },
+
+    /** Lightweight pins inside a viewport — own spots first, then followed. */
+    async map(
+      query: MapBounds & { scope?: MapScope; limit?: number },
+    ): Promise<MapPinsResponse> {
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(query)) {
+        if (v !== undefined) params.set(k, String(v));
+      }
+      return request<MapPinsResponse>(`${API_ROUTES.spots.map}?${params.toString()}`);
     },
 
     async feed(

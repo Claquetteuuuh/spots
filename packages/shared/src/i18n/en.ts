@@ -177,6 +177,8 @@ export const en = {
     mySpots: "My spots",
     followingSpots: "Following's spots",
     allSpots: "All spots",
+    spotsInCluster: "{{count}} spots — tap to zoom in",
+    openSpot: "Open spot",
     locateMe: "Locate me",
     searchAddress: "Search for an address...",
     orEnterCoords: "Or enter coordinates",

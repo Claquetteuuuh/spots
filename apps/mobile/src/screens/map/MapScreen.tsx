@@ -1,16 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, type Region } from "react-native-maps";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, PROVIDER_DEFAULT, type MapPressEvent, type Region } from "react-native-maps";
 import * as Location from "expo-location";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  MAP_PINS_LIMIT,
+  SpotClusterer,
+  boundsContain,
+  clusterMarkerSize,
+  formatClusterCount,
+  longitudeDeltaFromZoom,
+  padBounds,
+  regionToBounds,
+  zoomFromLongitudeDelta,
+  type MapBounds,
+  type MapItem,
+  type MapPin,
+  type MapScope,
+} from "@trs/shared/map";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useTabSwitch } from "../../navigation/tab-context";
 import type { MainTabNavigationProp } from "../../navigation/types";
-import type { Spot } from "../../types";
 
 // Central Paris — a reasonable default when location permission is denied
 // or hasn't resolved yet.
@@ -21,7 +36,16 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.1,
 };
 
-type MapFilter = "mine" | "following";
+/** Pans settle for this long before the viewport is fetched. */
+const FETCH_DEBOUNCE_MS = 300;
+const PREVIEW_PHOTO = 72;
+
+/** The last box we fetched: a view inside it needs no request. */
+interface FetchedArea {
+  bounds: MapBounds;
+  scope: MapScope;
+  truncated: boolean;
+}
 
 export function MapScreen() {
   const { t } = useTranslation();
@@ -29,53 +53,144 @@ export function MapScreen() {
   const navigation = useNavigation<MainTabNavigationProp<"Map">>();
   const { setTabIndex } = useTabSwitch();
 
-  const user = useAuthStore((s) => s.user);
-  const spots = useSpotsStore((s) => s.spots);
-  const feedSpots = useSpotsStore((s) => s.feedSpots);
-  const fetchMySpots = useSpotsStore((s) => s.fetchMySpots);
-  const fetchFeed = useSpotsStore((s) => s.fetchFeed);
+  // The id, not the object: a refreshed session must not refetch the map.
+  const userId = useAuthStore((s) => s.user?.id);
+  const mapPins = useSpotsStore((s) => s.mapPins);
+  const fetchMapPins = useSpotsStore((s) => s.fetchMapPins);
 
+  const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  const [filter, setFilter] = useState<MapFilter>("mine");
+  const [scope, setScope] = useState<MapScope>("all");
+  const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      void fetchMySpots(user.id);
-    }
-  }, [user, fetchMySpots]);
+  const fetchedRef = useRef<FetchedArea | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Fetch pins for a view. Pads the box so small pans stay inside the last
+   * fetched area and skip the request — unless that fetch hit the limit,
+   * in which case zooming in may reveal pins we never received.
+   */
+  const loadPins = useCallback(
+    (bounds: MapBounds, nextScope: MapScope, force = false) => {
+      if (!userId) return;
+      const last = fetchedRef.current;
+      if (
+        !force &&
+        last &&
+        last.scope === nextScope &&
+        !last.truncated &&
+        boundsContain(last.bounds, bounds)
+      ) {
+        return;
+      }
+      const padded = padBounds(bounds);
+      void fetchMapPins({ bounds: padded, scope: nextScope, limit: MAP_PINS_LIMIT }).then(
+        (applied) => {
+          if (!applied) return;
+          fetchedRef.current = {
+            bounds: padded,
+            scope: nextScope,
+            truncated: useSpotsStore.getState().mapTruncated,
+          };
+        },
+      );
+    },
+    [userId, fetchMapPins],
+  );
+
+  // Every settled pan regroups the markers and, after a pause, asks for pins.
+  const handleRegionChange = useCallback(
+    (next: Region) => {
+      setRegion(next);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(
+        () => loadPins(regionToBounds(next), scope),
+        FETCH_DEBOUNCE_MS,
+      );
+    },
+    [loadPins, scope],
+  );
+
+  // First load, and a new scope: fetch the current view right away.
   useEffect(() => {
-    if (filter === "following") {
-      void fetchFeed();
-    }
-  }, [filter, fetchFeed]);
+    loadPins(regionToBounds(region), scope, true);
+    // `region` is deliberately left out — pans go through the debounce.
+  }, [scope, loadPins]);
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
 
   const locateMe = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
     const position = await Location.getCurrentPositionAsync({});
-    setRegion({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    });
+    mapRef.current?.animateToRegion(
+      {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      },
+      600,
+    );
   };
 
   useEffect(() => {
     void locateMe();
   }, []);
 
-  const openSpot = (spot: Spot) => {
-    navigation.navigate("SpotDetail", { spotId: spot.id });
+  // Build the cluster index once per pin set (the costly part), then group
+  // for the current view — cheap, so it can follow every pan.
+  const clusterer = useMemo(
+    () => (mapPins.length > 0 ? new SpotClusterer(mapPins) : null),
+    [mapPins],
+  );
+  const items = useMemo<MapItem[]>(() => {
+    if (!clusterer) return [];
+    const zoom = zoomFromLongitudeDelta(region.longitudeDelta, Dimensions.get("window").width);
+    return clusterer.getItems(regionToBounds(region), zoom);
+  }, [clusterer, region]);
+
+  // Tapping a cluster zooms just far enough for it to split.
+  const zoomToCluster = (item: Extract<MapItem, { kind: "cluster" }>) => {
+    if (!clusterer) return;
+    const longitudeDelta = longitudeDeltaFromZoom(
+      clusterer.getExpansionZoom(item.id) - Math.log2(Dimensions.get("window").width / 256),
+    );
+    const aspect = region.latitudeDelta / region.longitudeDelta;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: item.latitude,
+        longitude: item.longitude,
+        longitudeDelta,
+        latitudeDelta: longitudeDelta * aspect,
+      },
+      400,
+    );
   };
 
-  const markersToShow = filter === "following" ? feedSpots : spots;
+  const openSpot = (pin: MapPin) => {
+    navigation.navigate("SpotDetail", { spotId: pin.id });
+  };
 
-  const filters: { key: MapFilter; label: string }[] = [
+  // A tap on the map itself dismisses the preview; a marker tap does not.
+  const handleMapPress = (e: MapPressEvent) => {
+    if (e.nativeEvent.action === "marker-press") return;
+    setSelectedPin(null);
+  };
+
+  const scopes: { key: MapScope; label: string }[] = [
+    { key: "all", label: t("map.allSpots") },
     { key: "mine", label: t("map.mySpots") },
     { key: "following", label: t("map.followingSpots") },
   ];
+
+  const previewTitle = selectedPin ? (selectedPin.title ?? t("spots.untitled")) : "";
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.bg }]} edges={["top"]}>
@@ -90,21 +205,23 @@ export function MapScreen() {
             },
           ]}
         >
-          {filters.map(({ key, label }) => (
+          {scopes.map(({ key, label }) => (
             <Pressable
               key={key}
-              onPress={() => setFilter(key)}
+              onPress={() => setScope(key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: scope === key }}
               style={[
                 styles.toggleButton,
                 {
-                  backgroundColor: filter === key ? theme.colors.text : "transparent",
+                  backgroundColor: scope === key ? theme.colors.text : "transparent",
                   borderRadius: theme.radius.sm,
                 },
               ]}
             >
               <Text
                 style={{
-                  color: filter === key ? theme.colors.bg : theme.colors.textSecondary,
+                  color: scope === key ? theme.colors.bg : theme.colors.textSecondary,
                   fontSize: theme.typography.size.sm,
                   fontWeight: theme.typography.weight.medium,
                 }}
@@ -118,31 +235,157 @@ export function MapScreen() {
 
       <View style={styles.mapWrapper}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={StyleSheet.absoluteFill}
-          initialRegion={region}
-          region={region}
-          onRegionChangeComplete={setRegion}
+          initialRegion={DEFAULT_REGION}
+          onRegionChangeComplete={handleRegionChange}
+          onPress={handleMapPress}
+          testID="map-view"
         >
-          {markersToShow.map((spot) => (
+          {items.map((item) => {
+            if (item.kind === "cluster") {
+              const size = clusterMarkerSize(item.count);
+              const fontSize = size >= 52 ? 15 : size >= 42 ? 14 : 13;
+              return (
+                <Marker
+                  key={`cluster-${item.id}`}
+                  coordinate={{ latitude: item.latitude, longitude: item.longitude }}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={false}
+                  onPress={() => zoomToCluster(item)}
+                  accessibilityLabel={t("map.spotsInCluster", { count: item.count })}
+                  testID={`cluster-${item.id}`}
+                >
+                  {/* Halo + filled dot: the count sits in the brand blue. */}
+                  <View
+                    style={[
+                      styles.clusterHalo,
+                      {
+                        width: size + 8,
+                        height: size + 8,
+                        borderRadius: (size + 8) / 2,
+                        backgroundColor: theme.colors.accentTint,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.cluster,
+                        {
+                          width: size,
+                          height: size,
+                          borderRadius: size / 2,
+                          backgroundColor: theme.colors.accent,
+                          borderColor: theme.colors.bg,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: theme.colors.onAccent,
+                          fontSize,
+                          fontWeight: theme.typography.weight.semibold,
+                          fontVariant: ["tabular-nums"],
+                        }}
+                      >
+                        {formatClusterCount(item.count)}
+                      </Text>
+                    </View>
+                  </View>
+                </Marker>
+              );
+            }
+
+            const { pin } = item;
+            return (
+              <Marker
+                key={pin.id}
+                coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+                anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
+                onPress={() => setSelectedPin(pin)}
+                accessibilityLabel={pin.title ?? t("spots.untitled")}
+                testID={`pin-${pin.id}`}
+              >
+                {/* Own spots are the full accent, followed ones the lighter tint. */}
+                <View
+                  testID={`pin-dot-${pin.id}`}
+                  style={[
+                    styles.pin,
+                    {
+                      backgroundColor: pin.isOwn ? theme.colors.accent : theme.colors.accentLight,
+                      borderColor: theme.colors.bg,
+                    },
+                  ]}
+                />
+              </Marker>
+            );
+          })}
+
+          {/* The open pin's halo is its own marker, so static pins never redraw. */}
+          {selectedPin ? (
             <Marker
-              key={spot.id}
-              coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
-              title={spot.title ?? undefined}
-              onPress={() => openSpot(spot)}
+              key={`halo-${selectedPin.id}`}
+              coordinate={{ latitude: selectedPin.latitude, longitude: selectedPin.longitude }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              zIndex={-1}
+              testID="pin-halo"
             >
-              <View
-                style={[
-                  styles.pin,
-                  {
-                    backgroundColor: theme.colors.accent,
-                    borderColor: theme.colors.bg,
-                  },
-                ]}
-              />
+              <View style={[styles.pinHalo, { backgroundColor: theme.colors.accentTint }]} />
             </Marker>
-          ))}
+          ) : null}
         </MapView>
+
+        {/* Preview card — the photo, the title, the city; tap to open the spot. */}
+        {selectedPin ? (
+          <Pressable
+            onPress={() => openSpot(selectedPin)}
+            accessibilityRole="button"
+            accessibilityLabel={`${t("map.openSpot")} — ${previewTitle}`}
+            testID="spot-preview"
+            style={({ pressed }) => [
+              styles.preview,
+              {
+                backgroundColor: theme.colors.bg,
+                shadowColor: theme.colors.text,
+                opacity: pressed ? 0.92 : 1,
+              },
+            ]}
+          >
+            <Image
+              source={{ uri: selectedPin.photoUrl }}
+              style={[styles.previewPhoto, { backgroundColor: theme.colors.bgTertiary }]}
+              accessibilityIgnoresInvertColors
+            />
+            <View style={styles.previewText}>
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: theme.colors.text,
+                  fontSize: theme.typography.size.md,
+                  fontWeight: theme.typography.weight.semibold,
+                }}
+              >
+                {previewTitle}
+              </Text>
+              {selectedPin.city ? (
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.size.sm,
+                    marginTop: 2,
+                  }}
+                >
+                  {selectedPin.city}
+                </Text>
+              ) : null}
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+          </Pressable>
+        ) : null}
 
         <Pressable
           onPress={locateMe}
@@ -198,7 +441,7 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
   },
   mapWrapper: {
     flex: 1,
@@ -208,6 +451,47 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
+  },
+  pinHalo: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  clusterHalo: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cluster: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+  },
+  // Sits above the FAB column, clear of both buttons. It genuinely floats
+  // over the map, so it carries the one shadow on this screen.
+  preview: {
+    position: "absolute",
+    left: 20,
+    right: 84,
+    bottom: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 8,
+    paddingRight: 12,
+    borderRadius: 16,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  previewPhoto: {
+    width: PREVIEW_PHOTO,
+    height: PREVIEW_PHOTO,
+    borderRadius: 12,
+  },
+  previewText: {
+    flex: 1,
+    minWidth: 0,
   },
   fab: {
     position: "absolute",
