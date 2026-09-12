@@ -148,6 +148,13 @@ describe("filters", () => {
     expect(filtersToQuery(EMPTY_FILTERS, { latitude: 1, longitude: 1 })).toEqual({});
   });
 
+  it("filterPinsByColor looks at every colour of a spot, not just the first", () => {
+    // Red first, a muted dark green second: the spot answers to green too
+    const pins = [pin("mixed", ["#D32F2F", "#2E4A3E"]), pin("plain-red", ["#D32F2F"])];
+    expect(filterPinsByColor(pins, ["#2E7D32"]).map((p) => p.id)).toEqual(["mixed"]);
+    expect(filterPinsByColor(pins, ["#D32F2F"]).map((p) => p.id)).toEqual(["mixed", "plain-red"]);
+  });
+
   it("filterPinsByColor keeps pins with any colour that passes for a chosen one", () => {
     const pins = [pin("red", ["#C44536"]), pin("sea", ["#2C5F7C", "#FAFAF8"]), pin("none", [])];
     expect(filterPinsByColor(pins, []).map((p) => p.id)).toEqual(["red", "sea", "none"]);

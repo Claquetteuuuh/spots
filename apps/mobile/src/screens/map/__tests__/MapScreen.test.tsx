@@ -587,3 +587,23 @@ describe("MapScreen — colour wheel", () => {
     expect(screen.getByLabelText("#1E4A66").props.accessibilityState).toEqual({ selected: true });
   });
 });
+
+
+describe("MapScreen — every colour of a spot counts", () => {
+  it("keeps a spot whose second colour matches the chosen swatch", async () => {
+    useSpotsStore.setState({
+      mapPins: [
+        pin("mixed", 48.8566, 2.3522, { colors: ["#D32F2F", "#2E4A3E"] }),
+        pin("plain-red", 48.84, 2.33, { colors: ["#D32F2F"] }),
+      ],
+    });
+    await render(<MapScreen />);
+    await settleRegion(DEFAULT_REGION);
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getByLabelText("colorFamilies.green"));
+
+    expect(screen.getByTestId("pin-mixed")).toBeTruthy();
+    expect(screen.queryByTestId("pin-plain-red")).toBeNull();
+  });
+});

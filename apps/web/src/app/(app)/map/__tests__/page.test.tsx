@@ -481,3 +481,23 @@ describe("MapPage — colour wheel", () => {
     expect(screen.getByTestId("filters-color-wheel")).toBeTruthy();
   });
 });
+
+
+describe("MapPage — every colour of a spot counts", () => {
+  it("keeps a spot whose second colour matches the chosen swatch", async () => {
+    mockMapFetch.mockImplementation(() =>
+      Promise.resolve({
+        items: [pin("mixed", ["#D32F2F", "#2E4A3E"]), pin("plain-red", ["#D32F2F"])],
+        truncated: false,
+      }),
+    );
+    await renderPage();
+    await moveTo(VIEW);
+    await waitFor(() => expect(ids()).toEqual(["mixed", "plain-red"]));
+
+    await openFilters();
+    await click(screen.getByLabelText("colorFamilies.green"));
+
+    await waitFor(() => expect(ids()).toEqual(["mixed"]));
+  });
+});
