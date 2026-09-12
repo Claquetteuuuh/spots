@@ -25,6 +25,7 @@ import * as api from "../../lib/api";
 import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { PhotoLightbox } from "../../components/spots/PhotoLightbox";
 import { PinchableImage } from "../../components/spots/PinchableImage";
+import { LocationDetails } from "../../components/spots/LocationDetails";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import { SpotPhotosSection } from "../../components/spots/SpotPhotosSection";
 import type { RootStackScreenProps } from "../../navigation/types";
@@ -483,6 +484,9 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
               </Text>
             </View>
           </Pressable>
+
+          {/* Where it is: the address to copy, the coordinates in small type, directions */}
+          <LocationDetails latitude={spot.latitude} longitude={spot.longitude} address={spot.address ?? null} />
 
           {/* Community photos */}
           <SpotPhotosSection spotId={spot.id} ownerId={spot.userId} />

@@ -6,6 +6,8 @@ import type {
   CreateSpotInput,
   UpdateSpotInput,
   SpotQuery,
+  SpotImageInput,
+  ActivityKind,
 } from "@trs/shared/validation";
 
 export type MapPinsResponse =
@@ -174,6 +176,8 @@ async function send(path: string, options: RequestInit = {}, _skipRefresh = fals
   }
 
   const res = await fetch(path, {
+    // A refresh must always reach the server, never the browser's cache
+    cache: "no-store",
     ...options,
     headers,
   });
@@ -308,6 +312,39 @@ export interface NotificationsData {
 export interface LikeState {
   isLiked: boolean;
   likeCount: number;
+}
+
+/** A spot as the activity page lists it. */
+export interface ActivitySpot {
+  id: string;
+  title: string | null;
+  photoUrl: string;
+  city: string | null;
+  country: string | null;
+  userId: string;
+  user: { id: string; username: string; name: string; avatarUrl: string | null };
+}
+
+export interface ActivityLike {
+  id: string;
+  createdAt: string;
+  spot: ActivitySpot;
+}
+
+export interface ActivityPhoto {
+  id: string;
+  photoUrl: string;
+  caption: string | null;
+  createdAt: string;
+  spot: ActivitySpot;
+}
+
+/** What comes back when a gallery photo is removed. */
+export interface RemovedSpotImage {
+  id: string;
+  images: SpotImage[];
+  /** The new cover, when the removed photo was it. */
+  cover: { photoUrl: string; photoKey: string } | null;
 }
 
 export interface SentFollowRequest {
@@ -458,7 +495,40 @@ export const apiClient = {
     },
   },
 
+  me: {
+    /** The viewer's likes or photos, newest first. */
+    async activity(
+      type: ActivityKind,
+      cursor?: string,
+    ): Promise<PaginatedResponse<ActivityLike | ActivityPhoto>> {
+      const params = new URLSearchParams({ type });
+      if (cursor) params.set("cursor", cursor);
+      return request<PaginatedResponse<ActivityLike | ActivityPhoto>>(
+        `${API_ROUTES.me.activity}?${params}`,
+      );
+    },
+  },
+
   spots: {
+    /** Add an uploaded photo to the spot's gallery; answers with the whole gallery. */
+    async addImage(id: string, photo: SpotImageInput): Promise<SpotImage[]> {
+      const images = await request<SpotImage[]>(API_ROUTES.spots.images(id), {
+        method: "POST",
+        body: JSON.stringify(photo),
+      });
+      emitSpotsChanged();
+      return images;
+    },
+
+    /** Take a photo out of the gallery (the file goes too). */
+    async removeImage(id: string, imageId: string): Promise<RemovedSpotImage> {
+      const result = await request<RemovedSpotImage>(API_ROUTES.spots.image(id, imageId), {
+        method: "DELETE",
+      });
+      emitSpotsChanged();
+      return result;
+    },
+
     async like(id: string): Promise<LikeState> {
       return request<LikeState>(API_ROUTES.spots.like(id), { method: "POST" });
     },

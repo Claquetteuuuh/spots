@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useT } from "@/lib/use-t";
 
 export interface DialogOptions {
@@ -60,6 +61,21 @@ export async function noticeDialog(options: DialogOptions): Promise<void> {
   await push("notice", options);
 }
 
+/** The card's way in and out: a short rise with a spring, the backdrop fading with it. */
+const BACKDROP_MOTION = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.15 },
+} as const;
+
+const CARD_MOTION = {
+  initial: { opacity: 0, scale: 0.95, y: 16 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  exit: { opacity: 0, scale: 0.95, y: 16 },
+  transition: { type: "spring", damping: 26, stiffness: 320, mass: 0.6 },
+} as const;
+
 /**
  * Renders whatever dialog is asked for, in the app's own style rather than
  * the browser's. Mount once, near the root.
@@ -67,7 +83,7 @@ export async function noticeDialog(options: DialogOptions): Promise<void> {
 export function DialogHost() {
   const entries = useSyncExternalStore(subscribe, () => queue, () => NONE);
   const current = entries[0];
-  return current ? <Dialog key={current.id} entry={current} /> : null;
+  return <AnimatePresence>{current ? <Dialog key={current.id} entry={current} /> : null}</AnimatePresence>;
 }
 
 function Dialog({ entry }: { entry: DialogEntry }) {
@@ -92,12 +108,14 @@ function Dialog({ entry }: { entry: DialogEntry }) {
   }, [entry, isConfirm]);
 
   return (
-    <div
+    <motion.div
+      {...BACKDROP_MOTION}
       className="fixed inset-0 z-[1200] flex items-end justify-center bg-text/30 p-4 sm:items-center"
       onClick={cancel}
       data-testid="dialog-backdrop"
     >
-      <div
+      <motion.div
+        {...CARD_MOTION}
         role={isConfirm ? "alertdialog" : "dialog"}
         aria-modal="true"
         aria-labelledby={titleId}
@@ -139,7 +157,7 @@ function Dialog({ entry }: { entry: DialogEntry }) {
             {entry.confirmLabel ?? t("common.ok")}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

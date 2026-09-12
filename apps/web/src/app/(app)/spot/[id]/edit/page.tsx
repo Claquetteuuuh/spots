@@ -3,7 +3,8 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import type { Spot } from "@/lib/api-client";
+import type { Spot, SpotImage } from "@/lib/api-client";
+import { confirmDialog } from "@/components/dialog";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -28,6 +29,9 @@ const SUGGESTED_COLORS = [
 
 const MAX_COMPOSITIONS = 5;
 const MAX_COLORS = 10;
+
+/** A spot's gallery holds this many photos at most. */
+const MAX_SPOT_IMAGES = 10;
 
 function SectionLabel({
   children,
@@ -69,6 +73,10 @@ export default function EditSpotPage({
   const [customComposition, setCustomComposition] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
+  // The gallery: added to or trimmed right away, independently of Save
+  const [images, setImages] = useState<SpotImage[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +96,7 @@ export default function EditSpotPage({
         setCustomComposition(data.customComposition ?? "");
         setSelectedColors(data.colors ?? []);
         setAccessibility(data.accessibility ?? null);
+        setImages(data.images ?? []);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : t("common.error"));
@@ -169,6 +178,49 @@ export default function EditSpotPage({
       setIsSaving(false);
     }
   }, [spot, title, description, selectedCompositions, customComposition, selectedColors, accessibility, id, router, t]);
+
+  async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !spot) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const uploaded = await apiClient.upload.photo(file);
+      setImages(await apiClient.spots.addImage(spot.id, { photoUrl: uploaded.url, photoKey: uploaded.key }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function handleRemoveImage(image: SpotImage) {
+    if (!spot) return;
+    if (images.length <= 1) {
+      setError(t("spots.lastPhoto"));
+      return;
+    }
+    const sure = await confirmDialog({
+      title: t("spots.removePhoto"),
+      message: t("spots.removePhotoMessage"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    });
+    if (!sure) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const result = await apiClient.spots.removeImage(spot.id, image.id);
+      setImages(result.images);
+      // The cover went with it: the spot now wears the next photo
+      if (result.cover) setSpot((prev) => (prev ? { ...prev, ...result.cover } : prev));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -374,6 +426,58 @@ export default function EditSpotPage({
               </div>
             </div>
           ) : null}
+        </div>
+
+        {/* Photos — added or removed right away, independently of Save */}
+        <div>
+          <SectionLabel>
+            {t("spots.photos")} ({images.length}/{MAX_SPOT_IMAGES})
+          </SectionLabel>
+          <p className="mt-1 text-xs text-text-tertiary">{t("spots.photoLimit")}</p>
+          <div className="mt-3 flex flex-wrap gap-3 pt-1.5 pr-1.5">
+            {images.map((image, i) => (
+              <div key={image.id} className="relative">
+                <img src={image.photoUrl} alt="" className="h-20 w-20 rounded-md border border-border object-cover" />
+                {i === 0 ? (
+                  <span className="absolute bottom-1 left-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {t("spots.cover")}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleRemoveImage(image)}
+                  disabled={photoBusy || images.length <= 1}
+                  aria-label={`${t("common.delete")} ${i + 1}`}
+                  className="absolute -top-1.5 -right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-text text-[11px] font-bold leading-none text-bg transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40"
+                  data-testid={`remove-image-${image.id}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {images.length < MAX_SPOT_IMAGES ? (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoBusy}
+                aria-label={t("spots.addPhoto")}
+                className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border border-dashed border-border text-text-secondary transition-colors hover:border-accent hover:text-accent disabled:cursor-wait disabled:opacity-40"
+                data-testid="add-image"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+            ) : null}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void handleAddImage(e)}
+            data-testid="image-input"
+          />
         </div>
 
         {/* Actions */}

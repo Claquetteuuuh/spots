@@ -12,35 +12,8 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 20, bottom: 10, left: 0, right: 0 }),
 }));
 
-// Gestures need a native runtime: a chainable stub stands in for the builders
-jest.mock("react-native-gesture-handler", () => {
-  const { View } = require("react-native");
-  const chain: Record<string, () => unknown> = {};
-  for (const k of ["onStart", "onUpdate", "onEnd", "numberOfTaps", "minPointers", "maxPointers"]) {
-    chain[k] = () => chain;
-  }
-  return {
-    Gesture: {
-      Pinch: () => chain,
-      Pan: () => chain,
-      Tap: () => chain,
-      Simultaneous: () => chain,
-    },
-    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
-    GestureHandlerRootView: View,
-  };
-});
-
-jest.mock("react-native-reanimated", () => {
-  const { Image, View } = require("react-native");
-  return {
-    __esModule: true,
-    default: { Image, View },
-    useSharedValue: (value: unknown) => ({ value }),
-    useAnimatedStyle: (build: () => unknown) => build(),
-    withTiming: (value: unknown) => value,
-  };
-});
+jest.mock("react-native-gesture-handler", () => require("../../../test/native-mocks").gestureHandlerMock());
+jest.mock("react-native-reanimated", () => require("../../../test/native-mocks").reanimatedMock());
 
 import { PhotoLightbox } from "../PhotoLightbox";
 

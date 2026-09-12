@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -77,6 +77,7 @@ export function PhotoLightbox({ uri, onClose }: PhotoLightboxProps) {
       <GestureHandlerRootView style={styles.root}>
         <GestureDetector gesture={gesture}>
           <Animated.Image
+            entering={FadeIn.duration(200)}
             source={{ uri: uri ?? undefined }}
             style={[styles.photo, photoStyle]}
             resizeMode="contain"

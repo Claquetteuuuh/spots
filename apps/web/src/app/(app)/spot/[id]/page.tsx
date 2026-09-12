@@ -3,6 +3,7 @@
 import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
 import { ZoomablePhoto } from "@/components/zoomable-photo";
+import { LocationDetails } from "@/components/location-details";
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -623,12 +624,13 @@ export default function SpotDetailPage({
               {t("map.tapToExpand")}
             </span>
           </button>
-          <div className="hidden items-center justify-between border-t border-border px-4 py-2 lg:flex">
-            <p className="font-mono text-xs text-text-tertiary">{coordsLabel}</p>
-            {spot.address ? (
-              <p className="ml-4 truncate text-xs text-text-tertiary">{spot.address}</p>
-            ) : null}
-          </div>
+          {/* Where it is: the address to copy, the coordinates in small type, directions */}
+          <LocationDetails
+            latitude={spot.latitude}
+            longitude={spot.longitude}
+            address={spot.address}
+            className="pt-3 lg:border-t lg:border-border lg:px-4 lg:py-4"
+          />
         </div>
 
         {/* Expanded map overlay */}

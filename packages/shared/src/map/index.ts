@@ -242,11 +242,112 @@ export function filtersToQuery(f: MapFilters, near: LatLng | null): MapFilterQue
   return q;
 }
 
-/** Keep the pins that carry at least one colour in one of the families. */
+// ─── Colour tolerance ────────────────────────────────────────────────
+
+/** Parse "#RRGGBB" into 0–1 channels. */
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/** sRGB → CIELAB (D65), where distances roughly follow what the eye sees. */
+export function hexToLab(hex: string): [number, number, number] | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [r, g, b] = rgb.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+  const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+  const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/**
+ * Each family, in a few of its shades — light, dark and muted — so a colour
+ * close to any of them counts as that family too. Brick sits near sienna,
+ * so a brick-red spot also answers to "brown"; a pale or a deep green is
+ * still green.
+ */
+const FAMILY_SHADES: Record<ColorFamily, readonly string[]> = {
+  red: ["#C44536", "#9B2335", "#D32F2F", "#E57373", "#7F1D1D"],
+  orange: ["#D98A3C", "#D4A574", "#E67E22", "#F4A261", "#B5651D"],
+  yellow: ["#D4A017", "#C8B560", "#F1C40F", "#E8D48B", "#B8860B"],
+  green: ["#4F8A5B", "#7D8C6E", "#2E4A3E", "#8BC34A", "#6B8E23", "#A8D5A2"],
+  blue: ["#4A6FA5", "#4A90A4", "#1E3A8A", "#64B5F6", "#2C5F7C", "#9DB9E8"],
+  purple: ["#6B5B8D", "#8E6F8E", "#7E57C2", "#B39DDB", "#4A148C"],
+  pink: ["#D98CA6", "#E0509A", "#E91E63", "#F8BBD0", "#C2185B"],
+  brown: ["#8B7355", "#6B5740", "#B49A7A", "#5D4037", "#A0522D", "#D2B48C"],
+  neutral: ["#B8BCC4", "#FAFAF8", "#F5E6D3", "#6B6960", "#3D3D3D", "#1A1A18", "#FFFFFF", "#000000"],
+};
+
+const FAMILY_SHADES_LAB: Record<ColorFamily, [number, number, number][]> = Object.fromEntries(
+  (Object.keys(FAMILY_SHADES) as ColorFamily[]).map((family) => [
+    family,
+    FAMILY_SHADES[family].map((hex) => hexToLab(hex)!),
+  ]),
+) as Record<ColorFamily, [number, number, number][]>;
+
+/** Closer than this (CIE76 ΔE) to one of a family's shades, and it belongs. */
+export const COLOR_MATCH_DISTANCE = 22;
+
+/**
+ * Every family a colour can pass for: its own bucket, plus any family with
+ * a shade the eye would confuse it with. This is what the filter uses, so
+ * "green" also finds the lighter and darker greens, and "brown" the bricks.
+ */
+export function colorFamiliesOf(hex: string): ColorFamily[] {
+  const primary = colorFamilyOf(hex);
+  const lab = hexToLab(hex);
+  if (!lab) return [primary];
+  // A grey passes for nothing else, and nothing coloured passes for grey
+  if (Math.hypot(lab[1], lab[2]) < 12) return [primary];
+  const families = new Set<ColorFamily>([primary]);
+  for (const family of Object.keys(FAMILY_SHADES_LAB) as ColorFamily[]) {
+    if (families.has(family) || family === "neutral") continue;
+    const near = FAMILY_SHADES_LAB[family].some(
+      ([l, a, b]) => Math.hypot(lab[0] - l, lab[1] - a, lab[2] - b) <= COLOR_MATCH_DISTANCE,
+    );
+    if (near) families.add(family);
+  }
+  return [...families];
+}
+
+/** Keep the pins that carry at least one colour passing for one of the families. */
 export function filterPinsByColor(pins: MapPin[], families: ColorFamily[]): MapPin[] {
   if (families.length === 0) return pins;
   const wanted = new Set<ColorFamily>(families);
-  return pins.filter((p) => p.colors.some((hex) => wanted.has(colorFamilyOf(hex))));
+  return pins.filter((p) => p.colors.some((hex) => colorFamiliesOf(hex).some((f) => wanted.has(f))));
+}
+
+/** The colour a pin is drawn in: the spot's first colour, when it has one. */
+export function pinColor(colors: readonly string[]): string | null {
+  const first = colors.find((c) => /^#[0-9a-f]{6}$/i.test(c.trim()));
+  return first ? first.trim().toUpperCase() : null;
+}
+
+// ─── Getting there ───────────────────────────────────────────────────
+
+export interface NavigationLinks {
+  google: string;
+  apple: string;
+  waze: string;
+}
+
+/** Deep links that open directions to a point in the usual apps. */
+export function navigationLinks(latitude: number, longitude: number): NavigationLinks {
+  const at = `${latitude},${longitude}`;
+  return {
+    google: `https://www.google.com/maps/dir/?api=1&destination=${at}`,
+    apple: `https://maps.apple.com/?daddr=${at}`,
+    waze: `https://waze.com/ul?ll=${at}&navigate=yes`,
+  };
+}
+
+/** "48.85661, 2.35222" — enough digits to find the spot again. */
+export function formatCoordinates(latitude: number, longitude: number, digits = 5): string {
+  return `${latitude.toFixed(digits)}, ${longitude.toFixed(digits)}`;
 }
 
 // ─── Client cache ────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import {
   formatClusterCount,
   type MapBounds,
   type MapPin,
+  pinColor,
 } from "@trs/shared/map";
 import type { LivePosition } from "@/lib/use-live-position";
 
@@ -375,6 +376,14 @@ function toBounds(map: Leaflet): MapBounds {
  */
 function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
   const size = active ? 18 : 14;
+  // The dot wears the spot's first colour, so the map reads like the palette;
+  // own spots keep a thin accent ring so they still stand apart.
+  const fill = pinColor(pin.colors) ?? `var(${pin.isOwn ? "--color-accent" : "--color-accent-light"})`;
+  const ring = active
+    ? "box-shadow: 0 0 0 4px var(--color-accent-tint);"
+    : pin.isOwn
+      ? "box-shadow: 0 0 0 1.5px var(--color-accent);"
+      : "";
   return L.divIcon({
     className: "spot-pin",
     html: `<div style="
@@ -382,9 +391,9 @@ function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
       width: ${size}px;
       height: ${size}px;
       border-radius: 9999px;
-      background: var(${pin.isOwn ? "--color-accent" : "--color-accent-light"});
+      background: ${fill};
       border: ${active ? 3 : 2}px solid var(--color-bg);
-      ${active ? "box-shadow: 0 0 0 4px var(--color-accent-tint);" : ""}
+      ${ring}
     "></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],

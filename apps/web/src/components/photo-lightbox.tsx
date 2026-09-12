@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { IDENTITY, pan, toggleZoom, wheelFactor, zoomAround, type ZoomState } from "@/lib/zoom";
 import { useT } from "@/lib/use-t";
 import { distance, fromCentre, midpoint, type Point } from "@/lib/pointers";
@@ -43,7 +44,10 @@ export function PhotoLightbox({ urls, index, alt, onIndexChange, onClose }: Phot
     "absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25";
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
       role="dialog"
       aria-modal="true"
       aria-label={alt}
@@ -98,7 +102,7 @@ export function PhotoLightbox({ urls, index, alt, onIndexChange, onClose }: Phot
       <p className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-white/60">
         {t("spots.zoomHint")}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -166,7 +170,10 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
   };
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", damping: 26, stiffness: 300, mass: 0.6 }}
       ref={frameRef}
       onWheel={onWheel}
       onDoubleClick={onDoubleClick}
@@ -188,6 +195,6 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
         style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})` }}
         data-testid="lightbox-image"
       />
-    </div>
+    </motion.div>
   );
 }

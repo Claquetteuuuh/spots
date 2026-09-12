@@ -25,6 +25,7 @@ import { SpotDetailScreen } from "../screens/spots/SpotDetailScreen";
 import { EditSpotScreen } from "../screens/spots/EditSpotScreen";
 import { EditProfileScreen } from "../screens/profile/EditProfileScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
+import { ActivityScreen } from "../screens/settings/ActivityScreen";
 import { OtherProfileScreen } from "../screens/profile/OtherProfileScreen";
 
 import { TabProvider } from "./tab-context";
@@ -258,6 +259,17 @@ export function RootNavigator() {
               component={SettingsScreen}
               options={{
                 headerShown: false,
+              }}
+            />
+            <RootStack.Screen
+              name="Activity"
+              component={ActivityScreen}
+              options={{
+                headerShown: true,
+                title: t("settings.activity"),
+                headerStyle: { backgroundColor: theme.colors.bg },
+                headerTintColor: theme.colors.text,
+                headerShadowVisible: false,
               }}
             />
             <RootStack.Screen

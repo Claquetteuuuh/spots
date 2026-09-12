@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
 vi.mock("@/lib/use-t", () => ({
@@ -35,7 +35,7 @@ describe("DialogHost", () => {
       fireEvent.click(screen.getByTestId("dialog-confirm"));
     });
     await expect(answer!).resolves.toBe(true);
-    expect(screen.queryByTestId("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByTestId("dialog")).toBeNull());
   });
 
   it("resolves false on cancel, Escape and a tap beside the card", async () => {
@@ -112,6 +112,8 @@ describe("DialogHost", () => {
     });
     await expect(first!).resolves.toBe(true);
     expect(screen.getByText("Second")).toBeTruthy();
+    // The first card is still on its way out for a moment
+    await waitFor(() => expect(screen.getAllByTestId("dialog")).toHaveLength(1));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId("dialog-cancel"));

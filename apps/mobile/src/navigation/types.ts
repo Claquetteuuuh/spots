@@ -22,6 +22,7 @@ export type RootStackParamList = {
   EditSpot: { spotId: string };
   EditProfile: undefined;
   Settings: undefined;
+  Activity: undefined;
   OtherProfile: { username: string };
 };
 

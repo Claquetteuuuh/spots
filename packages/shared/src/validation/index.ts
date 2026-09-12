@@ -88,6 +88,17 @@ export const createSpotSchema = z.object({
 
 export const updateSpotSchema = createSpotSchema.partial();
 
+/** One more photo for a spot, already uploaded. */
+export const spotImageSchema = z.object({
+  photoUrl: z.string().url(),
+  photoKey: z.string().min(1),
+});
+export type SpotImageInput = z.infer<typeof spotImageSchema>;
+
+/** What the activity page can list. */
+export const ACTIVITY_KINDS = ["likes", "photos"] as const;
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
 /** "A,B" query strings → validated enum arrays. */
 const csvEnum = <T extends readonly [string, ...string[]]>(values: T) =>
   z

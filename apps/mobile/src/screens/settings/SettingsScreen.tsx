@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { useNavigation } from "@react-navigation/native";
+import type { RootStackNavigationProp } from "../../navigation/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme, useThemeMode, type ThemeMode } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
@@ -22,6 +24,7 @@ import { getAppLocale, LOCALE_LABELS, setAppLocale } from "../../lib/i18n";
 import { Button } from "../../components/ui/Button";
 
 export function SettingsScreen() {
+  const navigation = useNavigation<RootStackNavigationProp>();
   // useTranslation() also re-renders this screen when the language changes,
   // which keeps the row's value label in sync with getAppLocale().
   const { t } = useTranslation();
@@ -383,6 +386,17 @@ export function SettingsScreen() {
             label={t("settings.camera")}
             value={cameraLabel}
             onPress={handleCameraPermission}
+            theme={theme}
+          />
+        </Section>
+
+        {/* Activity — the viewer's likes and photos, on their own screen */}
+        <Section title={t("settings.activity")} theme={theme}>
+          <Row
+            icon="heart-outline"
+            label={t("settings.activityHint")}
+            value=""
+            onPress={() => navigation.navigate("Activity")}
             theme={theme}
           />
         </Section>

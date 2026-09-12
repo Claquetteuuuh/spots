@@ -34,6 +34,7 @@ import {
   type MapItem,
   type MapPin,
   type MapScope,
+  pinColor,
 } from "@trs/shared/map";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
@@ -442,14 +443,15 @@ export function MapScreen() {
                 accessibilityLabel={pin.title ?? t("spots.untitled")}
                 testID={`pin-${pin.id}`}
               >
-                {/* Own spots are the full accent, followed ones the lighter tint. */}
+                {/* The dot wears the spot's first colour; own spots keep an accent ring. */}
                 <View
                   testID={`pin-dot-${pin.id}`}
                   style={[
                     styles.pin,
                     {
-                      backgroundColor: pin.isOwn ? theme.colors.accent : theme.colors.accentLight,
-                      borderColor: theme.colors.bg,
+                      backgroundColor:
+                        pinColor(pin.colors) ?? (pin.isOwn ? theme.colors.accent : theme.colors.accentLight),
+                      borderColor: pin.isOwn ? theme.colors.accent : theme.colors.bg,
                     },
                   ]}
                 />

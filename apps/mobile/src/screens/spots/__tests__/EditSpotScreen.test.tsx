@@ -1,6 +1,6 @@
 import React from "react";
 import { useDialogStore } from "../../../stores/dialog-store";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 
@@ -20,9 +20,16 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(),
 }));
 
+jest.mock("expo-image-picker", () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ status: "granted" })),
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: false, assets: [{ uri: "file:///three.jpg", fileName: "three.jpg" }] })),
+}));
+
 jest.mock("../../../lib/api", () => ({
   updateSpot: jest.fn(),
   getSpotById: jest.fn(),
+  addSpotImage: jest.fn(),
+  removeSpotImage: jest.fn(),
 }));
 
 jest.mock("../../../components/spots/CompositionBadge", () => ({
@@ -232,5 +239,60 @@ describe("EditSpotScreen", () => {
         expect.objectContaining({ accessibility: "HARD" }),
       );
     });
+  });
+});
+
+
+// ─── Gallery ────────────────────────────────────────────────────────
+
+const IMAGES = [
+  { id: "img-1", photoUrl: "https://cdn/1.webp", photoKey: "k1", order: 0 },
+  { id: "img-2", photoUrl: "https://cdn/2.webp", photoKey: "k2", order: 1 },
+];
+
+const topDialog = () => useDialogStore.getState().queue[0];
+
+describe("EditSpotScreen — photos", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useDialogStore.setState({ queue: [] });
+    mockedApi.getSpotById.mockResolvedValue({ ...SPOT, images: IMAGES });
+    mockedApi.addSpotImage.mockResolvedValue([...IMAGES, { id: "img-3", photoUrl: "https://cdn/3.webp", photoKey: "k3", order: 2 }]);
+    mockedApi.removeSpotImage.mockResolvedValue({ id: "img-1", images: [IMAGES[1]], cover: { photoUrl: "https://cdn/2.webp", photoKey: "k2" } });
+  });
+
+  it("shows the gallery with the cover marked and adds a picked photo", async () => {
+    await renderScreen();
+    await screen.findByTestId("remove-image-img-1");
+    expect(screen.getAllByText("spots.cover")).toHaveLength(1);
+
+    await fireEvent.press(screen.getByTestId("add-image"));
+
+    await waitFor(() => expect(screen.getByTestId("remove-image-img-3")).toBeTruthy());
+    expect(mockedApi.addSpotImage).toHaveBeenCalledWith("s1", "file:///three.jpg", "three.jpg");
+  });
+
+  it("asks before removing a photo, then drops it", async () => {
+    await renderScreen();
+    await screen.findByTestId("remove-image-img-1");
+
+    await fireEvent.press(screen.getByTestId("remove-image-img-1"));
+    await waitFor(() => expect(topDialog()).toMatchObject({ kind: "confirm", title: "spots.removePhoto" }));
+    expect(mockedApi.removeSpotImage).not.toHaveBeenCalled();
+
+    await act(async () => {
+      useDialogStore.getState().settle(topDialog().id, true);
+    });
+    await waitFor(() => expect(mockedApi.removeSpotImage).toHaveBeenCalledWith("s1", "img-1"));
+    await waitFor(() => expect(screen.queryByTestId("remove-image-img-1")).toBeNull());
+    expect(screen.getByTestId("remove-image-img-2")).toBeTruthy();
+  });
+
+  it("never removes the last photo", async () => {
+    mockedApi.getSpotById.mockResolvedValue({ ...SPOT, images: [IMAGES[0]] });
+    await renderScreen();
+    await screen.findByTestId("remove-image-img-1");
+    await fireEvent.press(screen.getByTestId("remove-image-img-1"));
+    expect(mockedApi.removeSpotImage).not.toHaveBeenCalled();
   });
 });

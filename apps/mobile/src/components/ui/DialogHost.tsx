@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../theme";
 import { useDialogStore } from "../../stores/dialog-store";
@@ -22,9 +23,13 @@ export function DialogHost() {
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={cancel} statusBarTranslucent>
-      <View style={styles.root}>
+      <Animated.View entering={FadeIn.duration(150)} style={styles.root}>
         <Pressable style={styles.backdrop} onPress={cancel} testID="dialog-backdrop" />
-        <View style={[styles.card, { backgroundColor: theme.colors.bg }]} testID="dialog">
+        <Animated.View
+          entering={ZoomIn.springify().damping(24).stiffness(320).withInitialValues({ transform: [{ scale: 0.92 }] })}
+          style={[styles.card, { backgroundColor: theme.colors.bg }]}
+          testID="dialog"
+        >
           <Text
             style={{
               color: theme.colors.text,
@@ -86,8 +91,8 @@ export function DialogHost() {
               </Text>
             </Pressable>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }

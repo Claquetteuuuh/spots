@@ -22,7 +22,7 @@ export default function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = use(params);
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const t = useT();
 
   const [profile, setProfile] = useState<(User & { followStatus?: FollowStatus }) | null>(null);
@@ -40,6 +40,8 @@ export default function ProfilePage({
   };
 
   const isOwnProfile = currentUser?.username === username;
+  // The name alone: the callback must not change with every refreshed user object
+  const viewerUsername = currentUser?.username;
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
@@ -60,12 +62,14 @@ export default function ProfilePage({
 
       const spotsData = await apiClient.spots.list({ userId: userData.id });
       setSpots(spotsData.items);
+      // Own page: the signed-in user (avatar, name, counts) is refreshed too
+      if (userData.username === viewerUsername) await refreshUser();
     } catch {
       // Error handled by empty profile state
     } finally {
       setIsLoading(false);
     }
-  }, [username]);
+  }, [username, viewerUsername, refreshUser]);
 
   useEffect(() => {
     startTransition(() => {

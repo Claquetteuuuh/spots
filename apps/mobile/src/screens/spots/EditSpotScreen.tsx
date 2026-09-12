@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,17 +12,22 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { COMPOSITION_TYPES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
 import { useTheme } from "../../theme";
-import { useSpotsStore } from "../../stores/spots-store";
+import { invalidateMapCache, useSpotsStore } from "../../stores/spots-store";
 import { extractErrorMessage } from "../../lib/error";
-import { noticeDialog } from "../../stores/dialog-store";
+import * as api from "../../lib/api";
+import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import { AccessibilityPicker } from "../../components/spots/AccessibilityPicker";
 import type { RootStackScreenProps } from "../../navigation/types";
-import type { Spot } from "../../types";
+import type { Spot, SpotImage } from "../../types";
+
+/** A spot's gallery holds this many photos at most. */
+const MAX_SPOT_IMAGES = 10;
 
 const MAX_COMPOSITIONS = 5;
 const MAX_COLORS = 10;
@@ -63,6 +69,9 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
   const [customComposition, setCustomComposition] = useState("");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [accessibility, setAccessibility] = useState<SpotAccessibility | null>(null);
+  // The gallery: added to or trimmed right away, independently of Save
+  const [images, setImages] = useState<SpotImage[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +86,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
         setCustomComposition(result.customComposition ?? "");
         setSelectedColors(result.colors ?? []);
         setAccessibility(result.accessibility ?? null);
+        setImages(result.images ?? []);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -91,6 +101,51 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
       cancelled = true;
     };
   }, [spotId, fetchSpotById, t, navigation]);
+
+  const pickAndAddImage = async () => {
+    if (!spot) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset) return;
+    setPhotoBusy(true);
+    try {
+      setImages(await api.addSpotImage(spot.id, asset.uri, asset.fileName ?? `photo-${Date.now()}.jpg`));
+      invalidateMapCache();
+    } catch (err) {
+      void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removeImage = async (image: SpotImage) => {
+    if (!spot) return;
+    if (images.length <= 1) {
+      void noticeDialog({ title: t("spots.lastPhoto") });
+      return;
+    }
+    const sure = await confirmDialog({
+      title: t("spots.removePhoto"),
+      message: t("spots.removePhotoMessage"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    });
+    if (!sure) return;
+    setPhotoBusy(true);
+    try {
+      const result = await api.removeSpotImage(spot.id, image.id);
+      setImages(result.images);
+      // The cover went with it: the spot now wears the next photo
+      if (result.cover) setSpot((prev) => (prev ? { ...prev, ...result.cover } : prev));
+      invalidateMapCache();
+    } catch (err) {
+      void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const handleSave = useCallback(async () => {
     if (!spot) return;
@@ -349,6 +404,59 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
               </View>
             ) : null}
           </View>
+
+          {/* Photos — added or removed right away, independently of Save */}
+          <View>
+            <SectionLabel
+              text={`${t("spots.photos")} (${images.length}/${MAX_SPOT_IMAGES})`}
+              color={theme.colors.textSecondary}
+              size={theme.typography.size.xs}
+            />
+            <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs, marginTop: 2 }}>
+              {t("spots.photoLimit")}
+            </Text>
+            <View style={[styles.selectedColorRow, { marginTop: theme.spacing.sm, gap: 12 }]}>
+              {images.map((image, i) => (
+                <View key={image.id} style={styles.selectedColorItem}>
+                  <Image source={{ uri: image.photoUrl }} style={styles.thumb} accessibilityIgnoresInvertColors />
+                  {i === 0 ? (
+                    <View style={styles.coverTag}>
+                      <Text style={styles.coverText}>{t("spots.cover")}</Text>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    onPress={() => void removeImage(image)}
+                    disabled={photoBusy || images.length <= 1}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t("common.delete")} ${i + 1}`}
+                    style={[
+                      styles.removeColorBadge,
+                      { backgroundColor: theme.colors.text, opacity: images.length <= 1 ? 0.4 : 1 },
+                    ]}
+                    testID={`remove-image-${image.id}`}
+                  >
+                    <Ionicons name="close" size={10} color={theme.colors.bg} />
+                  </Pressable>
+                </View>
+              ))}
+              {images.length < MAX_SPOT_IMAGES ? (
+                <Pressable
+                  onPress={() => void pickAndAddImage()}
+                  disabled={photoBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("spots.addPhoto")}
+                  style={[styles.thumb, styles.addThumb, { borderColor: theme.colors.border }]}
+                  testID="add-image"
+                >
+                  {photoBusy ? (
+                    <ActivityIndicator color={theme.colors.textSecondary} />
+                  ) : (
+                    <Ionicons name="add" size={24} color={theme.colors.textSecondary} />
+                  )}
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -407,6 +515,31 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  thumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  addThumb: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverTag: {
+    position: "absolute",
+    left: 4,
+    bottom: 4,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  coverText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
   },
   removeColorBadge: {
     position: "absolute",

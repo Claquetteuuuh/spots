@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { API_ROUTES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
+import type { ActivityKind } from "@trs/shared/validation";
 import { MAP_PINS_LIMIT, type MapFilterQuery, type MapPin, type MapScope } from "@trs/shared/map";
 import type { SuggestedUser } from "../types";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
@@ -9,6 +10,10 @@ import type {
   MapBounds,
   NotificationsData,
   LikeState,
+  ActivityLike,
+  ActivityPhoto,
+  RemovedSpotImage,
+  SpotImage,
   Paginated,
   ReverseGeocodeResult,
   SentFollowRequest,
@@ -208,6 +213,30 @@ export interface UpdateSpotParams {
 
 export async function updateSpot(id: string, params: UpdateSpotParams): Promise<Spot> {
   const { data } = await client.patch<Spot>(API_ROUTES.spots.detail(id), params);
+  return data;
+}
+
+/** Upload a photo, then add it to the spot's gallery; answers with the whole gallery. */
+export async function addSpotImage(id: string, uri: string, fileName = "photo.jpg"): Promise<SpotImage[]> {
+  const uploaded = await uploadPhoto(uri, fileName);
+  const { data } = await client.post<SpotImage[]>(API_ROUTES.spots.images(id), uploaded);
+  return data;
+}
+
+/** Take a photo out of the gallery (the file goes too). */
+export async function removeSpotImage(id: string, imageId: string): Promise<RemovedSpotImage> {
+  const { data } = await client.delete<RemovedSpotImage>(API_ROUTES.spots.image(id, imageId));
+  return data;
+}
+
+/** The viewer's likes or photos, newest first. */
+export async function getActivity(
+  type: ActivityKind,
+  cursor?: string,
+): Promise<Paginated<ActivityLike | ActivityPhoto>> {
+  const { data } = await client.get<Paginated<ActivityLike | ActivityPhoto>>(API_ROUTES.me.activity, {
+    params: { type, cursor },
+  });
   return data;
 }
 

@@ -29,14 +29,27 @@ vi.mock("@/lib/auth-context", () => ({
 
 const mockGet = vi.fn();
 const mockUpdate = vi.fn();
+const mockAddImage = vi.fn();
+const mockRemoveImage = vi.fn();
+const mockUploadPhoto = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
     spots: {
       get: (...args: unknown[]) => mockGet(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
+      addImage: (...args: unknown[]) => mockAddImage(...args),
+      removeImage: (...args: unknown[]) => mockRemoveImage(...args),
     },
+    upload: { photo: (...args: unknown[]) => mockUploadPhoto(...args) },
   },
+}));
+
+// The app's own dialog, answered by the test
+const mockConfirm = vi.fn();
+vi.mock("@/components/dialog", () => ({
+  confirmDialog: (...args: unknown[]) => mockConfirm(...args),
+  noticeDialog: vi.fn(),
 }));
 
 vi.mock("@/components/composition-icon", () => ({
@@ -240,5 +253,69 @@ describe("EditSpotPage", () => {
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledWith("s1", expect.objectContaining({ accessibility: "HARD" }));
     });
+  });
+});
+
+
+// ─── Gallery ────────────────────────────────────────────────────────
+
+const IMAGES = [
+  { id: "img-1", photoUrl: "https://cdn/1.webp", photoKey: "k1", order: 0 },
+  { id: "img-2", photoUrl: "https://cdn/2.webp", photoKey: "k2", order: 1 },
+];
+
+describe("EditSpotPage — photos", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGet.mockResolvedValue({ ...SPOT, images: IMAGES });
+    mockConfirm.mockResolvedValue(true);
+    mockUploadPhoto.mockResolvedValue({ url: "https://cdn/3.webp", key: "k3" });
+    mockAddImage.mockResolvedValue([...IMAGES, { id: "img-3", photoUrl: "https://cdn/3.webp", photoKey: "k3", order: 2 }]);
+    mockRemoveImage.mockResolvedValue({ id: "img-1", images: [IMAGES[1]], cover: { photoUrl: "https://cdn/2.webp", photoKey: "k2" } });
+  });
+
+  it("shows the gallery with the cover marked and adds an uploaded photo", async () => {
+    await renderPage();
+    await screen.findByTestId("remove-image-img-1");
+    expect(screen.getByText("spots.cover")).toBeTruthy();
+    expect(screen.getAllByText("spots.cover")).toHaveLength(1);
+
+    const file = new File(["x"], "three.jpg", { type: "image/jpeg" });
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("image-input"), { target: { files: [file] } });
+    });
+
+    await waitFor(() => expect(screen.getByTestId("remove-image-img-3")).toBeTruthy());
+    expect(mockUploadPhoto).toHaveBeenCalledWith(file);
+    expect(mockAddImage).toHaveBeenCalledWith("s1", { photoUrl: "https://cdn/3.webp", photoKey: "k3" });
+  });
+
+  it("asks before removing a photo, then drops it and hands the cover on", async () => {
+    await renderPage();
+    await screen.findByTestId("remove-image-img-1");
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("remove-image-img-1"));
+    });
+    await waitFor(() => expect(mockRemoveImage).toHaveBeenCalledWith("s1", "img-1"));
+    expect(mockConfirm.mock.calls[0][0]).toMatchObject({ title: "spots.removePhoto", destructive: true });
+    await waitFor(() => expect(screen.queryByTestId("remove-image-img-1")).toBeNull());
+    expect(screen.getByTestId("remove-image-img-2")).toBeTruthy();
+  });
+
+  it("keeps the photo when the question is answered no, and never removes the last one", async () => {
+    mockConfirm.mockResolvedValue(false);
+    await renderPage();
+    await screen.findByTestId("remove-image-img-1");
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("remove-image-img-2"));
+    });
+    await waitFor(() => expect(mockConfirm).toHaveBeenCalled());
+    expect(mockRemoveImage).not.toHaveBeenCalled();
+
+    mockGet.mockResolvedValue({ ...SPOT, images: [IMAGES[0]] });
+    await renderPage();
+    await waitFor(() => expect(screen.getAllByTestId("remove-image-img-1").at(-1)).toBeTruthy());
+    expect((screen.getAllByTestId("remove-image-img-1").at(-1) as HTMLButtonElement).disabled).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Dimensions, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Dimensions, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -24,17 +24,50 @@ export function ProfileScreen() {
   const navigation = useNavigation<MainTabNavigationProp<"Profile">>();
 
   const user = useAuthStore((s) => s.user);
+  const loadUser = useAuthStore((s) => s.loadUser);
   const spots = useSpotsStore((s) => s.spots);
   const fetchMySpots = useSpotsStore((s) => s.fetchMySpots);
-
-  useEffect(() => {
-    if (user) void fetchMySpots(user.id);
-  }, [user, fetchMySpots]);
-
-  if (!user) return null;
+  const userId = user?.id;
 
   const [followModalVisible, setFollowModalVisible] = useState(false);
   const [followModalTab, setFollowModalTab] = useState<"followers" | "following">("followers");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // The id, not the object: a refreshed account must not refetch the grid
+  useEffect(() => {
+    if (userId) void fetchMySpots(userId);
+  }, [userId, fetchMySpots]);
+
+  /** Everything on this screen, fresh from the server: the account and the spots. */
+  const reload = useCallback(async () => {
+    if (!userId) return;
+    await Promise.all([loadUser(), fetchMySpots(userId)]);
+  }, [userId, loadUser, fetchMySpots]);
+
+  // Coming back to the tab reloads too — a spot edited elsewhere, a new avatar
+  const firstFocus = useRef(true);
+  useEffect(
+    () =>
+      navigation.addListener("focus", () => {
+        if (firstFocus.current) {
+          firstFocus.current = false;
+          return;
+        }
+        void reload();
+      }),
+    [navigation, reload],
+  );
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await reload();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (!user) return null;
 
   const openFollowList = (tab: "followers" | "following") => {
     setFollowModalTab(tab);
@@ -48,6 +81,15 @@ export function ProfileScreen() {
       <FlatList
         data={spots}
         keyExtractor={(item) => item.id}
+        testID="profile-grid"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void handleRefresh()}
+            tintColor={theme.colors.textSecondary}
+            testID="profile-refresh"
+          />
+        }
         numColumns={GRID_COLUMNS}
         columnWrapperStyle={{ gap: GRID_GAP }}
         contentContainerStyle={{ gap: GRID_GAP, paddingBottom: theme.spacing.xxl }}

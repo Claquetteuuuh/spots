@@ -353,8 +353,9 @@ describe("MapScreen", () => {
   it("tints followed users' pins lighter than own pins", async () => {
     useSpotsStore.setState({
       mapPins: [
-        pin("mine", 48.8566, 2.3522),
-        pin("theirs", 48.8, 2.3, { userId: "u2", isOwn: false }),
+        // Without colours of their own, the dots fall back to the accent and its tint
+        pin("mine", 48.8566, 2.3522, { colors: [] }),
+        pin("theirs", 48.8, 2.3, { userId: "u2", isOwn: false, colors: [] }),
       ],
     });
     await render(<MapScreen />);
@@ -503,5 +504,26 @@ describe("MapScreen — filters", () => {
     await fireEvent.press(screen.getByTestId("map-filters-done"));
 
     expect(screen.getByText("map.noSpotsMatch")).toBeTruthy();
+  });
+});
+
+
+describe("MapScreen — pin colours", () => {
+  it("paints each pin in its spot's first colour, own spots ringed in the accent", async () => {
+    useSpotsStore.setState({
+      mapPins: [
+        pin("brick", 48.8566, 2.3522, { colors: ["#c44536", "#2E4A3E"] }),
+        pin("bare", 48.84, 2.33, { colors: [], isOwn: false }),
+      ],
+    });
+    await render(<MapScreen />);
+    await settleRegion(DEFAULT_REGION);
+
+    const brick = StyleSheet.flatten(screen.getByTestId("pin-dot-brick").props.style);
+    expect(brick.backgroundColor).toBe("#C44536");
+    expect(brick.borderColor).not.toBe("#FFFFFF");
+    const bare = StyleSheet.flatten(screen.getByTestId("pin-dot-bare").props.style);
+    expect(bare.backgroundColor).not.toBe("#C44536");
+    expect(bare.borderColor).toBe("#FFFFFF");
   });
 });

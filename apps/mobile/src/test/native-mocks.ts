@@ -24,6 +24,14 @@ export function reanimatedMock() {
   const { useRef } = require("react");
   const { Image, View, Text, ScrollView } = require("react-native");
   const identity = (value: unknown) => value;
+  // FadeIn.duration(150).springify()… — every step hands back the same builder
+  const entering = () => {
+    const builder: Record<string, () => unknown> = {};
+    for (const name of ["duration", "delay", "springify", "damping", "stiffness", "mass", "easing", "withInitialValues"]) {
+      builder[name] = () => builder;
+    }
+    return builder;
+  };
   return {
     __esModule: true,
     default: { Image, View, Text, ScrollView, createAnimatedComponent: identity },
@@ -44,6 +52,11 @@ export function reanimatedMock() {
       return o0 + (o1 - o0) * t;
     },
     Extrapolation: { CLAMP: "clamp", EXTEND: "extend" },
+    FadeIn: entering(),
+    FadeOut: entering(),
+    FadeInDown: entering(),
+    ZoomIn: entering(),
+    ZoomOut: entering(),
     Easing: {
       in: identity,
       out: identity,

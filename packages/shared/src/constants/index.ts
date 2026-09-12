@@ -109,6 +109,8 @@ export const API_ROUTES = {
     photos: (id: string) => `/api/spots/${id}/photos`,
     photo: (id: string, photoId: string) => `/api/spots/${id}/photos/${photoId}`,
     like: (id: string) => `/api/spots/${id}/like`,
+    images: (id: string) => `/api/spots/${id}/images`,
+    image: (id: string, imageId: string) => `/api/spots/${id}/images/${imageId}`,
     feed: "/api/spots/feed",
     map: "/api/spots/map",
     tags: "/api/spots/tags",
@@ -121,6 +123,9 @@ export const API_ROUTES = {
     following: (username: string) => `/api/users/${username}/following`,
     search: "/api/users/search",
     suggestions: "/api/users/suggestions",
+  },
+  me: {
+    activity: "/api/me/activity",
   },
   followRequests: {
     list: "/api/follow-requests",

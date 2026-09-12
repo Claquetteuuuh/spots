@@ -8,6 +8,8 @@ jest.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: jest.fn() },
 }));
 
+jest.mock("react-native-reanimated", () => require("../../../test/native-mocks").reanimatedMock());
+
 jest.mock("../../../theme", () => ({
   useTheme: () => ({
     dark: false,

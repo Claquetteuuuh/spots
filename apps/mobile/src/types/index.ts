@@ -70,6 +70,39 @@ export interface LikeState {
   likeCount: number;
 }
 
+/** A spot as the activity screen lists it. */
+export interface ActivitySpot {
+  id: string;
+  title: string | null;
+  photoUrl: string;
+  city: string | null;
+  country: string | null;
+  userId: string;
+  user: { id: string; username: string; name: string; avatarUrl: string | null };
+}
+
+export interface ActivityLike {
+  id: string;
+  createdAt: string;
+  spot: ActivitySpot;
+}
+
+export interface ActivityPhoto {
+  id: string;
+  photoUrl: string;
+  caption: string | null;
+  createdAt: string;
+  spot: ActivitySpot;
+}
+
+/** What comes back when a gallery photo is removed. */
+export interface RemovedSpotImage {
+  id: string;
+  images: SpotImage[];
+  /** The new cover, when the removed photo was it. */
+  cover: { photoUrl: string; photoKey: string } | null;
+}
+
 export interface SentFollowRequest {
   id: string;
   following: {
