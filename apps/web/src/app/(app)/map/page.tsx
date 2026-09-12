@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useLivePosition } from "@/lib/use-live-position";
 import { useLivePositionPref } from "@/lib/preferences";
+import { recallMapView, rememberMapView, viewFromBounds } from "@/lib/map-viewport";
 import { useT } from "@/lib/use-t";
 
 // Leaflet must be loaded without SSR
@@ -53,7 +54,9 @@ export default function MapPage() {
   const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [center, setCenter] = useState<MapCenter | null>(null);
+  // Back from a spot, the map opens where it was left rather than on the photographer
+  const [center, setCenter] = useState<MapCenter | null>(() => recallMapView());
+  const [openedWhereLeft] = useState(() => center !== null);
   // Live dot and heading — a device preference, off in Settings; `position`
   // above stays the snapshot filters work from.
   const [livePositionEnabled] = useLivePositionPref();
@@ -123,8 +126,9 @@ export default function MapPage() {
 
   // Debounced viewport handler
   const handleViewportChange = useCallback(
-    ({ bounds }: MapViewport) => {
+    ({ bounds, zoom }: MapViewport) => {
       viewportRef.current = bounds;
+      rememberMapView(viewFromBounds(bounds, zoom));
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => loadPins(bounds, scope), FETCH_DEBOUNCE_MS);
     },
@@ -178,8 +182,8 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    locateMe();
-  }, [locateMe]);
+    if (!openedWhereLeft) locateMe();
+  }, [openedWhereLeft, locateMe]);
 
   // The button is a tap, which is what iOS wants before it shares the compass.
   const locateMeFromTap = useCallback(() => {

@@ -11,6 +11,7 @@ import {
   type MapBounds,
   type MapPin,
 } from "@trs/shared/map";
+import { forgetMapView, recallMapView, rememberMapView } from "@/lib/map-viewport";
 import { invalidateMapCache } from "@/lib/map-cache";
 import { setLivePositionEnabled } from "@/lib/preferences";
 
@@ -145,6 +146,7 @@ beforeEach(() => {
   mapProps.current = null;
   // jsdom here has no localStorage; the cache copes, so must the test
   globalThis.localStorage?.clear();
+  forgetMapView();
   invalidateMapCache();
   mockMapFetch.mockImplementation(() => Promise.resolve({ items: [PIN], truncated: false }));
 });
@@ -431,5 +433,29 @@ describe("MapPage — filters", () => {
     await click(screen.getByLabelText("colorFamilies.green"));
 
     await waitFor(() => expect(screen.getByText("map.noSpotsMatch")).toBeTruthy());
+  });
+});
+
+
+describe("MapPage — where it was left", () => {
+  it("opens on the remembered view and does not fly to the photographer", async () => {
+    rememberMapView({ lat: 45.76, lng: 4.84, zoom: 14 });
+    stubGeolocation({ latitude: 48.85, longitude: 2.35 });
+    const locate = vi.spyOn(navigator.geolocation, "getCurrentPosition");
+
+    await renderPage();
+
+    expect(mapProps.current.center).toEqual({ lat: 45.76, lng: 4.84, zoom: 14 });
+    expect(locate).not.toHaveBeenCalled();
+  });
+
+  it("remembers every settled view, centre and zoom", async () => {
+    await renderPage();
+    await moveTo(VIEW, 12);
+
+    const view = recallMapView();
+    expect(view?.zoom).toBe(12);
+    expect(view?.lat).toBeCloseTo(48.85);
+    expect(view?.lng).toBeCloseTo(2.3);
   });
 });

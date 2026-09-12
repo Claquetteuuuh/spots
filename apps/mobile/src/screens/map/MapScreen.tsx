@@ -42,6 +42,7 @@ import { useSpotsStore } from "../../stores/spots-store";
 import { usePreferencesStore } from "../../stores/preferences-store";
 import { useTabSwitch } from "../../navigation/tab-context";
 import { useLiveLocation } from "../../lib/use-live-location";
+import { recallMapRegion, rememberMapRegion } from "../../lib/map-memory";
 import { MapFiltersSheet } from "../../components/map/MapFiltersSheet";
 import type { MainTabNavigationProp } from "../../navigation/types";
 
@@ -85,7 +86,10 @@ export function MapScreen() {
   const fetchMapPins = useSpotsStore((s) => s.fetchMapPins);
 
   const mapRef = useRef<MapView>(null);
-  const [region, setRegion] = useState<Region>(DEFAULT_REGION);
+  // Back from a spot, the map opens where it was left rather than on the photographer
+  const [startRegion] = useState<Region>(() => recallMapRegion() ?? DEFAULT_REGION);
+  const [openedWhereLeft] = useState(() => recallMapRegion() !== null);
+  const [region, setRegion] = useState<Region>(startRegion);
   // The latest region for effects that must not re-run on every pan
   const regionRef = useRef(region);
   useEffect(() => {
@@ -160,6 +164,7 @@ export function MapScreen() {
   const handleRegionChange = useCallback(
     (next: Region) => {
       setRegion(next);
+      rememberMapRegion(next);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(
         () => loadPins(regionToBounds(next), scope),
@@ -211,12 +216,14 @@ export function MapScreen() {
     // Only a cache drop should trigger this
   }, [mapCacheVersion]);
 
-  const locateMe = async () => {
+  /** Ask for the position; `move` also flies the map to it. */
+  const locateMe = async (move = true) => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
     setLocationGranted(true);
     const { coords } = await Location.getCurrentPositionAsync({});
     setPosition({ latitude: coords.latitude, longitude: coords.longitude });
+    if (!move) return;
     mapRef.current?.animateToRegion(
       {
         latitude: coords.latitude,
@@ -228,8 +235,10 @@ export function MapScreen() {
     );
   };
 
+  // On open: the position for the live dot and the filters — and the map
+  // flies there only when it was not left somewhere else
   useEffect(() => {
-    void locateMe();
+    void locateMe(!openedWhereLeft);
   }, []);
 
   // Colour families are filtered here; the rest came filtered from the server.
@@ -373,7 +382,7 @@ export function MapScreen() {
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={StyleSheet.absoluteFill}
-          initialRegion={DEFAULT_REGION}
+          initialRegion={startRegion}
           onRegionChangeComplete={handleRegionChange}
           onPress={handleMapPress}
           testID="map-view"
@@ -578,7 +587,7 @@ export function MapScreen() {
         ) : null}
 
         <Pressable
-          onPress={locateMe}
+          onPress={() => void locateMe()}
           style={[
             styles.locateButton,
             {

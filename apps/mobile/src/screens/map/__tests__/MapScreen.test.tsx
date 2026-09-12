@@ -141,6 +141,7 @@ import { useAuthStore } from "../../../stores/auth-store";
 import { invalidateMapCache, useSpotsStore } from "../../../stores/spots-store";
 import { usePreferencesStore } from "../../../stores/preferences-store";
 import { MapScreen } from "../MapScreen";
+import { forgetMapRegion, recallMapRegion, rememberMapRegion } from "../../../lib/map-memory";
 import type { User } from "../../../types";
 
 // ─── Fixtures ───────────────────────────────────────────────────────
@@ -206,6 +207,7 @@ jest.setTimeout(15_000);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  forgetMapRegion();
   mapViewProps.current = null;
   mockLive.position = null;
   mockLive.heading = null;
@@ -525,5 +527,26 @@ describe("MapScreen — pin colours", () => {
     const bare = StyleSheet.flatten(screen.getByTestId("pin-dot-bare").props.style);
     expect(bare.backgroundColor).not.toBe("#C44536");
     expect(bare.borderColor).toBe("#FFFFFF");
+  });
+});
+
+
+describe("MapScreen — where it was left", () => {
+  const LYON = { latitude: 45.76, longitude: 4.84, latitudeDelta: 0.03, longitudeDelta: 0.03 };
+
+  it("opens on the remembered region and does not fly to the photographer", async () => {
+    rememberMapRegion(LYON);
+    await render(<MapScreen />);
+
+    expect(mapViewProps.current.initialRegion).toEqual(LYON);
+    // The position is still asked for — the live dot and the filters want it
+    await waitFor(() => expect(mockLive.position).not.toBeNull());
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+  });
+
+  it("remembers every settled region", async () => {
+    await render(<MapScreen />);
+    await settleRegion(LYON);
+    expect(recallMapRegion()).toEqual(LYON);
   });
 });
