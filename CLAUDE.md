@@ -191,6 +191,19 @@ Colour tokens live in `@trs/shared/constants` (`COLORS`, `RADIUS`), which the
 mobile theme reads directly, and are mirrored in `apps/web/src/app/globals.css`
 for Tailwind. Change both together.
 
+## Mobile native dependencies (MANDATORY)
+
+The app runs in Expo Go, which ships a fixed set of native modules. A JS
+package newer than its native side (gesture-handler, reanimated, maps,
+screens, safe-area-context, every `expo-*`) crashes at launch with
+`TypeError: undefined is not a function`.
+
+- Add or bump native packages ONLY with `npx expo install <pkg>` from
+  `apps/mobile` — never `pnpm add` with a hand-picked version.
+- `npx expo install --check` must be clean; pre-commit and CI run it.
+- Pure-JS tooling (jest, @types/jest) is excluded via `expo.install.exclude`
+  in `apps/mobile/package.json`.
+
 ## Web ↔ Mobile Parity (MANDATORY)
 
 Every feature ships on both the web app and the mobile app, in the same

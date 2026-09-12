@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -25,6 +24,7 @@ import { extractErrorMessage } from "../../lib/error";
 import * as api from "../../lib/api";
 import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { PhotoLightbox } from "../../components/spots/PhotoLightbox";
+import { PinchableImage } from "../../components/spots/PinchableImage";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import { SpotPhotosSection } from "../../components/spots/SpotPhotosSection";
 import type { RootStackScreenProps } from "../../navigation/types";
@@ -180,11 +180,7 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
         accessibilityLabel={t("spots.viewPhoto")}
         testID={`spot-photo-${index}`}
       >
-        <Image
-          source={{ uri: item.url }}
-          style={{ width: SCREEN_WIDTH, aspectRatio: 1 }}
-          resizeMode="cover"
-        />
+        <PinchableImage uri={item.url} style={{ width: SCREEN_WIDTH, aspectRatio: 1 }} />
       </Pressable>
     ),
     [t],
@@ -277,7 +273,7 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
             accessibilityLabel={t("spots.viewPhoto")}
             testID="spot-photo-0"
           >
-            <Image source={{ uri: images[0].url }} style={styles.photo} resizeMode="cover" />
+            <PinchableImage uri={images[0].url} style={styles.photo} />
           </Pressable>
         )}
 

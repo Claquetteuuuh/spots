@@ -41,6 +41,14 @@ jest.mock("../../../components/spots/SpotPhotosSection", () => ({
 }));
 
 // The lightbox stands in as a marker of whether it is open
+jest.mock("../../../components/spots/PinchableImage", () => {
+  const ReactActual = require("react");
+  const { Image } = require("react-native");
+  return {
+    PinchableImage: ({ uri, style, testID }: { uri: string; style: unknown; testID?: string }) =>
+      ReactActual.createElement(Image, { source: { uri }, style, testID }),
+  };
+});
 jest.mock("../../../components/spots/PhotoLightbox", () => {
   const { View } = require("react-native");
   return {

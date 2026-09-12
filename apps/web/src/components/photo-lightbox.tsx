@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IDENTITY, pan, toggleZoom, wheelFactor, zoomAround, type ZoomState } from "@/lib/zoom";
 import { useT } from "@/lib/use-t";
+import { distance, fromCentre, midpoint, type Point } from "@/lib/pointers";
 
 interface PhotoLightboxProps {
   urls: string[];
@@ -101,21 +102,6 @@ export function PhotoLightbox({ urls, index, alt, onIndexChange, onClose }: Phot
   );
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
-function distance(points: Map<number, Point>): number {
-  const [a, b] = [...points.values()];
-  return Math.hypot(b.x - a.x, b.y - a.y);
-}
-
-function midpoint(points: Map<number, Point>): Point {
-  const [a, b] = [...points.values()];
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
 function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   const [zoom, setZoom] = useState<ZoomState>(IDENTITY);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -125,20 +111,16 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
   const moved = useRef(false);
   const downBesidePhoto = useRef(false);
 
-  /** A client point measured from the frame's centre — where zoom happens. */
-  const fromCentre = (clientX: number, clientY: number): Point => {
-    const rect = frameRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return { x: clientX - rect.left - rect.width / 2, y: clientY - rect.top - rect.height / 2 };
-  };
+  const centred = (clientX: number, clientY: number): Point =>
+    fromCentre(frameRef.current?.getBoundingClientRect(), clientX, clientY);
 
   const onWheel = (e: React.WheelEvent) => {
-    const p = fromCentre(e.clientX, e.clientY);
+    const p = centred(e.clientX, e.clientY);
     setZoom((z) => zoomAround(z, wheelFactor(e.deltaY), p.x, p.y));
   };
 
   const onDoubleClick = (e: React.MouseEvent) => {
-    const p = fromCentre(e.clientX, e.clientY);
+    const p = centred(e.clientX, e.clientY);
     setZoom((z) => toggleZoom(z, p.x, p.y));
   };
 
@@ -162,7 +144,7 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
       const factor = d / pinchDistance.current;
       pinchDistance.current = d;
       const mid = midpoint(pointers.current);
-      const p = fromCentre(mid.x, mid.y);
+      const p = centred(mid.x, mid.y);
       moved.current = true;
       setZoom((z) => zoomAround(z, factor, p.x, p.y));
     } else if (pointers.current.size === 1) {

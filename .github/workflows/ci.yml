@@ -47,6 +47,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Expo Go ships fixed native modules: a JS package ahead of them
+      # crashes the app at launch with "undefined is not a function"
+      - name: Mobile native deps match the Expo SDK
+        run: pnpm --filter @trs/mobile exec expo install --check
+
   # ────────────────────────────────────────────────────────────────────
   test:
     name: "🧪 Tests"

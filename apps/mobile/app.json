@@ -2,7 +2,10 @@
   "expo": {
     "name": "spots",
     "slug": "the-right-spot",
-    "scheme": ["therightspot", "com.trs.therightspot"],
+    "scheme": [
+      "therightspot",
+      "com.trs.therightspot"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -69,9 +72,13 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/fonts/Fredoka-SemiBold.ttf"]
+          "fonts": [
+            "./assets/fonts/Fredoka-SemiBold.ttf"
+          ]
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

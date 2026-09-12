@@ -9,6 +9,8 @@ import {
 } from "@trs/shared/constants";
 import { EMPTY_FILTERS, countActiveFilters, type MapFilters } from "@trs/shared/map";
 import { CompositionIcon } from "@/components/composition-icon";
+import { Drawer } from "@/components/drawer";
+import { useIsDesktop } from "@/lib/use-media-query";
 import { useT } from "@/lib/use-t";
 
 interface MapFiltersMenuProps {
@@ -39,6 +41,7 @@ export function MapFiltersMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
+  const isDesktop = useIsDesktop();
   const active = countActiveFilters(filters);
 
   // Outside click or Escape closes the panel
@@ -58,10 +61,15 @@ export function MapFiltersMenu({
     };
   }, [open]);
 
-  const pickRadius = (radiusKm: number | null) => {
-    onChange({ ...filters, radiusKm });
-    if (radiusKm && !hasPosition) onRequestPosition();
-  };
+  const panel = (
+    <FiltersPanel
+      filters={filters}
+      onChange={onChange}
+      hasPosition={hasPosition}
+      onRequestPosition={onRequestPosition}
+      onDone={() => setOpen(false)}
+    />
+  );
 
   return (
     <div ref={rootRef} className="relative">
@@ -87,20 +95,51 @@ export function MapFiltersMenu({
         ) : null}
       </button>
 
-      {open ? (
-        <>
-          {/* Phones: a sheet from the bottom over a dimmed map; desktop: a dropdown */}
-          <div
-            className="fixed inset-0 z-[1090] bg-text/20 lg:hidden"
-            aria-hidden="true"
-            onClick={() => setOpen(false)}
-          />
+      {/* Phones: a drawer pulled up over a dimmed map; desktop: a dropdown */}
+      {isDesktop ? (
+        open ? (
           <div
             id={panelId}
             role="dialog"
             aria-label={t("map.filters")}
-            className="fixed inset-x-0 bottom-0 z-[1100] flex max-h-[85dvh] flex-col rounded-t-[24px] border border-border bg-bg shadow-float lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-0 lg:top-11 lg:max-h-[calc(100vh-8rem)] lg:w-[340px] lg:rounded-md"
+            className="absolute right-0 top-11 z-[1100] flex max-h-[calc(100vh-8rem)] w-[340px] flex-col rounded-md border border-border bg-bg shadow-float"
           >
+            {panel}
+          </div>
+        ) : null
+      ) : (
+        <Drawer
+          id={panelId}
+          open={open}
+          onClose={() => setOpen(false)}
+          label={t("map.filters")}
+          className="max-h-[85dvh]"
+        >
+          {panel}
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+/** The options and the footer — the same inside a drawer or a dropdown. */
+function FiltersPanel({
+  filters,
+  onChange,
+  hasPosition,
+  onRequestPosition,
+  onDone,
+}: MapFiltersMenuProps & { onDone: () => void }) {
+  const t = useT();
+  const active = countActiveFilters(filters);
+
+  const pickRadius = (radiusKm: number | null) => {
+    onChange({ ...filters, radiusKm });
+    if (radiusKm && !hasPosition) onRequestPosition();
+  };
+
+  return (
+    <>
           {/* Everything scrolls; the footer stays put, so "Done" is always in reach */}
           <div data-testid="filters-scroll" className="min-h-0 flex-1 overflow-y-auto p-4">
           <Section title={t("map.filterColors")}>
@@ -189,16 +228,13 @@ export function MapFiltersMenu({
             </button>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={onDone}
               className="rounded-full bg-text px-4 py-1.5 text-[13px] font-medium text-bg cursor-pointer"
             >
               {t("map.filtersDone")}
             </button>
           </div>
-          </div>
-        </>
-      ) : null}
-    </div>
+    </>
   );
 }
 

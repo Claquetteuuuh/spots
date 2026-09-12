@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +11,7 @@ import {
 import { EMPTY_FILTERS, countActiveFilters, type MapFilters } from "@trs/shared/map";
 import { useTheme } from "../../theme";
 import { CompositionIcon } from "../spots/CompositionIcon";
+import { Drawer } from "../ui/Drawer";
 
 interface MapFiltersSheetProps {
   visible: boolean;
@@ -98,24 +99,18 @@ export function MapFiltersSheet({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.root}>
-        {/* Tap the dimmed map to close */}
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t("map.filtersDone")} />
+    <Drawer visible={visible} onClose={onClose}>
         <View
           style={[
-            styles.sheet,
+            styles.body,
             // Never taller than the screen: the list scrolls, the button stays put
             {
-              backgroundColor: theme.colors.bg,
               maxHeight: height * 0.85,
               paddingBottom: Math.max(insets.bottom, 16),
             },
           ]}
           testID="map-filters-sheet"
         >
-        <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
-
         <View style={styles.header}>
           <Text
             style={{
@@ -259,27 +254,12 @@ export function MapFiltersSheet({
           </Text>
         </Pressable>
         </View>
-      </View>
-    </Modal>
+    </Drawer>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(22, 32, 58, 0.35)",
-  },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  body: {
     flexShrink: 1,
   },
   // Gives way inside the sheet's max height instead of pushing the button off screen
@@ -287,19 +267,12 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 1,
   },
-  handle: {
-    alignSelf: "center",
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 10,
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingTop: 4,
     paddingBottom: 6,
   },
   content: {

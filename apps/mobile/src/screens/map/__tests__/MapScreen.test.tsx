@@ -21,6 +21,24 @@ jest.mock("react-i18next", () => {
 
 jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
+// The filter sheet's drawer runs on native gestures and animations (tested on
+// its own); here a plain view shows its content whenever it is visible.
+jest.mock("../../../components/ui/Drawer", () => {
+  const ReactActual = require("react");
+  const { View, Pressable } = require("react-native");
+  return {
+    Drawer: ({ visible, onClose, children, testID }: { visible: boolean; onClose: () => void; children: React.ReactNode; testID?: string }) =>
+      visible
+        ? ReactActual.createElement(
+            View,
+            { testID },
+            ReactActual.createElement(Pressable, { testID: "drawer-backdrop", onPress: onClose }),
+            children,
+          )
+        : null,
+  };
+});
+
 jest.mock("expo-secure-store", () => ({
   setItemAsync: jest.fn(),
   getItemAsync: jest.fn(() => Promise.resolve(null)),

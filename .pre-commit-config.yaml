@@ -61,6 +61,15 @@ repos:
         always_run: true
         pass_filenames: false
 
+      # Expo Go ships fixed native modules: a JS package ahead of them
+      # crashes at launch with "undefined is not a function".
+      - id: expo-native-deps
+        name: expo native deps match the SDK
+        language: system
+        entry: env EXPO_OFFLINE=1 pnpm --filter @trs/mobile exec expo install --check
+        always_run: true
+        pass_filenames: false
+
       - id: build
         name: build
         language: system

@@ -2,6 +2,7 @@
 
 import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
+import { ZoomablePhoto } from "@/components/zoomable-photo";
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -77,7 +78,8 @@ function ImageCarousel({
       className="block h-full w-full cursor-zoom-in"
       data-testid={`spot-photo-${index}`}
     >
-      <img src={src} alt={alt} className="h-full w-full object-cover transition-opacity duration-200" />
+      {/* Pinches right here; a tap opens it full screen */}
+      <ZoomablePhoto src={src} alt={alt} />
     </button>
   );
 
