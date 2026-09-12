@@ -281,3 +281,44 @@ describe("reverseGeocodeSchema", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ─── Whitespace is not a character ──────────────────────────────────
+
+describe("trimming", () => {
+  it("accepts a username or email typed with a stray space, and stores it trimmed", () => {
+    const result = registerSchema.safeParse({
+      email: " alice@example.com ",
+      password: "Sup3r$ecretPass!",
+      username: " alice_1 ",
+      name: "  Alice  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.username).toBe("alice_1");
+      expect(result.data.email).toBe("alice@example.com");
+      expect(result.data.name).toBe("Alice");
+    }
+    expect(updateProfileSchema.safeParse({ username: "bob " }).success).toBe(true);
+    expect(updateProfileSchema.safeParse({ username: "bob smith" }).success).toBe(false);
+  });
+
+  it("accepts colours and tags with spaces around them", () => {
+    const result = createSpotSchema.safeParse({
+      latitude: 48.85,
+      longitude: 2.35,
+      colors: [" #C44536 "],
+      tags: [" sunset "],
+      title: "  Seine  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.colors).toEqual(["#C44536"]);
+      expect(result.data.tags).toEqual(["sunset"]);
+      expect(result.data.title).toBe("Seine");
+    }
+  });
+
+  it("still refuses a blank name", () => {
+    expect(updateProfileSchema.safeParse({ name: "   " }).success).toBe(false);
+  });
+});

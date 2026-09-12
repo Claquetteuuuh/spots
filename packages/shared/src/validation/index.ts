@@ -18,18 +18,19 @@ const passwordSchema = z
   .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character");
 
 export const registerSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: passwordSchema,
   username: z
     .string()
+    .trim()
     .min(1)
     .max(30)
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  name: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string().min(1),
 });
 
@@ -39,7 +40,7 @@ export const oauthSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -59,12 +60,12 @@ const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 export const createSpotSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  title: z.string().max(200).optional(),
-  description: z.string().max(2000).optional(),
+  title: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
   isFree: z.boolean().default(true),
-  priceInfo: z.string().max(200).optional(),
+  priceInfo: z.string().trim().max(200).optional(),
   colors: z
-    .array(z.string().regex(hexColorRegex, "Must be a valid hex color"))
+    .array(z.string().trim().regex(hexColorRegex, "Must be a valid hex color"))
     .max(10)
     .default([]),
   compositions: z
@@ -72,7 +73,7 @@ export const createSpotSchema = z.object({
     .max(5)
     .default([]),
   tags: z
-    .array(z.string().min(1).max(50))
+    .array(z.string().trim().min(1).max(50))
     .max(10)
     .default([]),
   photos: z
@@ -81,7 +82,7 @@ export const createSpotSchema = z.object({
     .max(10)
     .optional(),
   visibility: z.enum(["PRIVATE", "FOLLOWERS"]).default("FOLLOWERS"),
-  customComposition: z.string().max(100).optional(),
+  customComposition: z.string().trim().max(100).optional(),
   // Null clears it — "not rated" is a legitimate answer
   accessibility: z.enum(SPOT_ACCESSIBILITY).nullable().optional(),
 });
@@ -149,15 +150,16 @@ export const mapPinsQuerySchema = z
 // ─── Users ───────────────────────────────────────────────────────────
 
 export const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  email: z.string().email().max(255).optional(),
+  name: z.string().trim().min(1).max(100).optional(),
+  email: z.string().trim().email().max(255).optional(),
   username: z
     .string()
+    .trim()
     .min(1)
     .max(30, "Username must be 30 characters or fewer")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
-  bio: z.string().max(500).optional(),
+  bio: z.string().trim().max(500).optional(),
   // Avatars are generated, never uploaded — anything but a DiceBear URL
   // would be an arbitrary image hot-linked into every profile row.
   avatarUrl: z

@@ -58,10 +58,11 @@ export function RegisterScreen({ navigation }: AuthStackScreenProps<"Register">)
   const validate = (): FormErrors => {
     const next: FormErrors = {};
     if (form.name.trim().length < 1) next.name = t("auth.email");
-    if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) {
+    // Trimmed first: a stray space is not an invalid character
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username.trim())) {
       next.username = t("auth.errors.usernameTaken");
     }
-    if (!form.email.includes("@")) next.email = t("auth.errors.invalidCredentials");
+    if (!form.email.trim().includes("@")) next.email = t("auth.errors.invalidCredentials");
     if (form.password.length < 8) next.password = t("auth.errors.passwordTooShort");
     return next;
   };

@@ -30,7 +30,8 @@ export function EditProfileScreen({ navigation }: RootStackScreenProps<"EditProf
   const handleSave = async () => {
     const nextErrors: typeof errors = {};
     if (name.trim().length < 1) nextErrors.name = t("auth.name");
-    if (!/^[a-zA-Z0-9_]{1,30}$/.test(username)) nextErrors.username = t("auth.errors.usernameTaken");
+    // Trimmed first: a stray space is not an invalid character
+    if (!/^[a-zA-Z0-9_]{1,30}$/.test(username.trim())) nextErrors.username = t("auth.errors.usernameTaken");
     if (bio.length > 500) nextErrors.bio = t("common.error");
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
