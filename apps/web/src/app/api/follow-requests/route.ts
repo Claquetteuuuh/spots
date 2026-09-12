@@ -10,6 +10,7 @@ export const GET = withAuth(async (_request, authUser) => {
       where: {
         followingId: authUser.userId,
         status: "PENDING",
+        dismissedAt: null,
       },
       orderBy: { createdAt: "desc" },
       include: {
@@ -28,6 +29,7 @@ export const GET = withAuth(async (_request, authUser) => {
         followingId: authUser.userId,
         status: "ACCEPTED",
         createdAt: { gte: thirtyDaysAgo },
+        dismissedAt: null,
       },
       orderBy: { createdAt: "desc" },
       include: {

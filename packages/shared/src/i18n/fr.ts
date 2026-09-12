@@ -315,6 +315,8 @@ export const fr = {
     title: "Notifications",
     followRequests: "Demandes d'abonnement",
     newFollowers: "Nouveaux abonnés",
+    markRead: "Marquer comme lue",
+    markUnread: "Marquer comme non lue",
     startedFollowing: "a commencé à vous suivre",
     accept: "Confirmer",
     reject: "Supprimer",

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Wordmark } from "@/components/wordmark";
 import { TabIcon } from "@/components/tab-icons";
 import { useAuth } from "@/lib/auth-context";
-import { apiClient, onNotificationsSeen } from "@/lib/api-client";
+import { apiClient, onNotificationsChanged, onNotificationsSeen } from "@/lib/api-client";
 import { Avatar } from "@/components/avatar";
 import { useT } from "@/lib/use-t";
 
@@ -32,6 +32,14 @@ export function Header() {
 
   // The notifications page has been read: the badge goes at once
   useEffect(() => onNotificationsSeen(() => setPendingCount(0)), []);
+  // One was marked unread or dismissed: re-count right away
+  useEffect(
+    () =>
+      onNotificationsChanged(() => {
+        void apiClient.followRequests.count().then(setPendingCount).catch(() => {});
+      }),
+    [],
+  );
 
   // Poll pending follow requests count
   useEffect(() => {

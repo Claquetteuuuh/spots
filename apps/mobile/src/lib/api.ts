@@ -296,6 +296,16 @@ export async function markNotificationsSeen(): Promise<void> {
   await client.post(API_ROUTES.followRequests.seen);
 }
 
+/** Mark one notification read or unread. */
+export async function setNotificationRead(id: string, read: boolean): Promise<void> {
+  await client.patch(API_ROUTES.followRequests.read(id), { read });
+}
+
+/** Take one notification off the list for good. */
+export async function dismissNotification(id: string): Promise<void> {
+  await client.post(API_ROUTES.followRequests.dismiss(id));
+}
+
 /** People the viewer may know — followed by the people they follow. */
 export async function getUserSuggestions(): Promise<SuggestedUser[]> {
   const { data } = await client.get<SuggestedUser[]>(API_ROUTES.users.suggestions);

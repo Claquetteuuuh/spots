@@ -28,8 +28,6 @@ model User {
   bio       String?
   locale    String  @default("fr")
   isPrivate Boolean @default(false)
-  // Last time the notifications page was opened — the badge counts from here
-  notificationsSeenAt DateTime?
 
   spots              Spot[]
   spotPhotos         SpotPhoto[]
@@ -55,6 +53,12 @@ model Follow {
   status      FollowStatus @default(PENDING)
   follower    User         @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
   following   User         @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  // As a notification for `following`: read when looked at (or marked so),
+  // kept unread on purpose, or dismissed from the list altogether.
+  readAt      DateTime?
+  unreadKept  Boolean   @default(false)
+  dismissedAt DateTime?
 
   createdAt DateTime @default(now())
 

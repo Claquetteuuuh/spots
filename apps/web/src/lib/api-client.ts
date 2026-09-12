@@ -46,6 +46,20 @@ export function onNotificationsSeen(listener: () => void): () => void {
   };
 }
 
+// A notification was marked (un)read or dismissed: badges should re-count.
+const notificationsChangedListeners = new Set<() => void>();
+
+export function onNotificationsChanged(listener: () => void): () => void {
+  notificationsChangedListeners.add(listener);
+  return () => {
+    notificationsChangedListeners.delete(listener);
+  };
+}
+
+function emitNotificationsChanged(): void {
+  for (const listener of notificationsChangedListeners) listener();
+}
+
 /** A search suggestion: a user plus why they are suggested. */
 export interface SuggestedUser extends User {
   /** How many of the viewer's follows follow this person. */
@@ -257,6 +271,10 @@ export interface FollowRequest {
     avatarUrl: string | null;
   };
   createdAt: string;
+  /** Null while unread. */
+  readAt: string | null;
+  /** Marked unread by hand: opening the page does not read it. */
+  unreadKept: boolean;
 }
 
 export interface NotificationsData {
@@ -580,10 +598,25 @@ export const apiClient = {
   },
 
   followRequests: {
-    /** The notifications page was read: the badge starts over from now. */
+    /** The notifications page is open: what was never read is read now. */
     async markSeen(): Promise<void> {
       for (const listener of notificationsSeenListeners) listener();
-      await request<{ seenAt: string }>(API_ROUTES.followRequests.seen, { method: "POST" });
+      await request<{ count: number }>(API_ROUTES.followRequests.seen, { method: "POST" });
+    },
+
+    /** Mark one notification read or unread. */
+    async setRead(id: string, read: boolean): Promise<void> {
+      await request<{ id: string }>(API_ROUTES.followRequests.read(id), {
+        method: "PATCH",
+        body: JSON.stringify({ read }),
+      });
+      emitNotificationsChanged();
+    },
+
+    /** Take one notification off the list for good. */
+    async dismiss(id: string): Promise<void> {
+      await request<{ id: string }>(API_ROUTES.followRequests.dismiss(id), { method: "POST" });
+      emitNotificationsChanged();
     },
 
     async list(): Promise<NotificationsData> {

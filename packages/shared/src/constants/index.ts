@@ -126,6 +126,8 @@ export const API_ROUTES = {
     count: "/api/follow-requests/count",
     sent: "/api/follow-requests/sent",
     seen: "/api/follow-requests/seen",
+    read: (id: string) => `/api/follow-requests/${id}/read`,
+    dismiss: (id: string) => `/api/follow-requests/${id}/dismiss`,
     accept: (id: string) => `/api/follow-requests/${id}/accept`,
     reject: (id: string) => `/api/follow-requests/${id}/reject`,
   },

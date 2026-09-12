@@ -165,6 +165,12 @@ export const userSearchSchema = z.object({
   limit: z.coerce.number().min(1).max(20).default(10),
 });
 
+// ─── Notifications ───────────────────────────────────────────────────
+
+export const notificationReadSchema = z.object({
+  read: z.boolean(),
+});
+
 // ─── Geocoding ───────────────────────────────────────────────────────
 
 export const reverseGeocodeSchema = z.object({

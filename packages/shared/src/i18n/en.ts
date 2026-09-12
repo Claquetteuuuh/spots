@@ -315,6 +315,8 @@ export const en = {
     title: "Notifications",
     followRequests: "Follow requests",
     newFollowers: "New followers",
+    markRead: "Mark as read",
+    markUnread: "Mark as unread",
     startedFollowing: "started following you",
     accept: "Confirm",
     reject: "Delete",

@@ -24,6 +24,10 @@ export interface User {
 
 export interface FollowRequest {
   id: string;
+  /** Null while unread. */
+  readAt?: string | null;
+  /** Marked unread by hand: opening the screen does not read it. */
+  unreadKept?: boolean;
   follower: {
     id: string;
     username: string;
