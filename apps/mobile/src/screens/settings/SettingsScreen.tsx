@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +17,7 @@ import { usePreferencesStore } from "../../stores/preferences-store";
 import { Linking } from "react-native";
 import { useCameraPermissions } from "expo-camera";
 import * as api from "../../lib/api";
+import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { getAppLocale, LOCALE_LABELS, setAppLocale } from "../../lib/i18n";
 import { Button } from "../../components/ui/Button";
 
@@ -75,7 +75,7 @@ export function SettingsScreen() {
     } catch {
       // Revert on error
       setIsPrivate(!value);
-      Alert.alert(t("common.error"));
+      void noticeDialog({ title: t("common.error") });
     } finally {
       setIsSavingPrivacy(false);
     }
@@ -87,9 +87,9 @@ export function SettingsScreen() {
     try {
       const updated = await api.updateProfile({ username });
       setUser(updated);
-      Alert.alert(t("common.done"), t("common.profileUpdated"));
+      void noticeDialog({ title: t("common.done"), message: t("common.profileUpdated") });
     } catch {
-      Alert.alert(t("common.error"));
+      void noticeDialog({ title: t("common.error") });
     } finally {
       setIsSavingAccount(false);
     }
@@ -97,22 +97,22 @@ export function SettingsScreen() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      Alert.alert(t("common.error"), t("settings.passwordMismatch"));
+      void noticeDialog({ title: t("common.error"), message: t("settings.passwordMismatch") });
       return;
     }
     if (newPassword.length < 8) {
-      Alert.alert(t("common.error"), t("auth.errors.passwordTooShort"));
+      void noticeDialog({ title: t("common.error"), message: t("auth.errors.passwordTooShort") });
       return;
     }
     setIsSavingPassword(true);
     try {
       await api.changePassword(currentPassword, newPassword);
-      Alert.alert(t("common.done"), t("settings.passwordChanged"));
+      void noticeDialog({ title: t("common.done"), message: t("settings.passwordChanged") });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
-      Alert.alert(t("common.error"), t("settings.wrongPassword"));
+      void noticeDialog({ title: t("common.error"), message: t("settings.wrongPassword") });
     } finally {
       setIsSavingPassword(false);
     }
@@ -137,14 +137,14 @@ export function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(t("auth.logout"), t("settings.logOutConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("auth.logout"),
-        style: "destructive",
-        onPress: () => void logout(),
-      },
-    ]);
+    void confirmDialog({
+      title: t("auth.logout"),
+      message: t("settings.logOutConfirm"),
+      confirmLabel: t("auth.logout"),
+      destructive: true,
+    }).then((sure) => {
+      if (sure) void logout();
+    });
   };
 
   return (

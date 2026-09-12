@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/dialog";
 import { useLivePositionPref } from "@/lib/preferences";
 import { useCameraPermission } from "@/lib/use-camera";
 
@@ -180,8 +181,13 @@ export default function SettingsPage() {
 
       // If the username changed, ask for confirmation before saving
       const usernameChanged = user && username !== user.username;
-      if (usernameChanged && !window.confirm(t("settings.usernameConfirmMessage"))) {
-        return;
+      if (usernameChanged) {
+        const sure = await confirmDialog({
+          title: t("settings.usernameConfirmTitle"),
+          message: t("settings.usernameConfirmMessage"),
+          confirmLabel: t("common.save"),
+        });
+        if (!sure) return;
       }
 
       setIsSavingAccount(true);
@@ -280,8 +286,14 @@ export default function SettingsPage() {
     }
   }
 
-  function handleLogout() {
-    if (!window.confirm(t("settings.logOutConfirm"))) return;
+  async function handleLogout() {
+    const sure = await confirmDialog({
+      title: t("auth.logout"),
+      message: t("settings.logOutConfirm"),
+      confirmLabel: t("auth.logout"),
+      destructive: true,
+    });
+    if (!sure) return;
     logout();
     router.push("/");
   }

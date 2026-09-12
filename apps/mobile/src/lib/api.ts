@@ -8,6 +8,7 @@ import type {
   ForwardGeocodeResult,
   MapBounds,
   NotificationsData,
+  LikeState,
   Paginated,
   ReverseGeocodeResult,
   SentFollowRequest,
@@ -207,6 +208,18 @@ export interface UpdateSpotParams {
 
 export async function updateSpot(id: string, params: UpdateSpotParams): Promise<Spot> {
   const { data } = await client.patch<Spot>(API_ROUTES.spots.detail(id), params);
+  return data;
+}
+
+/** Like a spot — your own included. */
+export async function likeSpot(id: string): Promise<LikeState> {
+  const { data } = await client.post<LikeState>(API_ROUTES.spots.like(id));
+  return data;
+}
+
+/** Take a like back. */
+export async function unlikeSpot(id: string): Promise<LikeState> {
+  const { data } = await client.delete<LikeState>(API_ROUTES.spots.like(id));
   return data;
 }
 

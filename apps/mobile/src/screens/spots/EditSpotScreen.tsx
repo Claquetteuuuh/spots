@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import { COMPOSITION_TYPES, type CompositionType, type SpotAccessibility } from 
 import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { extractErrorMessage } from "../../lib/error";
+import { noticeDialog } from "../../stores/dialog-store";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import { AccessibilityPicker } from "../../components/spots/AccessibilityPicker";
 import type { RootStackScreenProps } from "../../navigation/types";
@@ -80,7 +80,7 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
       })
       .catch((err) => {
         if (!cancelled) {
-          Alert.alert(t("common.error"), extractErrorMessage(err, t("common.error")));
+          void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
           navigation.goBack();
         }
       })
@@ -104,10 +104,13 @@ export function EditSpotScreen({ route, navigation }: RootStackScreenProps<"Edit
         colors: selectedColors,
         accessibility,
       });
-      Alert.alert(t("spots.editSuccess"));
+      void noticeDialog({ title: t("spots.editSuccess") });
       navigation.goBack();
     } catch (err) {
-      Alert.alert(t("common.error"), extractErrorMessage(err, t("spots.errors.updateFailed")));
+      void noticeDialog({
+        title: t("common.error"),
+        message: extractErrorMessage(err, t("spots.errors.updateFailed")),
+      });
     } finally {
       setIsSaving(false);
     }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -17,7 +18,12 @@ import { useTheme } from "../../theme";
 import { Avatar } from "../../components/Avatar";
 import * as api from "../../lib/api";
 import { useNotificationsStore } from "../../stores/notifications-store";
-import type { FollowRequest, NotificationsData } from "../../types";
+import type {
+  FollowRequest,
+  LikeNotification,
+  NotificationBase,
+  NotificationsData,
+} from "../../types";
 import type { RootStackNavigationProp } from "../../navigation/types";
 
 function timeAgo(dateStr: string): string {
@@ -33,7 +39,7 @@ function timeAgo(dateStr: string): string {
   return `${weeks}w`;
 }
 
-const isUnread = (n: FollowRequest) => !n.readAt;
+const isUnread = (n: NotificationBase) => !n.readAt;
 
 export function NotificationsScreen() {
   const { t } = useTranslation();
@@ -50,16 +56,18 @@ export function NotificationsScreen() {
   const loadData = useCallback(async () => {
     try {
       const result = await api.getFollowRequests();
-      const all = [...result.pendingRequests, ...result.newFollowers];
+      const likes = result.likes ?? [];
+      const all: NotificationBase[] = [...result.pendingRequests, ...result.newFollowers, ...likes];
       setFreshIds(new Set(all.filter((n) => isUnread(n) && !n.unreadKept).map((n) => n.id)));
       // Seen: never-read items are read from now on; the badge goes
       void useNotificationsStore.getState().markSeen();
       const now = new Date().toISOString();
-      const readNow = (n: FollowRequest) =>
+      const readNow = <N extends NotificationBase>(n: N): N =>
         isUnread(n) && !n.unreadKept ? { ...n, readAt: now } : n;
       setData({
         pendingRequests: result.pendingRequests.map(readNow),
         newFollowers: result.newFollowers.map(readNow),
+        likes: likes.map(readNow),
       });
     } catch {
       // Silently fail
@@ -78,16 +86,21 @@ export function NotificationsScreen() {
     setRefreshing(false);
   }, [loadData]);
 
-  const patch = (id: string, update: (n: FollowRequest) => FollowRequest | null) => {
+  /** Merge a change into one notification, whichever list it sits in — null takes it out. */
+  const patch = (id: string, update: (n: NotificationBase) => Partial<NotificationBase> | null) => {
     setData((prev) => {
       if (!prev) return prev;
-      const apply = (list: FollowRequest[]) =>
+      const apply = <N extends NotificationBase>(list: N[]): N[] =>
         list.flatMap((n) => {
           if (n.id !== id) return [n];
           const next = update(n);
-          return next ? [next] : [];
+          return next ? [{ ...n, ...next }] : [];
         });
-      return { pendingRequests: apply(prev.pendingRequests), newFollowers: apply(prev.newFollowers) };
+      return {
+        pendingRequests: apply(prev.pendingRequests),
+        newFollowers: apply(prev.newFollowers),
+        likes: apply(prev.likes ?? []),
+      };
     });
   };
 
@@ -109,7 +122,7 @@ export function NotificationsScreen() {
     }
   };
 
-  const handleToggleRead = async (item: FollowRequest) => {
+  const handleToggleRead = async (item: NotificationBase) => {
     const read = isUnread(item); // unread → read, read → unread
     try {
       await api.setNotificationRead(item.id, read);
@@ -118,8 +131,7 @@ export function NotificationsScreen() {
         next.delete(item.id);
         return next;
       });
-      patch(item.id, (n) => ({
-        ...n,
+      patch(item.id, () => ({
         readAt: read ? new Date().toISOString() : null,
         unreadKept: !read,
       }));
@@ -140,7 +152,7 @@ export function NotificationsScreen() {
   };
 
   /** The unread dot — the app's device for state — or its empty place. */
-  const renderDot = (item: FollowRequest) => (
+  const renderDot = (item: NotificationBase) => (
     <View
       testID={`dot-${item.id}`}
       style={[
@@ -158,7 +170,7 @@ export function NotificationsScreen() {
    * envelope, with a dot when it would mark unread), red with a bin to
    * delete.
    */
-  const renderActions = (item: FollowRequest, close: () => void) => {
+  const renderActions = (item: NotificationBase, close: () => void) => {
     const unread = isUnread(item);
     return (
       <View style={styles.swipeActions}>
@@ -191,7 +203,7 @@ export function NotificationsScreen() {
     );
   };
 
-  const swipeable = (item: FollowRequest, row: React.ReactNode) => (
+  const swipeable = (item: NotificationBase, row: React.ReactNode) => (
     <ReanimatedSwipeable
       key={item.id}
       friction={2}
@@ -349,6 +361,68 @@ export function NotificationsScreen() {
       </Pressable>,
     );
 
+  const renderLike = (item: LikeNotification) =>
+    swipeable(
+      item,
+      <Pressable
+        onPress={() => navigation.navigate("SpotDetail", { spotId: item.spot.id })}
+        style={[styles.requestRow, { borderBottomColor: theme.colors.border, backgroundColor: theme.colors.bg }]}
+        testID={`notification-${item.id}`}
+      >
+        {renderDot(item)}
+        <View style={styles.avatarWrap}>
+          <Avatar url={item.user.avatarUrl} name={item.user.name} size={44} style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }} />
+        </View>
+
+        <View style={styles.infoWrap}>
+          <Text numberOfLines={1}>
+            <Text
+              style={{
+                color: theme.colors.text,
+                fontSize: theme.typography.size.sm,
+                fontWeight: theme.typography.weight.semibold,
+              }}
+            >
+              {item.user.username}
+            </Text>
+            {"  "}
+            <Text
+              style={{
+                color: theme.colors.textSecondary,
+                fontSize: theme.typography.size.sm,
+              }}
+            >
+              {t("notifications.likedSpot")}
+            </Text>
+          </Text>
+          {item.spot.title ? (
+            <Text
+              numberOfLines={1}
+              style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs, marginTop: 2 }}
+            >
+              {item.spot.title}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* The spot itself, so the row is recognisable at a glance */}
+        <Image
+          source={{ uri: item.spot.photoUrl }}
+          style={{ width: 44, height: 44, borderRadius: theme.radius.sm }}
+          accessibilityIgnoresInvertColors
+        />
+
+        <Text
+          style={{
+            color: theme.colors.textTertiary,
+            fontSize: theme.typography.size.xs,
+          }}
+        >
+          {timeAgo(item.createdAt)}
+        </Text>
+      </Pressable>,
+    );
+
   if (isLoading) {
     return (
       <SafeAreaView
@@ -364,7 +438,8 @@ export function NotificationsScreen() {
 
   const pendingRequests = data?.pendingRequests ?? [];
   const newFollowers = data?.newFollowers ?? [];
-  const hasContent = pendingRequests.length > 0 || newFollowers.length > 0;
+  const likes = data?.likes ?? [];
+  const hasContent = pendingRequests.length > 0 || newFollowers.length > 0 || likes.length > 0;
 
   return (
     <SafeAreaView
@@ -417,6 +492,30 @@ export function NotificationsScreen() {
                 </Text>
               </View>
               {pendingRequests.map(renderRequest)}
+            </>
+          )}
+
+          {/* Likes on the viewer's spots */}
+          {likes.length > 0 && (
+            <>
+              <View
+                style={{
+                  paddingHorizontal: 16,
+                  paddingTop: 16,
+                  paddingBottom: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: theme.typography.size.sm,
+                    fontWeight: theme.typography.weight.semibold,
+                  }}
+                >
+                  {t("notifications.likes")}
+                </Text>
+              </View>
+              {likes.map(renderLike)}
             </>
           )}
 

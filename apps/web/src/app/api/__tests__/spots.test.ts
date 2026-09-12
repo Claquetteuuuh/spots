@@ -308,6 +308,22 @@ describe("GET /api/spots/[id]", () => {
     expect(json.data.id).toBe("spot-1");
   });
 
+  it("adds the like count and whether the viewer liked it", async () => {
+    mockSpotFindUnique.mockResolvedValue({ ...SAMPLE_SPOT, _count: { likes: 4 }, likes: [{ id: "l1" }] });
+
+    const req = new NextRequest("http://localhost/api/spots/spot-1");
+    const res = await GET_BY_ID(req, { params: Promise.resolve({ id: "spot-1" }) });
+    const json = await res.json();
+
+    expect(json.data.likeCount).toBe(4);
+    expect(json.data.isLiked).toBe(true);
+    expect(json.data).not.toHaveProperty("_count");
+    // Only the viewer's own like is fetched, to fill the heart
+    const { include } = mockSpotFindUnique.mock.calls[0][0];
+    expect(include.likes.where).toEqual({ userId: OWNER.userId });
+    expect(include._count).toEqual({ select: { likes: true } });
+  });
+
   it("returns 404 for unauthenticated viewers", async () => {
     mockSpotFindUnique.mockResolvedValue(SAMPLE_SPOT);
     mockGetUserFromRequest.mockResolvedValue(null);

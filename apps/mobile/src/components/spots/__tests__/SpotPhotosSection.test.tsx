@@ -1,5 +1,5 @@
 import React, { act } from "react";
-import { Alert } from "react-native";
+import { useDialogStore } from "../../../stores/dialog-store";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SpotPhotosSection } from "../SpotPhotosSection";
@@ -100,11 +100,11 @@ const renderSection = () => render(<SpotPhotosSection spotId="s1" ownerId={OWNER
  * Wrapped in `act` because the `onPress` callback triggers state
  * updates (`setDeletingId`, `setPhotos`, …) outside React's scheduler.
  */
+const topDialog = () => useDialogStore.getState().queue[0];
+
 async function confirmLastAlert() {
   await act(async () => {
-    const calls = (Alert.alert as jest.Mock).mock.calls;
-    const buttons = calls[calls.length - 1][2] as { style?: string; onPress?: () => void }[];
-    buttons.find((b) => b.style === "destructive")?.onPress?.();
+    useDialogStore.getState().settle(topDialog().id, true);
   });
 }
 
@@ -115,7 +115,7 @@ jest.setTimeout(15_000);
 describe("SpotPhotosSection", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    useDialogStore.setState({ queue: [] });
     signIn("viewer-1");
     servePhotos({});
   });
@@ -171,11 +171,12 @@ describe("SpotPhotosSection", () => {
       await renderSection();
 
       await fireEvent.press(await screen.findByTestId("delete-spot-photo-p1"));
-      expect(Alert.alert).toHaveBeenCalledWith(
-        "spotPhotos.deletePhoto",
-        "spotPhotos.deleteConfirm",
-        expect.any(Array),
-      );
+      expect(topDialog()).toMatchObject({
+        kind: "confirm",
+        title: "spotPhotos.deletePhoto",
+        message: "spotPhotos.deleteConfirm",
+        destructive: true,
+      });
       expect(mockedApi.deleteSpotPhoto).not.toHaveBeenCalled();
 
       await confirmLastAlert();
@@ -210,7 +211,7 @@ describe("SpotPhotosSection", () => {
       await confirmLastAlert();
 
       await waitFor(() =>
-        expect(Alert.alert).toHaveBeenLastCalledWith("common.error", expect.any(String)),
+        expect(topDialog()).toMatchObject({ kind: "notice", title: "common.error" }),
       );
       expect(screen.getByTestId("spot-photo-p1")).toBeTruthy();
     });
@@ -260,7 +261,7 @@ describe("SpotPhotosSection", () => {
       await fireEvent.press(await screen.findByTestId("submit-spot-photo"));
 
       await waitFor(() =>
-        expect(Alert.alert).toHaveBeenCalledWith("common.error", expect.any(String)),
+        expect(topDialog()).toMatchObject({ kind: "notice", title: "common.error" }),
       );
       expect(screen.getByTestId("spot-photo-caption")).toBeTruthy();
     });

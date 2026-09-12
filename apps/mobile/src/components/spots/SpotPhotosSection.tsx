@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Modal,
@@ -17,6 +16,7 @@ import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { addSpotPhoto, deleteSpotPhoto, getSpotPhotos } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/error";
+import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { Avatar } from "../Avatar";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -114,7 +114,7 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
       setPhotos((prev) => [photo, ...prev]);
       setPending(null);
     } catch (err) {
-      Alert.alert(t("common.error"), extractErrorMessage(err, t("common.error")));
+      void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
     } finally {
       setIsUploading(false);
     }
@@ -127,17 +127,21 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
       setPreview((current) => (current?.id === photo.id ? null : current));
     } catch (err) {
-      Alert.alert(t("common.error"), extractErrorMessage(err, t("common.error")));
+      void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
     } finally {
       setDeletingId(null);
     }
   };
 
   const confirmDelete = (photo: SpotPhoto) => {
-    Alert.alert(t("spotPhotos.deletePhoto"), t("spotPhotos.deleteConfirm"), [
-      { text: t("common.cancel"), style: "cancel" },
-      { text: t("common.delete"), style: "destructive", onPress: () => void removePhoto(photo) },
-    ]);
+    void confirmDialog({
+      title: t("spotPhotos.deletePhoto"),
+      message: t("spotPhotos.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    }).then((sure) => {
+      if (sure) void removePhoto(photo);
+    });
   };
 
   const canDelete = (photo: SpotPhoto) =>

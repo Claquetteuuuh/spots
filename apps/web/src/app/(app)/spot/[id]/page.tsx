@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmDialog } from "@/components/dialog";
+import { PhotoLightbox } from "@/components/photo-lightbox";
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -33,10 +35,15 @@ function ImageCarousel({
   images,
   fallbackUrl,
   alt,
+  openLabel,
+  onOpen,
 }: {
   images: SpotImage[];
   fallbackUrl: string;
   alt: string;
+  openLabel: string;
+  /** The photo was tapped: show it full screen. */
+  onOpen: (index: number) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,20 +69,24 @@ function ImageCarousel({
 
   const frameClass = "aspect-square lg:aspect-[4/3] bg-bg-secondary overflow-hidden";
 
+  const photo = (src: string, index: number) => (
+    <button
+      type="button"
+      onClick={() => onOpen(index)}
+      aria-label={openLabel}
+      className="block h-full w-full cursor-zoom-in"
+      data-testid={`spot-photo-${index}`}
+    >
+      <img src={src} alt={alt} className="h-full w-full object-cover transition-opacity duration-200" />
+    </button>
+  );
+
   if (images.length === 0) {
-    return (
-      <div className={frameClass}>
-        <img src={fallbackUrl} alt={alt} className="h-full w-full object-cover" />
-      </div>
-    );
+    return <div className={frameClass}>{photo(fallbackUrl, 0)}</div>;
   }
 
   if (!hasMultiple) {
-    return (
-      <div className={frameClass}>
-        <img src={images[0].photoUrl} alt={alt} className="h-full w-full object-cover" />
-      </div>
-    );
+    return <div className={frameClass}>{photo(images[0].photoUrl, 0)}</div>;
   }
 
   const arrowClass =
@@ -102,11 +113,7 @@ function ImageCarousel({
         }}
         className={`relative ${frameClass} group touch-pan-y focus:outline-none`}
       >
-        <img
-          src={images[currentIndex].photoUrl}
-          alt={alt}
-          className="h-full w-full object-cover transition-opacity duration-200"
-        />
+        {photo(images[currentIndex].photoUrl, currentIndex)}
 
         {/* Arrows — pointer-only, so desktop only */}
         <button
@@ -202,6 +209,9 @@ export default function SpotDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
+  // Which of the spot's photos fills the screen, if any
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Community photos state
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
@@ -256,13 +266,44 @@ export default function SpotDetailPage({
 
   async function handleDelete() {
     if (!spot) return;
-    if (!window.confirm(t("spots.deleteConfirm"))) return;
+    // Two questions, on purpose: a spot and its photos are gone for good
+    const sure = await confirmDialog({
+      title: t("spots.deleteConfirm"),
+      message: t("spots.deleteMessage"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    });
+    if (!sure) return;
+    const really = await confirmDialog({
+      title: t("spots.deleteConfirmAgain"),
+      message: t("spots.deleteConfirmAgainMessage"),
+      confirmLabel: t("spots.deleteForGood"),
+      destructive: true,
+    });
+    if (!really) return;
 
     try {
       await apiClient.spots.delete(spot.id);
       router.push("/map");
     } catch {
       // Show error
+    }
+  }
+
+  async function handleToggleLike() {
+    if (!spot || likeBusy) return;
+    const before = spot;
+    const next = !spot.isLiked;
+    // Optimistic: the heart answers at once, the server settles the count
+    setSpot({ ...spot, isLiked: next, likeCount: (spot.likeCount ?? 0) + (next ? 1 : -1) });
+    setLikeBusy(true);
+    try {
+      const state = next ? await apiClient.spots.like(spot.id) : await apiClient.spots.unlike(spot.id);
+      setSpot((prev) => (prev ? { ...prev, ...state } : prev));
+    } catch {
+      setSpot(before);
+    } finally {
+      setLikeBusy(false);
     }
   }
 
@@ -304,7 +345,13 @@ export default function SpotDetailPage({
   }
 
   async function handleDeletePhoto(photo: SpotPhoto) {
-    if (!window.confirm(t("spotPhotos.deleteConfirm"))) return;
+    const sure = await confirmDialog({
+      title: t("spotPhotos.deletePhoto"),
+      message: t("spotPhotos.deleteConfirm"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    });
+    if (!sure) return;
     setDeletingPhotoId(photo.id);
     try {
       await apiClient.spots.deletePhoto(id, photo.id);
@@ -378,7 +425,19 @@ export default function SpotDetailPage({
           images={carouselImages}
           fallbackUrl={spot.photoUrl}
           alt={spot.title ?? ""}
+          openLabel={t("spots.viewPhoto")}
+          onOpen={setLightboxIndex}
         />
+
+        {lightboxIndex !== null ? (
+          <PhotoLightbox
+            urls={carouselImages.length > 0 ? carouselImages.map((i) => i.photoUrl) : [spot.photoUrl]}
+            index={lightboxIndex}
+            alt={spot.title ?? ""}
+            onIndexChange={setLightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+          />
+        ) : null}
 
         {/* Author row — web only (the app has no author row or delete here).
             Under the photo like a caption; above it on desktop, as today. */}
@@ -397,8 +456,25 @@ export default function SpotDetailPage({
             <span />
           )}
 
-          {isOwner ? (
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
+            {/* The heart: blue when it is yours, a count beside it */}
+            <button
+              type="button"
+              onClick={handleToggleLike}
+              aria-pressed={!!spot.isLiked}
+              aria-label={spot.isLiked ? t("spots.liked") : t("spots.like")}
+              className={`flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                spot.isLiked ? "text-accent" : "text-text-tertiary hover:text-accent"
+              }`}
+              data-testid="like-spot"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill={spot.isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+              </svg>
+              <span data-testid="like-count">{spot.likeCount ?? 0}</span>
+            </button>
+            {isOwner ? (
+              <>
               <Link
                 href={`/spot/${spot.id}/edit`}
                 className="cursor-pointer rounded-full p-2 text-text-tertiary transition-colors hover:text-accent"
@@ -420,8 +496,9 @@ export default function SpotDetailPage({
                   <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                 </svg>
               </button>
-            </div>
-          ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
 
         {/* Details below photo — 16px padding, 16px between groups, like the app */}
@@ -532,7 +609,8 @@ export default function SpotDetailPage({
             type="button"
             onClick={() => setMapExpanded(true)}
             aria-label={t("map.tapToExpand")}
-            className="group relative block h-[140px] w-full cursor-pointer overflow-hidden rounded-md border border-border lg:h-48 lg:rounded-none lg:border-0"
+            // `isolate` keeps Leaflet's stacked panes inside the thumb, under the nav and the expanded map
+            className="group relative isolate block h-[140px] w-full cursor-pointer overflow-hidden rounded-md border border-border lg:h-48 lg:rounded-none lg:border-0"
           >
             <MiniMap latitude={spot.latitude} longitude={spot.longitude} />
             {/* Expand hint: always visible on a touch screen, on hover for a pointer */}
@@ -553,7 +631,7 @@ export default function SpotDetailPage({
 
         {/* Expanded map overlay */}
         {mapExpanded ? (
-          <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+          <div className="fixed inset-0 z-[1100] flex flex-col bg-bg" data-testid="expanded-map">
             <div className="relative flex-1">
               <ExpandedMap latitude={spot.latitude} longitude={spot.longitude} />
               {/* 40px round close button, clear of the status bar */}

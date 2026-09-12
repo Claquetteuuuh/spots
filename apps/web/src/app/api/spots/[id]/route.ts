@@ -30,21 +30,24 @@ export async function GET(
   try {
     const { id } = await params;
 
+    // Privacy: spots are only visible to the owner and their accepted followers
+    const viewer = await getUserFromRequest(request);
+    if (!viewer) {
+      throw new ApiError("Spot not found", 404);
+    }
+
     const spot = await prisma.spot.findUnique({
       where: { id },
       include: {
         user: { select: SPOT_AUTHOR_SELECT },
         images: { orderBy: { order: "asc" } },
+        _count: { select: { likes: true } },
+        // Just the viewer's own like, to say whether the heart is filled
+        likes: { where: { userId: viewer.userId }, select: { id: true } },
       },
     });
 
     if (!spot) {
-      throw new ApiError("Spot not found", 404);
-    }
-
-    // Privacy: spots are only visible to the owner and their accepted followers
-    const viewer = await getUserFromRequest(request);
-    if (!viewer) {
       throw new ApiError("Spot not found", 404);
     }
 
@@ -69,7 +72,12 @@ export async function GET(
       }
     }
 
-    return successResponse(spot);
+    const { _count, likes, ...rest } = spot;
+    return successResponse({
+      ...rest,
+      likeCount: _count?.likes ?? 0,
+      isLiked: (likes?.length ?? 0) > 0,
+    });
   } catch (error) {
     return handleApiError(error);
   }

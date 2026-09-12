@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -23,6 +22,9 @@ import { useTheme } from "../../theme";
 import { useSpotsStore } from "../../stores/spots-store";
 import { useAuthStore } from "../../stores/auth-store";
 import { extractErrorMessage } from "../../lib/error";
+import * as api from "../../lib/api";
+import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
+import { PhotoLightbox } from "../../components/spots/PhotoLightbox";
 import { CompositionBadge } from "../../components/spots/CompositionBadge";
 import { SpotPhotosSection } from "../../components/spots/SpotPhotosSection";
 import type { RootStackScreenProps } from "../../navigation/types";
@@ -43,29 +45,56 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const isOwner = !!spot && !!user && spot.userId === user.id;
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!spot) return;
-    Alert.alert(t("spots.deleteConfirm"), t("spots.deleteMessage"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("common.delete"),
-        style: "destructive",
-        onPress: () => {
-          deleteSpot(spot.id)
-            .then(() => navigation.goBack())
-            .catch((err) =>
-              Alert.alert(
-                t("common.error"),
-                extractErrorMessage(err, t("spots.errors.deleteFailed")),
-              ),
-            );
-        },
-      },
-    ]);
+    // Two questions, on purpose: a spot and its photos are gone for good
+    const sure = await confirmDialog({
+      title: t("spots.deleteConfirm"),
+      message: t("spots.deleteMessage"),
+      confirmLabel: t("common.delete"),
+      destructive: true,
+    });
+    if (!sure) return;
+    const really = await confirmDialog({
+      title: t("spots.deleteConfirmAgain"),
+      message: t("spots.deleteConfirmAgainMessage"),
+      confirmLabel: t("spots.deleteForGood"),
+      destructive: true,
+    });
+    if (!really) return;
+
+    try {
+      await deleteSpot(spot.id);
+      navigation.goBack();
+    } catch (err) {
+      void noticeDialog({
+        title: t("common.error"),
+        message: extractErrorMessage(err, t("spots.errors.deleteFailed")),
+      });
+    }
   }, [spot, deleteSpot, navigation, t]);
+
+  const handleToggleLike = useCallback(async () => {
+    if (!spot || likeBusy) return;
+    const before = spot;
+    const next = !spot.isLiked;
+    // Optimistic: the heart answers at once, the server settles the count
+    setSpot({ ...spot, isLiked: next, likeCount: (spot.likeCount ?? 0) + (next ? 1 : -1) });
+    setLikeBusy(true);
+    try {
+      const state = next ? await api.likeSpot(spot.id) : await api.unlikeSpot(spot.id);
+      setSpot((prev) => (prev ? { ...prev, ...state } : prev));
+    } catch {
+      setSpot(before);
+    } finally {
+      setLikeBusy(false);
+    }
+  }, [spot, likeBusy]);
 
   const handleEdit = useCallback(() => {
     if (!spot) return;
@@ -88,7 +117,7 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
                 <Ionicons name="create-outline" size={22} color={theme.colors.text} />
               </Pressable>
               <Pressable
-                onPress={handleDelete}
+                onPress={() => void handleDelete()}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={t("common.delete")}
@@ -144,14 +173,21 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
   }, []);
 
   const renderCarouselItem = useCallback(
-    ({ item }: { item: { url: string; key: string } }) => (
-      <Image
-        source={{ uri: item.url }}
-        style={{ width: SCREEN_WIDTH, aspectRatio: 1 }}
-        resizeMode="cover"
-      />
+    ({ item, index }: { item: { url: string; key: string }; index: number }) => (
+      <Pressable
+        onPress={() => setLightboxOpen(true)}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={t("spots.viewPhoto")}
+        testID={`spot-photo-${index}`}
+      >
+        <Image
+          source={{ uri: item.url }}
+          style={{ width: SCREEN_WIDTH, aspectRatio: 1 }}
+          resizeMode="cover"
+        />
+      </Pressable>
     ),
-    [],
+    [t],
   );
 
   if (isLoading) {
@@ -235,30 +271,64 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
             </View>
           </View>
         ) : (
-          <Image source={{ uri: images[0].url }} style={styles.photo} resizeMode="cover" />
+          <Pressable
+            onPress={() => setLightboxOpen(true)}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={t("spots.viewPhoto")}
+            testID="spot-photo-0"
+          >
+            <Image source={{ uri: images[0].url }} style={styles.photo} resizeMode="cover" />
+          </Pressable>
         )}
 
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}>
-          {/* Title + location */}
-          <View>
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: theme.typography.size.lg,
-                fontWeight: theme.typography.weight.bold,
-              }}
+          {/* Title + location, the heart beside them */}
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: theme.spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: theme.typography.size.lg,
+                  fontWeight: theme.typography.weight.bold,
+                }}
+              >
+                {spot.title || t("spots.spotTitle")}
+              </Text>
+              <Text
+                style={{
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.size.sm,
+                  marginTop: theme.spacing.xs,
+                }}
+              >
+                {locationLabel}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => void handleToggleLike()}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: !!spot.isLiked }}
+              accessibilityLabel={spot.isLiked ? t("spots.liked") : t("spots.like")}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 }}
+              testID="like-spot"
             >
-              {spot.title || t("spots.spotTitle")}
-            </Text>
-            <Text
-              style={{
-                color: theme.colors.textSecondary,
-                fontSize: theme.typography.size.sm,
-                marginTop: theme.spacing.xs,
-              }}
-            >
-              {locationLabel}
-            </Text>
+              <Ionicons
+                name={spot.isLiked ? "heart" : "heart-outline"}
+                size={22}
+                color={spot.isLiked ? theme.colors.accent : theme.colors.textTertiary}
+              />
+              <Text
+                style={{
+                  color: spot.isLiked ? theme.colors.accent : theme.colors.textTertiary,
+                  fontSize: theme.typography.size.sm,
+                  fontWeight: theme.typography.weight.semibold,
+                }}
+                testID="like-count"
+              >
+                {spot.likeCount ?? 0}
+              </Text>
+            </Pressable>
           </View>
 
           {/* Description */}
@@ -455,6 +525,11 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
           </Modal>
         </View>
       </ScrollView>
+
+      <PhotoLightbox
+        uri={lightboxOpen ? (images[activeImageIndex] ?? images[0]).url : null}
+        onClose={() => setLightboxOpen(false)}
+      />
     </SafeAreaView>
   );
 }

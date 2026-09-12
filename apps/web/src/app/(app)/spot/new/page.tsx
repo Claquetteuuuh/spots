@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/dialog";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1832,8 +1833,16 @@ function AddSpotForm() {
           ) : (
             <Button
               variant="ghost"
-              onClick={() => {
-                if (hasWork && !window.confirm(t("spots.discardConfirm"))) return;
+              onClick={async () => {
+                if (hasWork) {
+                  const leave = await confirmDialog({
+                    title: t("spots.discardConfirm"),
+                    message: t("spots.discardMessage"),
+                    confirmLabel: t("spots.discard"),
+                    destructive: true,
+                  });
+                  if (!leave) return;
+                }
                 router.push("/map");
               }}
             >

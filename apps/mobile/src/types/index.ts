@@ -37,9 +37,37 @@ export interface FollowRequest {
   createdAt: string;
 }
 
+/** Someone liked one of the viewer's spots. */
+export interface LikeNotification {
+  id: string;
+  readAt?: string | null;
+  unreadKept?: boolean;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  spot: {
+    id: string;
+    title: string | null;
+    photoUrl: string;
+  };
+  createdAt: string;
+}
+
+/** What every notification shares: the read state a slide can flip. */
+export type NotificationBase = Pick<FollowRequest, "id" | "readAt" | "unreadKept">;
+
 export interface NotificationsData {
   pendingRequests: FollowRequest[];
   newFollowers: FollowRequest[];
+  likes: LikeNotification[];
+}
+
+export interface LikeState {
+  isLiked: boolean;
+  likeCount: number;
 }
 
 export interface SentFollowRequest {
@@ -86,6 +114,9 @@ export interface Spot {
   compositions: CompositionType[];
   tags: string[];
   images?: SpotImage[];
+  /** Only on the detail response. */
+  likeCount?: number;
+  isLiked?: boolean;
 
   createdAt: string;
   updatedAt: string;

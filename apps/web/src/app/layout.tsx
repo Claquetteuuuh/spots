@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { getTranslator } from "@/lib/i18n";
 import { LocaleProvider } from "@/lib/locale-context";
 import { getServerLocale } from "@/lib/server-locale";
+import { DialogHost } from "@/components/dialog";
 import { ThemeInit } from "@/components/theme-init";
 import "./globals.css";
 
@@ -72,7 +73,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full flex flex-col bg-bg text-text">
         <ThemeInit />
         <LocaleProvider initialLocale={locale}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <DialogHost />
+          </AuthProvider>
         </LocaleProvider>
       </body>
     </html>

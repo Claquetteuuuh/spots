@@ -31,6 +31,7 @@ model User {
 
   spots              Spot[]
   spotPhotos         SpotPhoto[]
+  spotLikes          SpotLike[]
   followers          Follow[]             @relation("following")
   following          Follow[]             @relation("follower")
   passwordResetTokens PasswordResetToken[]
@@ -146,6 +147,7 @@ model Spot {
 
   spotPhotos SpotPhoto[]
   images     SpotImage[]
+  likes      SpotLike[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -166,6 +168,27 @@ model SpotImage {
   order    Int    @default(0)
 
   @@index([spotId, order])
+}
+
+// ─── Likes ───────────────────────────────────────────────────────────
+
+/// A saved spot. Also the owner's "someone liked your spot" notification,
+/// with the same read / kept-unread / dismissed state as a Follow.
+model SpotLike {
+  id     String @id @default(cuid())
+  spotId String
+  spot   Spot   @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readAt      DateTime?
+  unreadKept  Boolean   @default(false)
+  dismissedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([spotId, userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ─── Community Photos ───────────────────────────────────────────────

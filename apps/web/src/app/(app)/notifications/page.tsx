@@ -3,7 +3,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
-import type { FollowRequest, NotificationsData } from "@/lib/api-client";
+import type { NotificationBase, NotificationsData } from "@/lib/api-client";
 import { useT } from "@/lib/use-t";
 import { Avatar } from "@/components/avatar";
 import { PullToRefresh } from "@/components/pull-to-refresh";
@@ -40,7 +40,7 @@ function timeAgo(dateStr: string): string {
   return `${weeks}w`;
 }
 
-const isUnread = (n: FollowRequest) => n.readAt === null;
+const isUnread = (n: NotificationBase) => n.readAt === null;
 
 export default function NotificationsPage() {
   const t = useT();
@@ -53,16 +53,19 @@ export default function NotificationsPage() {
   const loadData = useCallback(async () => {
     try {
       const result = await apiClient.followRequests.list();
-      const all = [...result.pendingRequests, ...result.newFollowers];
+      const likes = result.likes ?? [];
+      const all: NotificationBase[] = [...result.pendingRequests, ...result.newFollowers, ...likes];
       const fresh = all.filter((n) => isUnread(n) && !n.unreadKept);
       setFreshIds(new Set(fresh.map((n) => n.id)));
       // Seen: never-read items are read from now on; the badge goes
       void apiClient.followRequests.markSeen().catch(() => {});
       const now = new Date().toISOString();
-      const readNow = (n: FollowRequest) => (isUnread(n) && !n.unreadKept ? { ...n, readAt: now } : n);
+      const readNow = <N extends NotificationBase>(n: N): N =>
+        isUnread(n) && !n.unreadKept ? { ...n, readAt: now } : n;
       setData({
         pendingRequests: result.pendingRequests.map(readNow),
         newFollowers: result.newFollowers.map(readNow),
+        likes: likes.map(readNow),
       });
     } catch {
       // Silently fail
@@ -77,16 +80,21 @@ export default function NotificationsPage() {
     });
   }, [loadData]);
 
-  const patch = (id: string, update: (n: FollowRequest) => FollowRequest | null) => {
+  /** Merge a change into one notification, whichever list it sits in — null takes it out. */
+  const patch = (id: string, update: (n: NotificationBase) => Partial<NotificationBase> | null) => {
     setData((prev) => {
       if (!prev) return prev;
-      const apply = (list: FollowRequest[]) =>
+      const apply = <N extends NotificationBase>(list: N[]): N[] =>
         list.flatMap((n) => {
           if (n.id !== id) return [n];
           const next = update(n);
-          return next ? [next] : [];
+          return next ? [{ ...n, ...next }] : [];
         });
-      return { pendingRequests: apply(prev.pendingRequests), newFollowers: apply(prev.newFollowers) };
+      return {
+        pendingRequests: apply(prev.pendingRequests),
+        newFollowers: apply(prev.newFollowers),
+        likes: apply(prev.likes ?? []),
+      };
     });
   };
 
@@ -108,7 +116,7 @@ export default function NotificationsPage() {
     }
   }
 
-  async function handleToggleRead(item: FollowRequest) {
+  async function handleToggleRead(item: NotificationBase) {
     const read = isUnread(item); // unread → read, read → unread
     try {
       await apiClient.followRequests.setRead(item.id, read);
@@ -117,8 +125,7 @@ export default function NotificationsPage() {
         next.delete(item.id);
         return next;
       });
-      patch(item.id, (n) => ({
-        ...n,
+      patch(item.id, () => ({
         readAt: read ? new Date().toISOString() : null,
         unreadKept: !read,
       }));
@@ -146,13 +153,14 @@ export default function NotificationsPage() {
 
   const pendingRequests = data?.pendingRequests ?? [];
   const newFollowers = data?.newFollowers ?? [];
-  const hasContent = pendingRequests.length > 0 || newFollowers.length > 0;
+  const likes = data?.likes ?? [];
+  const hasContent = pendingRequests.length > 0 || newFollowers.length > 0 || likes.length > 0;
 
   const rowClass = "-mx-4 border-b border-border lg:mx-0";
   const contentClass = "flex min-w-0 flex-1 items-center gap-3 px-4 py-3 lg:px-0";
 
   /** The unread dot — the app's device for state — or its empty place. */
-  const dot = (item: FollowRequest) => (
+  const dot = (item: NotificationBase) => (
     <span
       aria-hidden="true"
       className={`h-2 w-2 shrink-0 rounded-full ${
@@ -161,7 +169,7 @@ export default function NotificationsPage() {
     />
   );
 
-  const actions = (item: FollowRequest) => (
+  const actions = (item: NotificationBase) => (
     <NotificationActions
       id={item.id}
       unread={isUnread(item)}
@@ -221,6 +229,47 @@ export default function NotificationsPage() {
                             {t("notifications.reject")}
                           </button>
                         </div>
+                      </div>
+                    </SwipeRow>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {/* Likes on the viewer's spots */}
+            {likes.length > 0 && (
+              <>
+                <p className="pt-4 pb-2 text-[13px] font-semibold text-text">
+                  {t("notifications.likes")}
+                </p>
+
+                <ul>
+                  {likes.map((like) => (
+                    <SwipeRow key={like.id} className={rowClass} actions={actions(like)}>
+                      <div className={contentClass} data-testid={`notification-${like.id}`}>
+                        {dot(like)}
+                        <Link href={`/profile/${like.user.username}`} className="shrink-0">
+                          <Avatar url={like.user.avatarUrl} name={like.user.name} className="h-11 w-11 border border-border" />
+                        </Link>
+
+                        <Link href={`/spot/${like.spot.id}`} className="min-w-0 flex-1">
+                          <p className="text-[13px] text-text">
+                            <span className="font-semibold">{like.user.username}</span>{" "}
+                            <span className="text-text-secondary">{t("notifications.likedSpot")}</span>
+                          </p>
+                          {like.spot.title ? (
+                            <p className="truncate text-xs text-text-tertiary">{like.spot.title}</p>
+                          ) : null}
+                        </Link>
+
+                        {/* The spot itself, so the row is recognisable at a glance */}
+                        <Link href={`/spot/${like.spot.id}`} className="shrink-0">
+                          <img src={like.spot.photoUrl} alt="" className="h-11 w-11 rounded-md object-cover" />
+                        </Link>
+
+                        <span className="shrink-0 text-xs text-text-tertiary">
+                          {timeAgo(like.createdAt)}
+                        </span>
                       </div>
                     </SwipeRow>
                   ))}

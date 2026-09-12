@@ -277,9 +277,37 @@ export interface FollowRequest {
   unreadKept: boolean;
 }
 
+/** Someone liked one of the viewer's spots. */
+export interface LikeNotification {
+  id: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+  spot: {
+    id: string;
+    title: string | null;
+    photoUrl: string;
+  };
+  createdAt: string;
+  readAt: string | null;
+  unreadKept: boolean;
+}
+
+/** What every notification shares: the read state a slide can flip. */
+export type NotificationBase = Pick<FollowRequest, "id" | "readAt" | "unreadKept">;
+
 export interface NotificationsData {
   pendingRequests: FollowRequest[];
   newFollowers: FollowRequest[];
+  likes: LikeNotification[];
+}
+
+export interface LikeState {
+  isLiked: boolean;
+  likeCount: number;
 }
 
 export interface SentFollowRequest {
@@ -323,6 +351,9 @@ export interface Spot {
   createdAt: string;
   updatedAt: string;
   user?: User;
+  /** Only on the detail response. */
+  likeCount?: number;
+  isLiked?: boolean;
 }
 
 export interface SpotPhoto {
@@ -428,6 +459,14 @@ export const apiClient = {
   },
 
   spots: {
+    async like(id: string): Promise<LikeState> {
+      return request<LikeState>(API_ROUTES.spots.like(id), { method: "POST" });
+    },
+
+    async unlike(id: string): Promise<LikeState> {
+      return request<LikeState>(API_ROUTES.spots.like(id), { method: "DELETE" });
+    },
+
     async list(
       query?: Partial<SpotQuery>,
     ): Promise<PaginatedResponse<Spot>> {

@@ -6,6 +6,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n, { restoreStoredLocale } from "./src/lib/i18n";
 import { ThemeProvider, useTheme } from "./src/theme";
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { DialogHost } from "./src/components/ui/DialogHost";
 
 function AppShell() {
   const theme = useTheme();
@@ -30,6 +31,7 @@ export default function App() {
       <I18nextProvider i18n={i18n}>
         <ThemeProvider>
           <AppShell />
+          <DialogHost />
         </ThemeProvider>
       </I18nextProvider>
     </SafeAreaProvider>

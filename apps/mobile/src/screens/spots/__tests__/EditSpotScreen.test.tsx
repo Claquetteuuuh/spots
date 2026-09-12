@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert } from "react-native";
+import { useDialogStore } from "../../../stores/dialog-store";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 
 // ─── Mocks ──────────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ jest.setTimeout(15_000);
 describe("EditSpotScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    useDialogStore.setState({ queue: [] });
     serveFetchSpot();
     serveUpdateSpot();
 
@@ -183,7 +183,7 @@ describe("EditSpotScreen", () => {
     await pressSave();
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith("spots.editSuccess");
+      expect(useDialogStore.getState().queue[0]).toMatchObject({ kind: "notice", title: "spots.editSuccess" });
     });
   });
 
@@ -197,10 +197,11 @@ describe("EditSpotScreen", () => {
     await pressSave();
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        "common.error",
-        "Forbidden",
-      );
+      expect(useDialogStore.getState().queue[0]).toMatchObject({
+        kind: "notice",
+        title: "common.error",
+        message: "Forbidden",
+      });
     });
   });
 

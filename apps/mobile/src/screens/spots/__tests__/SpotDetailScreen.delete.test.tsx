@@ -1,9 +1,9 @@
 import React from "react";
-import { Alert } from "react-native";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { SpotDetailScreen } from "../SpotDetailScreen";
 import { useAuthStore } from "../../../stores/auth-store";
 import { useSpotsStore } from "../../../stores/spots-store";
+import { useDialogStore } from "../../../stores/dialog-store";
 import type { RootStackScreenProps } from "../../../navigation/types";
 import type { Spot, User } from "../../../types";
 
@@ -45,9 +45,12 @@ jest.mock("react-native-maps", () => {
   return { __esModule: true, default: View, Marker: View, PROVIDER_DEFAULT: "default" };
 });
 
-// The community photos have their own tests; keep this one about the spot.
+// The community photos and the lightbox have their own tests; keep this one about the spot.
 jest.mock("../../../components/spots/SpotPhotosSection", () => ({
   SpotPhotosSection: () => null,
+}));
+jest.mock("../../../components/spots/PhotoLightbox", () => ({
+  PhotoLightbox: () => null,
 }));
 
 const OWNER_ID = "owner-1";
@@ -94,10 +97,14 @@ function lastHeaderRight(navigation: { setOptions: jest.Mock }) {
   return calls[calls.length - 1][0].headerRight as (() => React.ReactElement) | undefined;
 }
 
-function confirmLastAlert() {
-  const calls = (Alert.alert as jest.Mock).mock.calls;
-  const buttons = calls[calls.length - 1][2] as { style?: string; onPress?: () => void }[];
-  buttons.find((b) => b.style === "destructive")?.onPress?.();
+/** The dialog on top, as the host would show it. */
+const topDialog = () => useDialogStore.getState().queue[0];
+
+/** Answer the dialog on top, the way a finger would. */
+async function answerDialog(ok: boolean) {
+  await act(async () => {
+    useDialogStore.getState().settle(topDialog().id, ok);
+  });
 }
 
 describe("SpotDetailScreen — deleting a spot", () => {
@@ -106,7 +113,7 @@ describe("SpotDetailScreen — deleting a spot", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    useDialogStore.setState({ queue: [] });
     fetchSpotById.mockResolvedValue(spot);
     deleteSpot.mockResolvedValue(undefined);
     useSpotsStore.setState({ fetchSpotById, deleteSpot });
@@ -129,23 +136,45 @@ describe("SpotDetailScreen — deleting a spot", () => {
     expect(lastHeaderRight(navigation)).toBeUndefined();
   });
 
-  it("deletes after confirmation and goes back", async () => {
+  it("asks twice, in the app's own dialog, then deletes and goes back", async () => {
     signIn(OWNER_ID);
     const navigation = await renderScreen();
     await render(lastHeaderRight(navigation)!());
 
     await fireEvent.press(screen.getByTestId("delete-spot"));
-    expect(Alert.alert).toHaveBeenCalledWith(
-      "spots.deleteConfirm",
-      "spots.deleteMessage",
-      expect.any(Array),
-    );
+    await waitFor(() => expect(topDialog()).toBeDefined());
+    expect(topDialog()).toMatchObject({
+      kind: "confirm",
+      title: "spots.deleteConfirm",
+      message: "spots.deleteMessage",
+      destructive: true,
+    });
     expect(deleteSpot).not.toHaveBeenCalled();
 
-    confirmLastAlert();
+    await answerDialog(true);
+    await waitFor(() => expect(topDialog()?.title).toBe("spots.deleteConfirmAgain"));
+    expect(topDialog()).toMatchObject({ confirmLabel: "spots.deleteForGood", destructive: true });
+    expect(deleteSpot).not.toHaveBeenCalled();
 
+    await answerDialog(true);
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalledTimes(1));
     expect(deleteSpot).toHaveBeenCalledWith("s1");
+  });
+
+  it("keeps the spot when the second question is answered no", async () => {
+    signIn(OWNER_ID);
+    const navigation = await renderScreen();
+    await render(lastHeaderRight(navigation)!());
+
+    await fireEvent.press(screen.getByTestId("delete-spot"));
+    await waitFor(() => expect(topDialog()).toBeDefined());
+    await answerDialog(true);
+    await waitFor(() => expect(topDialog()?.title).toBe("spots.deleteConfirmAgain"));
+    await answerDialog(false);
+
+    await waitFor(() => expect(useDialogStore.getState().queue).toHaveLength(0));
+    expect(deleteSpot).not.toHaveBeenCalled();
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
   it("stays on the spot and reports the error when deletion fails", async () => {
@@ -155,11 +184,12 @@ describe("SpotDetailScreen — deleting a spot", () => {
     await render(lastHeaderRight(navigation)!());
 
     await fireEvent.press(screen.getByTestId("delete-spot"));
-    confirmLastAlert();
+    await waitFor(() => expect(topDialog()).toBeDefined());
+    await answerDialog(true);
+    await waitFor(() => expect(topDialog()?.title).toBe("spots.deleteConfirmAgain"));
+    await answerDialog(true);
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenLastCalledWith("common.error", expect.any(String)),
-    );
+    await waitFor(() => expect(topDialog()).toMatchObject({ kind: "notice", title: "common.error" }));
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });

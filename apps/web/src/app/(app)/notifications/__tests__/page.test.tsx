@@ -60,6 +60,7 @@ beforeEach(() => {
   api.list.mockResolvedValue({
     pendingRequests: [item("p1")],
     newFollowers: [item("f1", { readAt: "2026-01-01T00:00:00.000Z" })],
+    likes: [],
   });
   api.markSeen.mockResolvedValue(undefined);
   api.setRead.mockResolvedValue(undefined);
@@ -106,5 +107,38 @@ describe("NotificationsPage", () => {
       fireEvent.click(f1Again);
     });
     expect(api.setRead).toHaveBeenLastCalledWith("f1", true);
+  });
+});
+
+describe("NotificationsPage — likes", () => {
+  it("lists who liked a spot, links to it, and slides like the rest", async () => {
+    api.list.mockResolvedValue({
+      pendingRequests: [],
+      newFollowers: [],
+      likes: [
+        {
+          id: "l1",
+          user: follower("l1"),
+          spot: { id: "s9", title: "Seine at dusk", photoUrl: "https://cdn/s9.webp" },
+          createdAt: new Date().toISOString(),
+          readAt: null,
+          unreadKept: false,
+        },
+      ],
+    });
+    await renderPage();
+
+    const row = screen.getByTestId("notification-l1");
+    expect(screen.getByText("notifications.likes")).toBeTruthy();
+    expect(screen.getByText("notifications.likedSpot")).toBeTruthy();
+    expect(screen.getByText("Seine at dusk").closest("a")?.getAttribute("href")).toBe("/spot/s9");
+    expect(row.querySelector("img")?.getAttribute("src")).toBe("https://cdn/s9.webp");
+    expect(dotOf("l1")?.className).toContain("bg-accent");
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByTestId("dismiss-l1")[0]);
+    });
+    await waitFor(() => expect(api.dismiss).toHaveBeenCalledWith("l1"));
+    await waitFor(() => expect(screen.queryByTestId("notification-l1")).toBeNull());
   });
 });
