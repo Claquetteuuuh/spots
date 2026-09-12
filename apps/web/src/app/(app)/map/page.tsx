@@ -25,6 +25,7 @@ import {
 } from "@trs/shared/map";
 import { useAuth } from "@/lib/auth-context";
 import { useLivePosition } from "@/lib/use-live-position";
+import { useLivePositionPref } from "@/lib/preferences";
 import { useT } from "@/lib/use-t";
 
 // Leaflet must be loaded without SSR
@@ -53,8 +54,11 @@ export default function MapPage() {
   const [position, setPosition] = useState<LatLng | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [center, setCenter] = useState<MapCenter | null>(null);
-  // Live dot and heading; `position` above stays the snapshot filters work from.
-  const { position: livePosition, requestHeadingPermission } = useLivePosition();
+  // Live dot and heading — a device preference, off in Settings; `position`
+  // above stays the snapshot filters work from.
+  const [livePositionEnabled] = useLivePositionPref();
+  const { position: livePosition, requestHeadingPermission } =
+    useLivePosition(livePositionEnabled);
 
   const viewportRef = useRef<MapBounds | null>(null);
   const fetchedRef = useRef<FetchedArea | null>(null);

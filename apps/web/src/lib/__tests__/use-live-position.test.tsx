@@ -126,6 +126,27 @@ describe("useLivePosition", () => {
     expect(latest.current?.position?.heading).toBe(90);
   });
 
+  it("asks iOS for the compass on the first gesture, once, and again from the button", async () => {
+    stubGeolocation();
+    const requestPermission = vi.fn(() => Promise.resolve("granted"));
+    Object.defineProperty(globalThis, "DeviceOrientationEvent", {
+      configurable: true,
+      value: { requestPermission },
+    });
+    await mount();
+
+    await act(async () => {
+      document.dispatchEvent(new Event("pointerdown"));
+      document.dispatchEvent(new Event("pointerdown"));
+    });
+    expect(requestPermission).toHaveBeenCalledTimes(1);
+
+    await act(async () => latest.current!.requestHeadingPermission());
+    expect(requestPermission).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(globalThis, "DeviceOrientationEvent", { configurable: true, value: undefined });
+  });
+
   it("stops watching when the tab is hidden and on unmount", async () => {
     stubGeolocation();
     const view = await mount();

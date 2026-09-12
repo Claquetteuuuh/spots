@@ -12,6 +12,7 @@ import {
   type MapPin,
 } from "@trs/shared/map";
 import { invalidateMapCache } from "@/lib/map-cache";
+import { setLivePositionEnabled } from "@/lib/preferences";
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 
@@ -303,6 +304,17 @@ describe("MapPage", () => {
     expect(mapProps.current.labels.untitled).toBe("spots.untitled");
     expect(mapProps.current.labels.open).toBe("map.openSpot");
     expect(mapProps.current.labels.youAreHere).toBe("map.youAreHere");
+  });
+
+  it("hands the map no position when the device preference is off", async () => {
+    stubGeolocation({ latitude: 48.85, longitude: 2.35 });
+    setLivePositionEnabled(false);
+
+    await renderPage();
+    await act(settle);
+
+    expect(mapProps.current.userPosition).toBeNull();
+    setLivePositionEnabled(true);
   });
 
   it("hands the map the photographer's live position, and none without geolocation", async () => {

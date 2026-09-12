@@ -121,6 +121,7 @@ jest.mock("react-native-maps", () => {
 
 import { useAuthStore } from "../../../stores/auth-store";
 import { invalidateMapCache, useSpotsStore } from "../../../stores/spots-store";
+import { usePreferencesStore } from "../../../stores/preferences-store";
 import { MapScreen } from "../MapScreen";
 import type { User } from "../../../types";
 
@@ -364,6 +365,19 @@ describe("MapScreen — you are here", () => {
     });
     expect(screen.getByTestId("user-heading")).toBeTruthy();
     expect(screen.getByTestId("user-location").props.accessibilityValue).toEqual({ now: 90 });
+  });
+
+  it("keeps every sensor off when the preference is off", async () => {
+    usePreferencesStore.setState({ livePosition: false, hydrated: true });
+    await render(<MapScreen />);
+    // "Locate me" still centres the map; the live watchers never start
+    await waitFor(() => expect(mockAnimateToRegion).toHaveBeenCalled());
+    await act(async () => {});
+
+    expect(mockLive.position).toBeNull();
+    expect(mockLive.heading).toBeNull();
+    expect(screen.queryByTestId("user-location")).toBeNull();
+    usePreferencesStore.setState({ livePosition: true });
   });
 
   it("falls back to magnetic north and ignores a compass with no answer", async () => {

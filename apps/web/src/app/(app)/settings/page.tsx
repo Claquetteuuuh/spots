@@ -1,5 +1,7 @@
 "use client";
 
+import { useLivePositionPref } from "@/lib/preferences";
+
 import { startTransition, useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -134,6 +136,8 @@ export default function SettingsPage() {
 
   // Privacy
   const [isPrivate, setIsPrivate] = useState(false);
+  // A device preference, not an account one: whether the map may use the sensors here
+  const [livePosition, setLivePosition] = useLivePositionPref();
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   // Theme
@@ -388,6 +392,45 @@ export default function SettingsPage() {
               <span
                 className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-bg transition-transform ${
                   isPrivate ? "translate-x-[22px]" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+          </button>
+
+          {/* Live position on the map — this device only */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={livePosition}
+            onClick={() => setLivePosition(!livePosition)}
+            className="mt-5 flex w-full cursor-pointer items-center gap-3 border-t border-border pt-5 text-left"
+          >
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="flex items-center gap-2">
+                <svg className="h-5 w-5 shrink-0 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                <span className="text-[13px] font-semibold text-text">
+                  {t("settings.livePosition")}
+                </span>
+              </span>
+              <span className="ml-7 text-xs text-text-secondary">
+                {livePosition ? t("settings.livePositionOn") : t("settings.livePositionOff")}
+              </span>
+              {livePosition ? (
+                <span className="ml-7 text-xs text-text-tertiary">{t("settings.livePositionHint")}</span>
+              ) : null}
+            </span>
+            <span
+              aria-hidden="true"
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                livePosition ? "bg-accent" : "bg-border-dark"
+              }`}
+            >
+              <span
+                className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-bg transition-transform ${
+                  livePosition ? "translate-x-[22px]" : "translate-x-0.5"
                 }`}
               />
             </span>

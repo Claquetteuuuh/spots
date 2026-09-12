@@ -52,12 +52,29 @@ export function headingFromOrientation(e: OrientationEvent): number | null {
 }
 
 /**
+ * iOS shares the compass only after a prompt raised from a user gesture;
+ * everywhere else this is a no-op. Must be called synchronously inside
+ * the gesture's handler.
+ */
+function requestCompassPermission(): Promise<void> {
+  const ctor = (
+    globalThis as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }
+  ).DeviceOrientationEvent;
+  if (typeof ctor?.requestPermission !== "function") return Promise.resolve();
+  return ctor.requestPermission().then(
+    () => undefined,
+    () => undefined, // Denied or not from a gesture — the dot still shows, without a cone
+  );
+}
+
+/**
  * Where the device is and which way it faces, live, while the page is
  * visible. Nothing runs without the Geolocation API; the compass is
  * optional on top. iOS hands out the compass only after a permission
- * prompt raised from a tap — call `requestHeadingPermission` from one.
+ * prompt raised from a gesture: the first tap or pan on the page asks,
+ * and `requestHeadingPermission` lets a button ask again.
  */
-export function useLivePosition(): {
+export function useLivePosition(enabled = true): {
   position: LivePosition | null;
   requestHeadingPermission: () => Promise<void>;
 } {
@@ -67,6 +84,7 @@ export function useLivePosition(): {
   const lastHeadingAtRef = useRef(0);
 
   useEffect(() => {
+    if (!enabled) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     const geolocation = navigator.geolocation;
 
@@ -121,26 +139,25 @@ export function useLivePosition(): {
     };
     // A hidden tab needs neither the GPS nor the compass running
     const onVisibility = () => (document.visibilityState === "visible" ? start() : stop());
+    // The first gesture on the page unlocks the compass on iOS
+    const onFirstGesture = () => {
+      void requestCompassPermission();
+    };
 
     start();
     document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("pointerdown", onFirstGesture, { once: true, passive: true });
+    document.addEventListener("keydown", onFirstGesture, { once: true, passive: true });
     return () => {
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("keydown", onFirstGesture);
     };
-  }, []);
+  }, [enabled]);
 
-  const requestHeadingPermission = useCallback(async () => {
-    const ctor = (
-      globalThis as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }
-    ).DeviceOrientationEvent;
-    if (typeof ctor?.requestPermission !== "function") return;
-    try {
-      await ctor.requestPermission();
-    } catch {
-      // Denied or not from a gesture — the dot still shows, without a cone
-    }
-  }, []);
+  const requestHeadingPermission = useCallback(() => requestCompassPermission(), []);
 
-  return { position, requestHeadingPermission };
+  // Switched off: nothing is reported, whatever the last fix was
+  return { position: enabled ? position : null, requestHeadingPermission };
 }

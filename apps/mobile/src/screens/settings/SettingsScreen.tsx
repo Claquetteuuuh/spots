@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme, useThemeMode, type ThemeMode } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
+import { usePreferencesStore } from "../../stores/preferences-store";
 import * as api from "../../lib/api";
 import { getAppLocale, LOCALE_LABELS, setAppLocale } from "../../lib/i18n";
 import { Button } from "../../components/ui/Button";
@@ -41,6 +42,9 @@ export function SettingsScreen() {
 
   // Privacy
   const [isPrivate, setIsPrivate] = useState(user?.isPrivate ?? false);
+  // A device preference, not an account one: whether the map may use the sensors here
+  const livePosition = usePreferencesStore((s) => s.livePosition);
+  const setLivePosition = usePreferencesStore((s) => s.setLivePosition);
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   const isOAuth = user?.provider === "GOOGLE" || user?.provider === "APPLE";
@@ -282,6 +286,61 @@ export function SettingsScreen() {
               disabled={isSavingPrivacy}
               trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
               thumbColor={theme.colors.bg}
+            />
+          </View>
+
+          {/* Live position on the map — this phone only */}
+          <View
+            style={[
+              styles.privacyRow,
+              {
+                marginTop: theme.spacing.lg,
+                paddingTop: theme.spacing.lg,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: theme.colors.border,
+              },
+            ]}
+          >
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="navigate-outline" size={20} color={theme.colors.textSecondary} />
+                <Text
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: theme.typography.size.sm,
+                    fontWeight: theme.typography.weight.semibold,
+                  }}
+                >
+                  {t("settings.livePosition")}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.size.xs,
+                  marginLeft: 28,
+                }}
+              >
+                {livePosition ? t("settings.livePositionOn") : t("settings.livePositionOff")}
+              </Text>
+              {livePosition ? (
+                <Text
+                  style={{
+                    color: theme.colors.textTertiary,
+                    fontSize: theme.typography.size.xs,
+                    marginLeft: 28,
+                  }}
+                >
+                  {t("settings.livePositionHint")}
+                </Text>
+              ) : null}
+            </View>
+            <Switch
+              value={livePosition}
+              onValueChange={(value) => void setLivePosition(value)}
+              trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
+              thumbColor={theme.colors.bg}
+              testID="live-position-switch"
             />
           </View>
         </Section>

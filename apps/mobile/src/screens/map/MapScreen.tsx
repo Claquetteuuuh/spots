@@ -38,6 +38,7 @@ import {
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { useSpotsStore } from "../../stores/spots-store";
+import { usePreferencesStore } from "../../stores/preferences-store";
 import { useTabSwitch } from "../../navigation/tab-context";
 import { useLiveLocation } from "../../lib/use-live-location";
 import { MapFiltersSheet } from "../../components/map/MapFiltersSheet";
@@ -55,10 +56,11 @@ const DEFAULT_REGION: Region = {
 /** Pans settle for this long before the viewport is fetched. */
 const FETCH_DEBOUNCE_MS = 300;
 const PREVIEW_PHOTO = 72;
-// The "you are here" marker: a cone above a dot, the dot at the anchor.
-const YOU_DOT = 16;
-const YOU_CONE_HEIGHT = 34;
-const YOU_CONE_HALF_WIDTH = 18;
+// The "you are here" marker: a cone above a haloed dot, the dot at the anchor.
+const YOU_DOT = 20;
+const YOU_HALO = 48;
+const YOU_CONE_HEIGHT = 40;
+const YOU_CONE_HALF_WIDTH = 22;
 
 /** The last box we fetched: a view inside it, with the same query, needs no request. */
 interface FetchedArea {
@@ -93,10 +95,12 @@ export function MapScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
-  // Live dot and heading, only once "locate me" has the permission and
-  // while this tab is on screen; `position` stays the filters' snapshot.
+  // Live dot and heading — a device preference (off in Settings), only once
+  // "locate me" has the permission and while this tab is on screen;
+  // `position` stays the filters' snapshot.
+  const livePositionEnabled = usePreferencesStore((s) => s.livePosition);
   const [locationGranted, setLocationGranted] = useState(false);
-  const live = useLiveLocation(locationGranted && activeIndex === 0);
+  const live = useLiveLocation(livePositionEnabled && locationGranted && activeIndex === 0);
 
   const fetchedRef = useRef<FetchedArea | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -473,7 +477,7 @@ export function MapScreen() {
                 anchor={
                   live.heading === null
                     ? { x: 0.5, y: 0.5 }
-                    : { x: 0.5, y: YOU_CONE_HEIGHT / (YOU_CONE_HEIGHT + YOU_DOT / 2) }
+                    : { x: 0.5, y: YOU_CONE_HEIGHT / (YOU_CONE_HEIGHT + YOU_HALO / 2) }
                 }
                 rotation={live.heading ?? 0}
                 flat
@@ -489,12 +493,10 @@ export function MapScreen() {
                       style={[styles.youCone, { borderTopColor: `${theme.colors.accent}40` }]}
                     />
                   ) : null}
-                  <View
-                    style={[
-                      styles.youDot,
-                      { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
-                    ]}
-                  />
+                  {/* A soft halo sets the photographer apart from every pin */}
+                  <View style={[styles.youHalo, { backgroundColor: `${theme.colors.accent}2E` }]}>
+                    <View style={[styles.youDot, { backgroundColor: theme.colors.accent }]} />
+                  </View>
                 </View>
               </Marker>
             </>
@@ -699,17 +701,26 @@ const styles = StyleSheet.create({
     borderTopWidth: YOU_CONE_HEIGHT,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    marginBottom: -YOU_DOT / 2,
+    marginBottom: -YOU_HALO / 2,
+  },
+  youHalo: {
+    width: YOU_HALO,
+    height: YOU_HALO,
+    borderRadius: YOU_HALO / 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   youDot: {
     width: YOU_DOT,
     height: YOU_DOT,
     borderRadius: YOU_DOT / 2,
     borderWidth: 3,
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
+    borderColor: "#FFFFFF",
+    shadowColor: "#16203A",
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
+    elevation: 4,
   },
   clusterHalo: {
     alignItems: "center",

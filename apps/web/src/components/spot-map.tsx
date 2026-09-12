@@ -77,10 +77,13 @@ const MAP_CSS = `
 .spot-preview__chevron{flex:none;width:18px;height:18px;color:var(--color-text-tertiary);transition:color .15s}
 .spot-preview:hover .spot-preview__chevron{color:var(--color-accent)}
 .you-are-here{background:none;border:0;pointer-events:none}
-.you-are-here__wrap{position:relative;width:16px;height:16px}
-.you-are-here__cone{position:absolute;left:50%;top:50%;width:72px;height:72px;margin:-36px 0 0 -36px;border-radius:50%;background:conic-gradient(from -30deg,var(--color-accent) 0deg,var(--color-accent) 60deg,transparent 60deg);opacity:.28;transform-origin:50% 50%;transition:transform .2s ease-out;-webkit-mask:radial-gradient(circle,transparent 9px,#000 10px);mask:radial-gradient(circle,transparent 9px,#000 10px)}
+.you-are-here__wrap{position:relative;width:20px;height:20px}
+.you-are-here__halo{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:var(--color-accent);opacity:.2;animation:you-are-here-pulse 2.4s ease-out infinite}
+@keyframes you-are-here-pulse{0%{transform:scale(.5);opacity:.4}70%{transform:scale(1.2);opacity:0}100%{transform:scale(1.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){.you-are-here__halo{animation:none;transform:scale(.9)}}
+.you-are-here__cone{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;background:conic-gradient(from -30deg,var(--color-accent) 0deg,var(--color-accent) 60deg,transparent 60deg);opacity:.3;transform-origin:50% 50%;transition:transform .2s ease-out;-webkit-mask:radial-gradient(circle,transparent 11px,#000 12px);mask:radial-gradient(circle,transparent 11px,#000 12px)}
 .you-are-here__cone[hidden]{display:none}
-.you-are-here__dot{position:absolute;inset:0;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 1px 4px rgba(22,32,58,.35)}
+.you-are-here__dot{position:absolute;inset:0;border-radius:9999px;background:var(--color-accent);border:3px solid #fff;box-shadow:0 1px 6px rgba(22,32,58,.4)}
 `;
 
 export default function SpotMap({
@@ -226,9 +229,9 @@ export default function SpotMap({
       userMarkerRef.current = L.marker(latlng, {
         icon: L.divIcon({
           className: "you-are-here",
-          html: `<div class="you-are-here__wrap"><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: `<div class="you-are-here__wrap"><div class="you-are-here__halo"></div><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
         }),
         title: labelsRef.current.youAreHere,
         interactive: false,
