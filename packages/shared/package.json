@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "supercluster": "^9.1.0",
-    "zod": "^3.24.0"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/supercluster": "^7.1.3",
