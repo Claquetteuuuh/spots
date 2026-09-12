@@ -1,5 +1,5 @@
 import React, { act } from "react";
-import { StyleSheet } from "react-native";
+import { Dimensions, StyleSheet } from "react-native";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import {
   MAP_PINS_LIMIT,
@@ -461,6 +461,18 @@ describe("MapScreen — filters", () => {
       ),
     );
     expect(screen.queryByText("map.needLocation")).toBeNull();
+  });
+
+  it("keeps Done reachable: the sheet is capped and its list gives way", async () => {
+    await render(<MapScreen />);
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+
+    const sheet = StyleSheet.flatten(screen.getByTestId("map-filters-sheet").props.style);
+    expect(sheet.maxHeight).toBeLessThan(Dimensions.get("window").height);
+    expect(sheet.flexShrink).toBe(1);
+    const scroll = StyleSheet.flatten(screen.getByTestId("map-filters-scroll").props.style);
+    expect(scroll.flexShrink).toBe(1);
+    expect(screen.getByTestId("map-filters-done")).toBeTruthy();
   });
 
   it("says so when nothing matches the filters here", async () => {

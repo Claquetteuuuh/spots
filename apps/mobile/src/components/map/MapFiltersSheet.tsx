@@ -1,5 +1,6 @@
 import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import {
   COLOR_FAMILIES,
@@ -40,6 +41,8 @@ export function MapFiltersSheet({
 }: MapFiltersSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const active = countActiveFilters(filters);
 
   const pickRadius = (radiusKm: number | null) => {
@@ -96,9 +99,21 @@ export function MapFiltersSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      {/* Tap the dimmed map to close */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t("map.filtersDone")} />
-      <View style={[styles.sheet, { backgroundColor: theme.colors.bg }]} testID="map-filters-sheet">
+      <View style={styles.root}>
+        {/* Tap the dimmed map to close */}
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t("map.filtersDone")} />
+        <View
+          style={[
+            styles.sheet,
+            // Never taller than the screen: the list scrolls, the button stays put
+            {
+              backgroundColor: theme.colors.bg,
+              maxHeight: height * 0.85,
+              paddingBottom: Math.max(insets.bottom, 16),
+            },
+          ]}
+          testID="map-filters-sheet"
+        >
         <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
 
         <View style={styles.header}>
@@ -129,7 +144,12 @@ export function MapFiltersSheet({
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          testID="map-filters-scroll"
+        >
           {section(
             t("map.filterColors"),
             <View style={styles.row}>
@@ -238,21 +258,34 @@ export function MapFiltersSheet({
             {t("map.filtersDone")}
           </Text>
         </Pressable>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  root: {
     flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: "rgba(22, 32, 58, 0.35)",
   },
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 28,
-    maxHeight: "82%",
+    flexShrink: 1,
+  },
+  // Gives way inside the sheet's max height instead of pushing the button off screen
+  scroll: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   handle: {
     alignSelf: "center",

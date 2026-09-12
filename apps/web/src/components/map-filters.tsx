@@ -88,12 +88,21 @@ export function MapFiltersMenu({
       </button>
 
       {open ? (
-        <div
-          id={panelId}
-          role="dialog"
-          aria-label={t("map.filters")}
-          className="absolute right-0 top-11 z-[1100] w-[min(92vw,340px)] rounded-md border border-border bg-bg p-4 shadow-float"
-        >
+        <>
+          {/* Phones: a sheet from the bottom over a dimmed map; desktop: a dropdown */}
+          <div
+            className="fixed inset-0 z-[1090] bg-text/20 lg:hidden"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            id={panelId}
+            role="dialog"
+            aria-label={t("map.filters")}
+            className="fixed inset-x-0 bottom-0 z-[1100] flex max-h-[85dvh] flex-col rounded-t-[24px] border border-border bg-bg shadow-float lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-0 lg:top-11 lg:max-h-[calc(100vh-8rem)] lg:w-[340px] lg:rounded-md"
+          >
+          {/* Everything scrolls; the footer stays put, so "Done" is always in reach */}
+          <div data-testid="filters-scroll" className="min-h-0 flex-1 overflow-y-auto p-4">
           <Section title={t("map.filterColors")}>
             <div className="flex flex-wrap gap-2">
               {COLOR_FAMILIES.map(({ key, swatch }) => {
@@ -167,7 +176,9 @@ export function MapFiltersMenu({
             ) : null}
           </Section>
 
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => onChange(EMPTY_FILTERS)}
@@ -184,7 +195,8 @@ export function MapFiltersMenu({
               {t("map.filtersDone")}
             </button>
           </div>
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );

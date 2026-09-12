@@ -407,6 +407,21 @@ describe("MapPage — filters", () => {
     );
   });
 
+  it("keeps Done reachable: the options scroll inside the panel, the footer stays", async () => {
+    await renderPage();
+    await openFilters();
+
+    const dialog = screen.getByRole("dialog");
+    const scroll = screen.getByTestId("filters-scroll");
+    expect(dialog.className).toContain("flex-col");
+    expect(dialog.className).toContain("max-h-");
+    expect(scroll.className).toContain("overflow-y-auto");
+    // The footer is a sibling of the scrolling body, not inside it
+    const done = screen.getByText("map.filtersDone");
+    expect(scroll.contains(done)).toBe(false);
+    expect(dialog.contains(done)).toBe(true);
+  });
+
   it("says so when nothing matches the filters here", async () => {
     await renderPage();
     await moveTo(VIEW);
