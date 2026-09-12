@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { MAP_STYLE } from "../../lib/map-style";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../theme";
@@ -460,6 +461,8 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
           >
             <MapView
               provider={PROVIDER_DEFAULT}
+              {...MAP_STYLE}
+              userInterfaceStyle={theme.dark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
               scrollEnabled={false}
               zoomEnabled={false}
@@ -496,6 +499,8 @@ export function SpotDetailScreen({ route, navigation }: RootStackScreenProps<"Sp
             <View style={[styles.fullMapContainer, { backgroundColor: theme.colors.bg }]}>
               <MapView
                 provider={PROVIDER_DEFAULT}
+              {...MAP_STYLE}
+              userInterfaceStyle={theme.dark ? "dark" : "light"}
                 style={StyleSheet.absoluteFill}
                 initialRegion={{
                   latitude: spot.latitude,

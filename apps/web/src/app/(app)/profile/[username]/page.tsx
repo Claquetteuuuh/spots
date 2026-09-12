@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
+import { TILE_OPTIONS, tileUrl } from "@/lib/map-tiles";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
@@ -514,9 +515,7 @@ function ProfileMapView({ spots }: { spots: Spot[] }) {
       const map = L.map(containerRef.current).setView([centerLat, centerLng], 11);
       mapRef.current = map;
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-      }).addTo(map);
+      L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(map);
 
       for (const spot of spots) {
         L.marker([spot.latitude, spot.longitude])

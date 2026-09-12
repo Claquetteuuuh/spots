@@ -4,6 +4,7 @@ import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
 import { ZoomablePhoto } from "@/components/zoomable-photo";
 import { LocationDetails } from "@/components/location-details";
+import { TILE_OPTIONS, tileUrl } from "@/lib/map-tiles";
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -827,9 +828,7 @@ function ExpandedMap({ latitude, longitude }: { latitude: number; longitude: num
       const map = L.map(containerRef.current).setView([latitude, longitude], 15);
       mapRef.current = map;
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-      }).addTo(map);
+      L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(map);
 
       L.marker([latitude, longitude]).addTo(map);
     });

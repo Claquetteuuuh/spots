@@ -10,6 +10,7 @@ import {
   pinColor,
 } from "@trs/shared/map";
 import type { LivePosition } from "@/lib/use-live-position";
+import { TILE_OPTIONS, tileUrl, watchMapTheme } from "@/lib/map-tiles";
 
 /**
  * A place to move the map to. Pass a fresh object each time — the map
@@ -271,6 +272,7 @@ export default function SpotMap({
     let cancelled = false;
     // The redraw scheduled by the last `moveend`, if it has not run yet
     let moveFrame = 0;
+    let stopThemeWatch = () => {};
 
     // Dynamically import Leaflet (client-side only)
     import("leaflet").then((L) => {
@@ -281,9 +283,9 @@ export default function SpotMap({
         DEFAULT_ZOOM,
       );
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
+      // The tiles follow the theme while the map is open
+      const tiles = L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(map);
+      stopThemeWatch = watchMapTheme((dark) => tiles.setUrl(tileUrl(dark)));
 
       // The screen's actions sit bottom-right, like the app's, so credit
       // OpenStreetMap on the other side rather than under a button.
@@ -325,6 +327,7 @@ export default function SpotMap({
     return () => {
       cancelled = true;
       cancelAnimationFrame(moveFrame);
+      stopThemeWatch();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;

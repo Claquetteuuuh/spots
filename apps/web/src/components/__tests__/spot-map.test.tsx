@@ -78,6 +78,9 @@ describe("SpotMap", () => {
 
     expect(errors.filter((m) => m.includes("layerPointToContainerPoint"))).toEqual([]);
     expect(container.querySelector(".leaflet-popup")).not.toBeNull();
+    // The tiles are CARTO's, not the default OSM ones
+    const tile = container.querySelector<HTMLImageElement>("img.leaflet-tile");
+    expect(tile?.src).toContain("basemaps.cartocdn.com/rastertiles/voyager");
 
     await act(async () => {
       unmount();

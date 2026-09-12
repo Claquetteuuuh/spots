@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { TILE_OPTIONS, tileUrl } from "@/lib/map-tiles";
 
 interface MiniMapProps {
   latitude: number;
@@ -37,7 +38,7 @@ export default function MiniMap({ latitude, longitude }: MiniMapProps) {
         touchZoom: false,
       }).setView([latitude, longitude], 14);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+      L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(
         map,
       );
 
