@@ -55,6 +55,17 @@ describe("colorsAlike", () => {
     expect(colorsAlike("#C44536", "#A0522D")).toBe(true);
   });
 
+  it("reads the warm colours photographers actually get as red", () => {
+    // Terracotta, rust and a muted brown all answer to the red swatch
+    expect(colorsAlike("#BC8863", "#D32F2F")).toBe(true);
+    expect(colorsAlike("#B7410E", "#D32F2F")).toBe(true);
+    expect(colorsAlike("#8B7355", "#D32F2F")).toBe(true);
+    // A peach leans orange, not red; a sky blue is neither
+    expect(colorsAlike("#D4A574", "#E67E22")).toBe(true);
+    expect(colorsAlike("#D4A574", "#D32F2F")).toBe(false);
+    expect(colorsAlike("#9DB9E8", "#D32F2F")).toBe(false);
+  });
+
   it("keeps distant hues apart", () => {
     expect(colorsAlike("#2F6FD0", "#D32F2F")).toBe(false);
     expect(colorsAlike("#F1C40F", "#7E57C2")).toBe(false);

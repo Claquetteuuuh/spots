@@ -203,9 +203,13 @@ export function deltaE(a: [number, number, number], b: [number, number, number])
 }
 
 /** Hues this far apart (degrees) still read as the same colour, whatever the shade. */
-export const HUE_TOLERANCE = 20;
+export const HUE_TOLERANCE = 30;
+/** Muted colours have a less certain hue, so they get more room. */
+export const MUTED_HUE_TOLERANCE = 40;
+/** Below this saturation a colour counts as muted. */
+const MUTED_SATURATION = 0.35;
 /** Closer than this (ΔE) and two colours pass for each other even across hues. */
-export const COLOR_MATCH_DISTANCE = 24;
+export const COLOR_MATCH_DISTANCE = 30;
 /** Greys of a lightness this far apart (0–1) still pass for each other. */
 const NEUTRAL_LIGHTNESS_TOLERANCE = 0.25;
 
@@ -220,10 +224,12 @@ function hueDistance(a: number, b: number): number {
 }
 
 /**
- * Whether two colours pass for each other: the same hue in any shade (a
- * pale or a deep green is still green), or close enough overall that the
- * eye would confuse them (a dark brick and a sienna). Greys only pass for
- * greys of a similar lightness, never for a colour.
+ * Whether two colours pass for each other: a neighbouring hue in any shade
+ * (a pale or a deep green is still green, a terracotta is still red — and
+ * muted colours, whose hue the eye reads loosely, get more room), or close
+ * enough overall that the eye would confuse them (a dark brick and a
+ * sienna). Greys only pass for greys of a similar lightness, never for a
+ * colour.
  */
 export function colorsAlike(a: string, b: string): boolean {
   const ha = hexToHsl(a);
@@ -232,7 +238,8 @@ export function colorsAlike(a: string, b: string): boolean {
   const na = isNeutral(ha);
   const nb = isNeutral(hb);
   if (na || nb) return na && nb && Math.abs(ha.l - hb.l) <= NEUTRAL_LIGHTNESS_TOLERANCE;
-  if (hueDistance(ha.h, hb.h) <= HUE_TOLERANCE) return true;
+  const muted = ha.s < MUTED_SATURATION || hb.s < MUTED_SATURATION;
+  if (hueDistance(ha.h, hb.h) <= (muted ? MUTED_HUE_TOLERANCE : HUE_TOLERANCE)) return true;
   return deltaE(hexToLab(a)!, hexToLab(b)!) <= COLOR_MATCH_DISTANCE;
 }
 
