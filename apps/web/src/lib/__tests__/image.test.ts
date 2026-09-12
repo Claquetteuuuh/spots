@@ -89,7 +89,8 @@ describe("compressImage", () => {
     expect(out.outputBytes).toBeLessThan(png.byteLength / 3);
   });
 
-  it("produces a smaller file than an oversized JPEG", async () => {
+  // Encodes a large JPEG for real — several seconds on a busy machine
+  it("produces a smaller file than an oversized JPEG", { timeout: 20_000 }, async () => {
     // Noise at 3600×2400 (8.6 MP) → downscaled to 2560×1707 (4.4 MP)
     const jpeg = await noise(3600, 2400).jpeg({ quality: 92 }).toBuffer();
     const out = await compressImage(jpeg, "image/jpeg");
