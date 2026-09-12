@@ -269,6 +269,8 @@ export default function SpotMap({
     }
 
     let cancelled = false;
+    // The redraw scheduled by the last `moveend`, if it has not run yet
+    let moveFrame = 0;
 
     // Dynamically import Leaflet (client-side only)
     import("leaflet").then((L) => {
@@ -299,10 +301,18 @@ export default function SpotMap({
         map.setView([pending.lat, pending.lng], pending.zoom ?? LOCATE_ZOOM);
       }
 
-      // Every pan or zoom regroups the markers and asks the page for pins.
+      // Every pan or zoom regroups the markers and asks the page for pins —
+      // a frame later, on purpose: when a popup's auto-pan stops a pan that
+      // is still running, Leaflet fires `moveend` synchronously, and
+      // clearing the layer right then removes the very marker whose popup
+      // it is still positioning (a crash on `layerPointToContainerPoint`).
       map.on("moveend", () => {
-        redraw();
-        emitViewport();
+        cancelAnimationFrame(moveFrame);
+        moveFrame = requestAnimationFrame(() => {
+          moveFrame = 0;
+          redraw();
+          emitViewport();
+        });
       });
       // Initial draw + viewport once the map has a size
       setTimeout(() => {
@@ -314,6 +324,7 @@ export default function SpotMap({
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(moveFrame);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -375,15 +386,16 @@ function toBounds(map: Leaflet): MapBounds {
  * the lighter tint; the open one grows and gains a halo.
  */
 function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
-  const size = active ? 18 : 14;
-  // The dot wears the spot's first colour, so the map reads like the palette;
-  // own spots keep a thin accent ring so they still stand apart.
+  // Big enough to read as a marker on any tile: the spot's colour inside a
+  // white ring with a soft shadow; own spots add an accent ring; the open
+  // one grows and gains a halo.
+  const size = active ? 28 : 22;
   const fill = pinColor(pin.colors) ?? `var(${pin.isOwn ? "--color-accent" : "--color-accent-light"})`;
-  const ring = active
-    ? "box-shadow: 0 0 0 4px var(--color-accent-tint);"
-    : pin.isOwn
-      ? "box-shadow: 0 0 0 1.5px var(--color-accent);"
-      : "";
+  const shadows = [
+    pin.isOwn ? "0 0 0 2px var(--color-accent)" : null,
+    active ? "0 0 0 6px var(--color-accent-tint)" : null,
+    "0 2px 6px rgba(22, 32, 58, 0.35)",
+  ].filter(Boolean);
   return L.divIcon({
     className: "spot-pin",
     html: `<div style="
@@ -392,8 +404,8 @@ function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
       height: ${size}px;
       border-radius: 9999px;
       background: ${fill};
-      border: ${active ? 3 : 2}px solid var(--color-bg);
-      ${ring}
+      border: ${active ? 4 : 3}px solid var(--color-bg);
+      box-shadow: ${shadows.join(", ")};
     "></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],

@@ -170,6 +170,17 @@ export function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
+        {/* Activity — the viewer's likes and photos, on their own screen */}
+        <Section title={t("settings.activity")} theme={theme}>
+          <Row
+            icon="heart-outline"
+            label={t("settings.activityHint")}
+            value=""
+            onPress={() => navigation.navigate("Activity")}
+            theme={theme}
+          />
+        </Section>
+
         {/* Account info */}
         <Section title={t("settings.accountInfo")} theme={theme}>
           <Field label={t("settings.emailLabel")} theme={theme}>
@@ -386,17 +397,6 @@ export function SettingsScreen() {
             label={t("settings.camera")}
             value={cameraLabel}
             onPress={handleCameraPermission}
-            theme={theme}
-          />
-        </Section>
-
-        {/* Activity — the viewer's likes and photos, on their own screen */}
-        <Section title={t("settings.activity")} theme={theme}>
-          <Row
-            icon="heart-outline"
-            label={t("settings.activityHint")}
-            value=""
-            onPress={() => navigation.navigate("Activity")}
             theme={theme}
           />
         </Section>

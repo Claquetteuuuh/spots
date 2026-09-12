@@ -323,6 +323,16 @@ export default function SettingsPage() {
 
       {/* The app's screen: 16px padding, 24px between sections, 64px under the last. */}
       <div className="space-y-6 pb-16 pt-4">
+        {/* Activity — the viewer's likes and photos, on their own page */}
+        <Section title={t("settings.activity")}>
+          <Row
+            icon={<HeartIcon />}
+            label={t("settings.activityHint")}
+            value=""
+            onClick={() => router.push("/settings/activity")}
+          />
+        </Section>
+
         {/* Account info — inline, like the app */}
         <Section title={t("settings.accountInfo")}>
           <form onSubmit={handleAccountSubmit} className="space-y-4">
@@ -507,16 +517,6 @@ export default function SettingsPage() {
             label={t("settings.language")}
             value={LOCALE_LABELS[locale]}
             onClick={handleCycleLanguage}
-          />
-        </Section>
-
-        {/* Activity — the viewer's likes and photos, on their own page */}
-        <Section title={t("settings.activity")}>
-          <Row
-            icon={<HeartIcon />}
-            label={t("settings.activityHint")}
-            value=""
-            onClick={() => router.push("/settings/activity")}
           />
         </Section>
 

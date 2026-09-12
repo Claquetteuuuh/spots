@@ -143,7 +143,6 @@ function FiltersPanel({
     if (radiusKm && !hasPosition) onRequestPosition();
   };
 
-  const colorInputRef = useRef<HTMLInputElement>(null);
   // Anything chosen that is not a palette swatch came from the wheel
   const customColors = filters.colors.filter((hex) => !PALETTE_HEXES.has(hex));
 
@@ -180,23 +179,22 @@ function FiltersPanel({
               {FILTER_PALETTE.map(({ key, hex }) => swatch(hex, t(`colorFamilies.${key}`)))}
               {/* Colours picked on the wheel sit after the palette */}
               {customColors.map((hex) => swatch(hex, hex))}
-              <button
-                type="button"
-                onClick={() => colorInputRef.current?.click()}
-                aria-label={t("spots.pickColor")}
-                title={t("spots.pickColor")}
-                className="h-8 w-8 cursor-pointer rounded-full border border-border transition-transform hover:scale-105"
+              {/* The picker input lies over the wheel: a real tap opens the native
+                  picker everywhere (iOS ignores a scripted click on a hidden input) */}
+              <span
+                className="relative h-8 w-8 rounded-full border border-border transition-transform hover:scale-105"
                 style={{ background: COLOR_WHEEL }}
+                title={t("spots.pickColor")}
                 data-testid="filters-color-wheel"
-              />
-              <input
-                ref={colorInputRef}
-                type="color"
-                className="sr-only"
-                aria-label={t("spots.pickColor")}
-                onChange={(e) => addColor(e.target.value)}
-                data-testid="filters-color-input"
-              />
+              >
+                <input
+                  type="color"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label={t("spots.pickColor")}
+                  onChange={(e) => addColor(e.target.value)}
+                  data-testid="filters-color-input"
+                />
+              </span>
             </div>
           </Section>
 

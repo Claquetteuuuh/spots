@@ -166,6 +166,9 @@ describe("SpotDetailPage", () => {
     await waitFor(() => {
       expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0);
     });
+    // The skeleton shows before the effect asks for the spot: wait for the
+    // request itself, or there is nothing to resolve yet on a slow run
+    await waitFor(() => expect(mockSpotsGet).toHaveBeenCalled());
 
     // Resolve → component transitions to loaded state
     resolveFetch(MOCK_SPOT);

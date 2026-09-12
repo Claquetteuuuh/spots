@@ -533,10 +533,12 @@ describe("MapScreen — pin colours", () => {
 
     const brick = StyleSheet.flatten(screen.getByTestId("pin-dot-brick").props.style);
     expect(brick.backgroundColor).toBe("#C44536");
-    expect(brick.borderColor).not.toBe("#FFFFFF");
+    expect(brick.width).toBeGreaterThanOrEqual(20);
+    // Own spots wear an accent ring outside the white border; others do not
+    expect(screen.getByTestId("pin-ring-brick")).toBeTruthy();
+    expect(screen.queryByTestId("pin-ring-bare")).toBeNull();
     const bare = StyleSheet.flatten(screen.getByTestId("pin-dot-bare").props.style);
     expect(bare.backgroundColor).not.toBe("#C44536");
-    expect(bare.borderColor).toBe("#FFFFFF");
   });
 });
 

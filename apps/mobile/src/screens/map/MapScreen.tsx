@@ -452,18 +452,24 @@ export function MapScreen() {
                 accessibilityLabel={pin.title ?? t("spots.untitled")}
                 testID={`pin-${pin.id}`}
               >
-                {/* The dot wears the spot's first colour; own spots keep an accent ring. */}
+                {/* Big enough to read as a marker on any tile: the spot's colour in a
+                    white ring with a soft shadow; own spots add an accent ring. */}
                 <View
-                  testID={`pin-dot-${pin.id}`}
-                  style={[
-                    styles.pin,
-                    {
-                      backgroundColor:
-                        pinColor(pin.colors) ?? (pin.isOwn ? theme.colors.accent : theme.colors.accentLight),
-                      borderColor: pin.isOwn ? theme.colors.accent : theme.colors.bg,
-                    },
-                  ]}
-                />
+                  testID={pin.isOwn ? `pin-ring-${pin.id}` : undefined}
+                  style={[styles.pinRing, { backgroundColor: pin.isOwn ? theme.colors.accent : "transparent" }]}
+                >
+                  <View
+                    testID={`pin-dot-${pin.id}`}
+                    style={[
+                      styles.pin,
+                      {
+                        backgroundColor:
+                          pinColor(pin.colors) ?? (pin.isOwn ? theme.colors.accent : theme.colors.accentLight),
+                        borderColor: theme.colors.bg,
+                      },
+                    ]}
+                  />
+                </View>
               </Marker>
             );
           })}
@@ -694,10 +700,23 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   pin: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 3,
+    shadowColor: "#16203A",
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  // The accent ring around your own spots, 2px wide
+  pinRing: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
   },
   pinHalo: {
     width: 30,
