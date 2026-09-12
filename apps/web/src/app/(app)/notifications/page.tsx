@@ -47,6 +47,8 @@ export default function NotificationsPage() {
   const loadData = useCallback(async () => {
     try {
       const result = await apiClient.followRequests.list();
+      // Seen: the badge can go, and the server draws the line for next time
+      void apiClient.followRequests.markSeen().catch(() => {});
       setData(result);
     } catch {
       // Silently fail

@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { useAuthStore } from "../stores/auth-store";
-import * as api from "../lib/api";
+import { useNotificationsStore } from "../stores/notifications-store";
 
 import { LoginScreen } from "../screens/auth/LoginScreen";
 import { RegisterScreen } from "../screens/auth/RegisterScreen";
@@ -78,26 +78,15 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [badgeCount, setBadgeCount] = useState(0);
+  const badgeCount = useNotificationsStore((s) => s.badgeCount);
+  const refreshBadge = useNotificationsStore((s) => s.refresh);
 
-  // Poll for pending follow requests count
+  // Poll for unseen requests and new followers
   useEffect(() => {
-    let mounted = true;
-    const fetchCount = async () => {
-      try {
-        const count = await api.getFollowRequestsCount();
-        if (mounted) setBadgeCount(count);
-      } catch {
-        // Silently fail
-      }
-    };
-    void fetchCount();
-    const interval = setInterval(fetchCount, 30_000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+    void refreshBadge();
+    const interval = setInterval(() => void refreshBadge(), 30_000);
+    return () => clearInterval(interval);
+  }, [refreshBadge]);
 
   const handleTabPress = useCallback((index: number) => {
     Keyboard.dismiss();

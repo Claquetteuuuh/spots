@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Wordmark } from "@/components/wordmark";
 import { TabIcon } from "@/components/tab-icons";
 import { useAuth } from "@/lib/auth-context";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, onNotificationsSeen } from "@/lib/api-client";
 import { Avatar } from "@/components/avatar";
 import { useT } from "@/lib/use-t";
 
@@ -29,6 +29,9 @@ export function Header() {
     if (menuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  // The notifications page has been read: the badge goes at once
+  useEffect(() => onNotificationsSeen(() => setPendingCount(0)), []);
 
   // Poll pending follow requests count
   useEffect(() => {

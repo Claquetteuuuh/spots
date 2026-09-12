@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme, useThemeMode, type ThemeMode } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { usePreferencesStore } from "../../stores/preferences-store";
+import { Linking } from "react-native";
+import { useCameraPermissions } from "expo-camera";
 import * as api from "../../lib/api";
 import { getAppLocale, LOCALE_LABELS, setAppLocale } from "../../lib/i18n";
 import { Button } from "../../components/ui/Button";
@@ -45,6 +47,21 @@ export function SettingsScreen() {
   // A device preference, not an account one: whether the map may use the sensors here
   const livePosition = usePreferencesStore((s) => s.livePosition);
   const setLivePosition = usePreferencesStore((s) => s.setLivePosition);
+  // Camera: ask again while the phone allows it, otherwise send to its settings
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const cameraLabel = cameraPermission?.granted
+    ? t("settings.cameraGranted")
+    : cameraPermission?.granted === false
+      ? t("settings.cameraDenied")
+      : t("settings.cameraPrompt");
+  const handleCameraPermission = () => {
+    if (cameraPermission?.granted) return;
+    if (cameraPermission?.canAskAgain === false) {
+      void Linking.openSettings();
+      return;
+    }
+    void requestCameraPermission();
+  };
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
   const isOAuth = user?.provider === "GOOGLE" || user?.provider === "APPLE";
@@ -359,6 +376,13 @@ export function SettingsScreen() {
             label={t("settings.language")}
             value={LOCALE_LABELS[getAppLocale()]}
             onPress={handleChangeLanguage}
+            theme={theme}
+          />
+          <Row
+            icon="camera-outline"
+            label={t("settings.camera")}
+            value={cameraLabel}
+            onPress={handleCameraPermission}
             theme={theme}
           />
         </Section>

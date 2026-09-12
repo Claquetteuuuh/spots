@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
-import type { FollowStatus, User } from "@/lib/api-client";
+import type { FollowStatus, SuggestedUser, User } from "@/lib/api-client";
+import { useRecentUsers, type RecentUser } from "@/lib/recent-users";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/use-t";
 import { Avatar } from "@/components/avatar";
@@ -29,6 +30,24 @@ export default function SearchPage() {
   const [searchedQuery, setSearchedQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  // With nothing typed: who was looked up here lately, and who might be worth knowing
+  const { recent, remember, forget, clear: clearRecent } = useRecentUsers();
+  const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => apiClient.users.suggestions())
+      .then((list) => {
+        if (!cancelled) setSuggestions(list);
+      })
+      .catch(() => {
+        // No suggestions is not an error worth a message
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,13 +102,10 @@ export default function SearchPage() {
   }
 
   function patchFollowState(id: string, status: FollowStatus) {
-    setResults((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? { ...u, followStatus: status, isFollowing: status === "ACCEPTED" }
-          : u,
-      ),
-    );
+    const patch = <T extends User>(u: T): T =>
+      u.id === id ? { ...u, followStatus: status, isFollowing: status === "ACCEPTED" } : u;
+    setResults((prev) => prev.map(patch));
+    setSuggestions((prev) => prev.map(patch));
   }
 
   async function toggleFollow(user: User) {
@@ -164,48 +180,141 @@ export default function SearchPage() {
         <p className="mt-12 text-center text-[15px] text-text-secondary">
           {t("users.noResults")}
         </p>
+      ) : trimmedQuery.length === 0 ? (
+        <>
+          {recent.length > 0 ? (
+            <section className="mt-2">
+              <div className="flex items-center justify-between">
+                <SectionTitle>{t("users.recent")}</SectionTitle>
+                <button
+                  type="button"
+                  onClick={clearRecent}
+                  className="text-xs font-medium text-text-secondary transition-colors cursor-pointer hover:text-text"
+                >
+                  {t("users.clearRecent")}
+                </button>
+              </div>
+              <ul>
+                {recent.map((user) => (
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    onOpen={() => remember(user)}
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => forget(user.id)}
+                        aria-label={`${t("users.removeRecent")} ${user.username}`}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors cursor-pointer hover:bg-bg-secondary hover:text-text"
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    }
+                  />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {suggestions.length > 0 ? (
+            <section className="mt-4">
+              <SectionTitle>{t("users.suggestions")}</SectionTitle>
+              <ul>
+                {suggestions.map((user) => (
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    reason={suggestionReason(user, t)}
+                    onOpen={() => remember(user)}
+                    action={followButton(user)}
+                  />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
       ) : (
         <ul>
-          {results.map((user) => {
-            const status = followStateOf(user);
-            const isSelf = user.id === currentUser?.id;
-
-            return (
-              <li
-                key={user.id}
-                className="flex items-center gap-3 border-b border-border py-3"
-              >
-                <Link
-                  href={`/profile/${user.username}`}
-                  className="flex min-w-0 flex-1 items-center gap-3 transition-opacity active:opacity-70"
-                >
-                  <Avatar url={user.avatarUrl} name={user.name} className="h-11 w-11 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-text">
-                      {user.username}
-                    </p>
-                    <p className="truncate text-[13px] text-text-secondary">
-                      {user.name}
-                    </p>
-                  </div>
-                </Link>
-
-                {isSelf ? null : (
-                  <Button
-                    type="button"
-                    variant={status ? "secondary" : "primary"}
-                    loading={pendingIds.has(user.id)}
-                    onClick={() => void toggleFollow(user)}
-                    className="shrink-0"
-                  >
-                    {followLabel(status)}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
+          {results.map((user) => (
+            <UserRow
+              key={user.id}
+              user={user}
+              onOpen={() => remember(user)}
+              action={followButton(user)}
+            />
+          ))}
         </ul>
       )}
     </div>
+  );
+
+  function followButton(user: User) {
+    if (user.id === currentUser?.id) return null;
+    const status = followStateOf(user);
+    return (
+      <Button
+        type="button"
+        variant={status ? "secondary" : "primary"}
+        loading={pendingIds.has(user.id)}
+        onClick={() => void toggleFollow(user)}
+        className="shrink-0"
+      >
+        {followLabel(status)}
+      </Button>
+    );
+  }
+}
+
+/** "Followed by alice and 3 more" — why someone is suggested. */
+function suggestionReason(
+  user: SuggestedUser,
+  t: (key: string, vars?: Record<string, string>) => string,
+): string | null {
+  if (user.mutualUsernames.length === 0) return null;
+  const names = user.mutualUsernames.join(", ");
+  const more = user.mutualCount - user.mutualUsernames.length;
+  return more > 0
+    ? t("users.followedByMore", { names, count: String(more) })
+    : t("users.followedBy", { names });
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="py-2 text-xs font-medium uppercase tracking-[0.5px] text-text-secondary">
+      {children}
+    </h2>
+  );
+}
+
+/** One person: avatar, names, an optional reason, and whatever action fits. */
+function UserRow({
+  user,
+  reason,
+  onOpen,
+  action,
+}: {
+  user: RecentUser;
+  reason?: string | null;
+  onOpen: () => void;
+  action: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-center gap-3 border-b border-border py-3">
+      <Link
+        href={`/profile/${user.username}`}
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 transition-opacity active:opacity-70"
+      >
+        <Avatar url={user.avatarUrl} name={user.name} className="h-11 w-11 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold text-text">{user.username}</p>
+          <p className="truncate text-[13px] text-text-secondary">{user.name}</p>
+          {reason ? <p className="truncate text-xs text-text-tertiary">{reason}</p> : null}
+        </div>
+      </Link>
+      {action}
+    </li>
   );
 }

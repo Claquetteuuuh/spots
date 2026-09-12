@@ -320,6 +320,7 @@ export function MapScreen() {
               ]}
             >
               <Text
+                numberOfLines={1}
                 style={{
                   color: scope === key ? theme.colors.bg : theme.colors.textSecondary,
                   fontSize: theme.typography.size.sm,
@@ -636,13 +637,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
+  // The row must never outgrow the screen: chips give way before the filter button does
   toggleRow: {
     flexDirection: "row",
     padding: 2,
+    flexShrink: 1,
   },
   toggleButton: {
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    flexShrink: 1,
   },
   filterButton: {
     width: 36,

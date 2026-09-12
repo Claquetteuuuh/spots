@@ -33,6 +33,7 @@ import { extractErrorMessage } from "../../lib/error";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { AccessibilityPicker } from "../../components/spots/AccessibilityPicker";
+import { CompositionIcon } from "../../components/spots/CompositionIcon";
 import type { ForwardGeocodeResult } from "../../types";
 
 const TOTAL_STEPS = 5;
@@ -70,95 +71,6 @@ interface PhotoItem {
   id: string; // unique key for list rendering
 }
 
-/**
- * Minimal geometric placeholder for a composition type. Stands in for a
- * proper icon set — swap for real SVGs later without touching layout.
- */
-function CompositionIcon({ type, color }: { type: CompositionType; color: string }) {
-  const box = { width: 26, height: 26 };
-  const line = (style: object) => (
-    <View style={[{ position: "absolute", backgroundColor: color }, style]} />
-  );
-
-  switch (type) {
-    case "SYMMETRY":
-      return (
-        <View style={box}>
-          {line({ left: 12, top: 2, width: 2, height: 22 })}
-          {line({ left: 4, top: 6, width: 6, height: 14 })}
-          {line({ left: 16, top: 6, width: 6, height: 14 })}
-        </View>
-      );
-    case "ASYMMETRY":
-      return (
-        <View style={box}>
-          {line({ left: 4, top: 4, width: 8, height: 8 })}
-          {line({ left: 16, top: 16, width: 6, height: 6 })}
-        </View>
-      );
-    case "FRAME_IN_FRAME":
-      return (
-        <View
-          style={[box, { borderWidth: 2, borderColor: color, alignItems: "center", justifyContent: "center" }]}
-        >
-          <View style={{ width: 12, height: 12, borderWidth: 2, borderColor: color }} />
-        </View>
-      );
-    case "FIBONACCI":
-      return (
-        <View style={box}>
-          {line({ left: 0, top: 0, width: 26, height: 26, backgroundColor: "transparent", borderWidth: 1.5, borderColor: color })}
-          {line({ left: 0, top: 10, width: 16, height: 16, backgroundColor: "transparent", borderWidth: 1.5, borderColor: color })}
-          {line({ left: 0, top: 16, width: 10, height: 10, backgroundColor: "transparent", borderWidth: 1.5, borderColor: color })}
-        </View>
-      );
-    case "RULE_OF_THIRDS":
-      return (
-        <View style={box}>
-          {line({ left: 8, top: 0, width: 1.5, height: 26 })}
-          {line({ left: 16, top: 0, width: 1.5, height: 26 })}
-          {line({ left: 0, top: 8, width: 26, height: 1.5 })}
-          {line({ left: 0, top: 16, width: 26, height: 1.5 })}
-        </View>
-      );
-    case "LEADING_LINES":
-      return (
-        <View style={box}>
-          {line({ left: 12, top: 0, width: 2, height: 20, transform: [{ rotate: "20deg" }] })}
-          {line({ left: 12, top: 0, width: 2, height: 20, transform: [{ rotate: "-20deg" }] })}
-        </View>
-      );
-    case "DIAGONAL":
-      return (
-        <View style={box}>
-          {line({ left: 12, top: 0, width: 2, height: 26, transform: [{ rotate: "35deg" }] })}
-        </View>
-      );
-    case "CENTERED":
-      return (
-        <View style={[box, { alignItems: "center", justifyContent: "center" }]}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-        </View>
-      );
-    case "MINIMALIST":
-      return (
-        <View style={box}>
-          {line({ left: 18, top: 18, width: 5, height: 5 })}
-        </View>
-      );
-    case "PATTERN":
-      return (
-        <View style={[box, { flexDirection: "row", flexWrap: "wrap", gap: 2 }]}>
-          {Array.from({ length: 9 }).map((_, i) => (
-            <View key={i} style={{ width: 4, height: 4, backgroundColor: color }} />
-          ))}
-        </View>
-      );
-    default:
-      return <View style={box} />;
-  }
-}
-
 let photoIdCounter = 0;
 function makePhotoId() {
   return `photo_${Date.now()}_${photoIdCounter++}`;
@@ -175,6 +87,9 @@ export function AddSpotScreen() {
   const [step, setStep] = useState(0);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [cameraFacing, setCameraFacing] = useState<"back" | "front">("back");
+  // Refused for good: the phone won't ask again, only Settings can undo it
+  const cameraDenied = cameraPermission?.granted === false && cameraPermission.canAskAgain === false;
   const cameraRef = React.useRef<CameraView | null>(null);
 
   // Multi-photo state
@@ -582,7 +497,7 @@ export function AddSpotScreen() {
   if (isCameraOpen) {
     return (
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={cameraFacing} />
         <SafeAreaView style={styles.cameraControls} edges={["bottom"]}>
           <Pressable
             onPress={() => setIsCameraOpen(false)}
@@ -591,7 +506,15 @@ export function AddSpotScreen() {
             <Text style={{ color: "#FFFFFF", fontSize: theme.typography.size.sm }}>{t("common.cancel")}</Text>
           </Pressable>
           <Pressable onPress={takePicture} style={styles.shutter} testID="camera-shutter" />
-          <View style={{ width: 72 }} />
+          <Pressable
+            onPress={() => setCameraFacing((f) => (f === "back" ? "front" : "back"))}
+            accessibilityRole="button"
+            accessibilityLabel={t("spots.flipCamera")}
+            testID="camera-flip"
+            style={[styles.cameraCancel, { borderColor: "#FFFFFF", alignItems: "center" }]}
+          >
+            <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
+          </Pressable>
         </SafeAreaView>
       </View>
     );
@@ -740,8 +663,25 @@ export function AddSpotScreen() {
               {/* Action buttons */}
               {photos.length < MAX_PHOTOS ? (
                 <View style={{ gap: theme.spacing.sm }}>
-                  <Button title={t("spots.takePhoto")} onPress={openCamera} variant="secondary" />
+                  <Button
+                    title={t("spots.takePhoto")}
+                    onPress={openCamera}
+                    variant="secondary"
+                    disabled={cameraDenied}
+                  />
                   <Button title={t("spots.pickPhoto")} onPress={pickFromGallery} variant="secondary" />
+                  {cameraDenied ? (
+                    <Text
+                      style={{
+                        width: "100%",
+                        color: theme.colors.textSecondary,
+                        fontSize: theme.typography.size.xs,
+                        textAlign: "center",
+                      }}
+                    >
+                      {t("spots.cameraDenied")}
+                    </Text>
+                  ) : null}
                 </View>
               ) : (
                 <Text

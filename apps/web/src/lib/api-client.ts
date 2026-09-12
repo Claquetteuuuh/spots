@@ -36,6 +36,24 @@ function emitSpotsChanged(): void {
   for (const listener of spotsChangedListeners) listener();
 }
 
+// The notifications page was read: badges listening here drop to zero.
+const notificationsSeenListeners = new Set<() => void>();
+
+export function onNotificationsSeen(listener: () => void): () => void {
+  notificationsSeenListeners.add(listener);
+  return () => {
+    notificationsSeenListeners.delete(listener);
+  };
+}
+
+/** A search suggestion: a user plus why they are suggested. */
+export interface SuggestedUser extends User {
+  /** How many of the viewer's follows follow this person. */
+  mutualCount: number;
+  /** Up to two of them, by username. */
+  mutualUsernames: string[];
+}
+
 // ─── Token helpers ──────────────────────────────────────────────────
 
 const TOKEN_COOKIE = "trs_token";
@@ -516,6 +534,11 @@ export const apiClient = {
   },
 
   users: {
+    /** People the viewer may know — followed by the people they follow. */
+    async suggestions(): Promise<SuggestedUser[]> {
+      return request<SuggestedUser[]>(API_ROUTES.users.suggestions);
+    },
+
     async profile(username: string): Promise<User> {
       return request<User>(API_ROUTES.users.profile(username));
     },
@@ -557,6 +580,12 @@ export const apiClient = {
   },
 
   followRequests: {
+    /** The notifications page was read: the badge starts over from now. */
+    async markSeen(): Promise<void> {
+      for (const listener of notificationsSeenListeners) listener();
+      await request<{ seenAt: string }>(API_ROUTES.followRequests.seen, { method: "POST" });
+    },
+
     async list(): Promise<NotificationsData> {
       return request<NotificationsData>(API_ROUTES.followRequests.list);
     },

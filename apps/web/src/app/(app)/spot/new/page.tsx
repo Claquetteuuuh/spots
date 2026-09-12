@@ -16,6 +16,7 @@ import {
   type SpotAccessibility,
 } from "@trs/shared/constants";
 import { AccessibilityPicker } from "@/components/accessibility-picker";
+import { useCamera } from "@/lib/use-camera";
 import { PAGE_WIDE } from "@/components/page";
 import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
 import { CompositionIcon } from "@/components/composition-icon";
@@ -128,75 +129,16 @@ function AddSpotForm() {
   const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Camera detection + capture via getUserMedia
-  const [hasCamera, setHasCamera] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
-  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
-
-  useEffect(() => {
-    if (!navigator.mediaDevices?.enumerateDevices) return;
-    navigator.mediaDevices.enumerateDevices().then((devices) => {
-      const videoInputs = devices.filter((d) => d.kind === "videoinput");
-      setHasCamera(videoInputs.length > 0);
-      setHasMultipleCameras(videoInputs.length > 1);
-    }).catch(() => { /* no camera API */ });
-  }, []);
-
-  // Connect the stream to the video element once React has mounted the modal
-  useEffect(() => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!showCamera || !video || !stream) return;
-    video.srcObject = stream;
-    video.play().catch(() => {});
-  }, [showCamera]);
-
-  const openCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setShowCamera(true);
-    } catch {
-      // Permission denied or no camera — hide button for the rest of the session
-      setHasCamera(false);
-    }
-  }, [facingMode]);
-
-  const closeCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setShowCamera(false);
-  }, []);
-
-  const flipCamera = useCallback(() => {
-    const next = facingMode === "user" ? "environment" : "user";
-    setFacingMode(next);
-    // Restart stream with the new facing mode
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-    }
-    navigator.mediaDevices
-      .getUserMedia({
-        video: { facingMode: next, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      })
-      .then((stream) => {
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
-      })
-      .catch(() => {});
-  }, [facingMode]);
+  // Camera: permission, stream, flip and capture live in the hook. The
+  // stream attaches the moment the <video> mounts — no more black modal.
+  const camera = useCamera();
+  const showCamera = camera.status !== "idle";
+  const cameraDenied = camera.permission === "denied";
+  const hasCamera = camera.available && camera.permission !== "unsupported";
+  const hasMultipleCameras = camera.canFlip;
+  const openCamera = camera.start;
+  const closeCamera = camera.stop;
+  const flipCamera = camera.flip;
 
   // Photos (multi) — declared before capturePhoto which references setPhotos
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -204,7 +146,7 @@ function AddSpotForm() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const capturePhoto = useCallback(() => {
-    const video = videoRef.current;
+    const video = camera.getVideo();
     if (!video || !video.videoWidth || !video.videoHeight) return;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -228,16 +170,7 @@ function AddSpotForm() {
       "image/jpeg",
       0.92,
     );
-  }, [closeCamera]);
-
-  // Stop camera stream when component unmounts
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, []);
+  }, [closeCamera, camera]);
 
   // The step lives in the URL, so the browser's back button (and the phone's
   // back gesture) walks back through the form instead of leaving it and
@@ -1167,8 +1100,10 @@ function AddSpotForm() {
                     <button
                       type="button"
                       onClick={openCamera}
+                      disabled={cameraDenied}
                       aria-label={t("spots.takePhoto")}
-                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent"
+                      title={cameraDenied ? t("spots.cameraDenied") : undefined}
+                      className="flex aspect-square items-center justify-center rounded-sm border border-dashed border-border bg-bg-secondary text-text-tertiary transition-colors cursor-pointer hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-tertiary"
                     >
                       {/* Camera icon (Ionicons camera-outline) */}
                       <svg className="h-6 w-6" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
@@ -1211,10 +1146,14 @@ function AddSpotForm() {
                   <Button
                     variant="primary"
                     fullWidth
+                    disabled={cameraDenied}
                     onClick={openCamera}
                   >
                     {t("spots.takePhoto")}
                   </Button>
+                ) : null}
+                {hasCamera && cameraDenied ? (
+                  <p className="text-center text-xs text-text-secondary">{t("spots.cameraDenied")}</p>
                 ) : null}
                 <Button
                   variant={hasCamera ? "secondary" : "primary"}
@@ -1928,12 +1867,19 @@ function AddSpotForm() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
           {/* Live video preview — full-screen on mobile, centred on desktop */}
           <video
-            ref={videoRef}
+            ref={(el) => camera.attachVideo(el)}
             autoPlay
             playsInline
             muted
             className="h-full w-full object-cover lg:max-h-[80vh] lg:max-w-[80vw] lg:rounded-lg"
           />
+
+          {/* Could not start: say why instead of a black screen */}
+          {camera.status === "error" ? (
+            <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-md bg-white/10 px-4 py-3 text-center text-sm text-white backdrop-blur-sm">
+              {t(camera.error === "denied" ? "spots.cameraDenied" : "spots.cameraUnavailable")}
+            </p>
+          ) : null}
 
           {/* Controls overlay */}
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-6 pb-10 lg:pb-8">
@@ -1965,7 +1911,7 @@ function AddSpotForm() {
                 type="button"
                 onClick={flipCamera}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors cursor-pointer hover:bg-white/30"
-                aria-label="Flip camera"
+                aria-label={t("spots.flipCamera")}
               >
                 {/* Ionicons camera-reverse-outline */}
                 <svg className="h-6 w-6" viewBox="0 0 512 512" fill="none" stroke="currentColor" strokeWidth="32" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">

@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { API_ROUTES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
 import { MAP_PINS_LIMIT, type MapFilterQuery, type MapPin, type MapScope } from "@trs/shared/map";
+import type { SuggestedUser } from "../types";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
 import type {
   AuthResponse,
@@ -287,6 +288,17 @@ export async function getFollowers(username: string): Promise<User[]> {
 
 export async function getFollowing(username: string): Promise<User[]> {
   const { data } = await client.get<User[]>(API_ROUTES.users.following(username));
+  return data;
+}
+
+/** The notifications screen was read: the badge starts over from now. */
+export async function markNotificationsSeen(): Promise<void> {
+  await client.post(API_ROUTES.followRequests.seen);
+}
+
+/** People the viewer may know — followed by the people they follow. */
+export async function getUserSuggestions(): Promise<SuggestedUser[]> {
+  const { data } = await client.get<SuggestedUser[]>(API_ROUTES.users.suggestions);
   return data;
 }
 

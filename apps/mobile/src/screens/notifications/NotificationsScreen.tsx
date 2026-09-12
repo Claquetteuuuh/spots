@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../theme";
 import { Avatar } from "../../components/Avatar";
 import * as api from "../../lib/api";
+import { useNotificationsStore } from "../../stores/notifications-store";
 import type { FollowRequest, NotificationsData } from "../../types";
 import type { RootStackNavigationProp } from "../../navigation/types";
 
@@ -43,6 +44,8 @@ export function NotificationsScreen() {
     try {
       const result = await api.getFollowRequests();
       setData(result);
+      // Seen: the badge can go, and the server draws the line for next time
+      void useNotificationsStore.getState().markSeen();
     } catch {
       // Silently fail
     } finally {

@@ -119,11 +119,13 @@ export const API_ROUTES = {
     followers: (username: string) => `/api/users/${username}/followers`,
     following: (username: string) => `/api/users/${username}/following`,
     search: "/api/users/search",
+    suggestions: "/api/users/suggestions",
   },
   followRequests: {
     list: "/api/follow-requests",
     count: "/api/follow-requests/count",
     sent: "/api/follow-requests/sent",
+    seen: "/api/follow-requests/seen",
     accept: (id: string) => `/api/follow-requests/${id}/accept`,
     reject: (id: string) => `/api/follow-requests/${id}/reject`,
   },

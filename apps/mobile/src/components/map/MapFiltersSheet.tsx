@@ -9,6 +9,7 @@ import {
 } from "@trs/shared/constants";
 import { EMPTY_FILTERS, countActiveFilters, type MapFilters } from "@trs/shared/map";
 import { useTheme } from "../../theme";
+import { CompositionIcon } from "../spots/CompositionIcon";
 
 interface MapFiltersSheetProps {
   visible: boolean;
@@ -46,7 +47,13 @@ export function MapFiltersSheet({
     if (radiusKm && !hasPosition) onRequestPosition();
   };
 
-  const chip = (selected: boolean, label: string, onPress: () => void, key: string) => (
+  const chip = (
+    selected: boolean,
+    label: string,
+    onPress: () => void,
+    key: string,
+    icon?: React.ReactNode,
+  ) => (
     <Pressable
       key={key}
       onPress={onPress}
@@ -60,6 +67,7 @@ export function MapFiltersSheet({
         },
       ]}
     >
+      {icon}
       <Text
         style={{
           color: selected ? theme.colors.accent : theme.colors.textSecondary,
@@ -154,14 +162,20 @@ export function MapFiltersSheet({
           {section(
             t("map.filterCompositions"),
             <View style={styles.row}>
-              {COMPOSITION_TYPES.map((comp) =>
-                chip(
-                  filters.compositions.includes(comp),
+              {COMPOSITION_TYPES.map((comp) => {
+                const selected = filters.compositions.includes(comp);
+                return chip(
+                  selected,
                   t(`compositions.${comp}`),
                   () => onChange({ ...filters, compositions: toggle(filters.compositions, comp) }),
                   comp,
-                ),
-              )}
+                  <CompositionIcon
+                    type={comp}
+                    size={16}
+                    color={selected ? theme.colors.accent : theme.colors.textSecondary}
+                  />,
+                );
+              })}
             </View>,
           )}
 
@@ -278,8 +292,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 17,
     borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
   },
   swatchRing: {
     padding: 2,

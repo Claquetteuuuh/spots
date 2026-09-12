@@ -132,6 +132,14 @@ export interface SpotPhoto {
   user: Pick<User, "id" | "username" | "name" | "avatarUrl">;
 }
 
+/** A search suggestion: a user plus why they are suggested. */
+export interface SuggestedUser extends User {
+  /** How many of the viewer's follows follow this person. */
+  mutualCount: number;
+  /** Up to two of them, by username. */
+  mutualUsernames: string[];
+}
+
 export interface MapBounds {
   swLat: number;
   swLng: number;
