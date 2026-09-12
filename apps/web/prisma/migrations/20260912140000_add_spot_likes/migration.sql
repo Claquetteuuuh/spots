@@ -22,4 +22,3 @@ ALTER TABLE "SpotLike" ADD CONSTRAINT "SpotLike_spotId_fkey" FOREIGN KEY ("spotI
 
 -- AddForeignKey
 ALTER TABLE "SpotLike" ADD CONSTRAINT "SpotLike_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

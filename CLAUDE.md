@@ -71,8 +71,14 @@ pnpm build                    # Build all apps
 You MUST run ALL 5 checks below before EVERY `git commit`. No exceptions.
 
 ```bash
+# 0. Stage EVERYTHING first — `pre-commit run --all-files` only looks at files
+#    git knows about, so an untracked new file (a migration, a component)
+#    is silently skipped and fails in CI instead.
+git add -A
+
 # 1. Pre-commit hooks (secrets, formatting, tests, typecheck)
 pre-commit run --all-files
+# If a hook "modified files", stage its fixes and run it again until it passes.
 
 # 2. ESLint — CI runs it and pre-commit does not, so run it yourself
 pnpm lint
@@ -94,6 +100,15 @@ pnpm build
 - Bearer Critical/High → fix the flagged code pattern
 - Medium/Low from grype or bearer are acceptable
 - Pre-commit failures → fix and re-run until all pass
+- Generated files (`prisma migrate diff --script` output, tool dumps) often
+  lack a trailing newline: stage them and let `end-of-file-fixer` fix them
+  BEFORE committing, then stage the fix
+
+Once per clone, install the git hook so a commit can never skip the hooks:
+
+```bash
+pre-commit install
+```
 
 This is not a suggestion — it is a hard gate.
 
