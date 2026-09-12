@@ -459,3 +459,25 @@ describe("MapPage — where it was left", () => {
     expect(view?.lng).toBeCloseTo(2.3);
   });
 });
+
+
+describe("MapPage — colour wheel", () => {
+  it("adds a colour picked on the wheel as a swatch and filters by it", async () => {
+    mockMapFetch.mockImplementation(() =>
+      Promise.resolve({ items: [pin("red", ["#C44536"]), pin("sea", ["#2C5F7C"])], truncated: false }),
+    );
+    await renderPage();
+    await moveTo(VIEW);
+    await waitFor(() => expect(ids()).toEqual(["red", "sea"]));
+
+    await openFilters();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("filters-color-input"), { target: { value: "#1e4a66" } });
+    });
+
+    await waitFor(() => expect(ids()).toEqual(["sea"]));
+    // The picked colour shows as its own swatch, selected
+    expect(screen.getByLabelText("#1E4A66").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("filters-color-wheel")).toBeTruthy();
+  });
+});

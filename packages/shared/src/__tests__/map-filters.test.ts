@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_FILTERS,
-  colorFamilyOf,
+  colorsAlike,
   countActiveFilters,
   filterPinsByColor,
   filtersToQuery,
@@ -44,35 +44,32 @@ describe("hexToHsl", () => {
   });
 });
 
-describe("colorFamilyOf", () => {
-  it("buckets the app's suggested palette sensibly", () => {
-    expect(colorFamilyOf("#C44536")).toBe("red");
-    expect(colorFamilyOf("#9B2335")).toBe("red");
-    expect(colorFamilyOf("#D4A574")).toBe("orange");
-    expect(colorFamilyOf("#D4A017")).toBe("yellow");
-    expect(colorFamilyOf("#C8B560")).toBe("yellow");
-    expect(colorFamilyOf("#7D8C6E")).toBe("green");
-    expect(colorFamilyOf("#2E4A3E")).toBe("green");
-    expect(colorFamilyOf("#4A6FA5")).toBe("blue");
-    expect(colorFamilyOf("#4A90A4")).toBe("blue");
-    expect(colorFamilyOf("#6B5B8D")).toBe("purple");
-    expect(colorFamilyOf("#8E6F8E")).toBe("purple");
-    expect(colorFamilyOf("#8B7355")).toBe("brown");
-    expect(colorFamilyOf("#6B5740")).toBe("brown");
-    expect(colorFamilyOf("#B49A7A")).toBe("brown");
+describe("colorsAlike", () => {
+  it("takes any shade of the same hue: pale, mid or deep green are green", () => {
+    expect(colorsAlike("#2E7D32", "#A8D5A2")).toBe(true);
+    expect(colorsAlike("#2E7D32", "#1E5E24")).toBe(true);
+    expect(colorsAlike("#2F6FD0", "#2C5F7C")).toBe(true);
   });
 
-  it("sends pale, dark and washed-out colours to neutral", () => {
-    expect(colorFamilyOf("#FAFAF8")).toBe("neutral");
-    expect(colorFamilyOf("#F5E6D3")).toBe("neutral");
-    expect(colorFamilyOf("#6B6960")).toBe("neutral");
-    expect(colorFamilyOf("#3D3D3D")).toBe("neutral");
-    expect(colorFamilyOf("#1A1A18")).toBe("neutral");
+  it("lets close colours across hues pass: brick and sienna", () => {
+    expect(colorsAlike("#C44536", "#A0522D")).toBe(true);
   });
 
-  it("handles pink and invalid input", () => {
-    expect(colorFamilyOf("#E0509A")).toBe("pink");
-    expect(colorFamilyOf("not-a-colour")).toBe("neutral");
+  it("keeps distant hues apart", () => {
+    expect(colorsAlike("#2F6FD0", "#D32F2F")).toBe(false);
+    expect(colorsAlike("#F1C40F", "#7E57C2")).toBe(false);
+    expect(colorsAlike("#2E7D32", "#2C5F7C")).toBe(false);
+  });
+
+  it("matches greys only with greys of a similar lightness, never a colour", () => {
+    expect(colorsAlike("#8A8A8A", "#6B6960")).toBe(true);
+    expect(colorsAlike("#F5F5F5", "#1A1A1A")).toBe(false);
+    expect(colorsAlike("#8A8A8A", "#7D8C6E")).toBe(false);
+    expect(colorsAlike("#2E7D32", "#808080")).toBe(false);
+  });
+
+  it("refuses bad input", () => {
+    expect(colorsAlike("nope", "#2E7D32")).toBe(false);
   });
 });
 
@@ -140,11 +137,11 @@ describe("filters", () => {
     expect(filtersToQuery(EMPTY_FILTERS, { latitude: 1, longitude: 1 })).toEqual({});
   });
 
-  it("filterPinsByColor keeps pins with any colour in the wanted families", () => {
+  it("filterPinsByColor keeps pins with any colour that passes for a chosen one", () => {
     const pins = [pin("red", ["#C44536"]), pin("sea", ["#2C5F7C", "#FAFAF8"]), pin("none", [])];
     expect(filterPinsByColor(pins, []).map((p) => p.id)).toEqual(["red", "sea", "none"]);
-    expect(filterPinsByColor(pins, ["blue"]).map((p) => p.id)).toEqual(["sea"]);
-    expect(filterPinsByColor(pins, ["neutral", "red"]).map((p) => p.id)).toEqual(["red", "sea"]);
-    expect(filterPinsByColor(pins, ["green"])).toEqual([]);
+    expect(filterPinsByColor(pins, ["#2F6FD0"]).map((p) => p.id)).toEqual(["sea"]);
+    expect(filterPinsByColor(pins, ["#F5F5F5", "#D32F2F"]).map((p) => p.id)).toEqual(["red", "sea"]);
+    expect(filterPinsByColor(pins, ["#2E7D32"])).toEqual([]);
   });
 });

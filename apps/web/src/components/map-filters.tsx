@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import {
-  COLOR_FAMILIES,
+  FILTER_PALETTE,
   COMPOSITION_TYPES,
   PROXIMITY_RADII_KM,
   SPOT_ACCESSIBILITY,
@@ -21,6 +21,11 @@ interface MapFiltersMenuProps {
   /** A radius was picked without a position — go and get one. */
   onRequestPosition: () => void;
 }
+
+const PALETTE_HEXES = new Set<string>(FILTER_PALETTE.map((c) => c.hex));
+/** The wheel button: a small hue circle, the one place a spectrum belongs. */
+const COLOR_WHEEL =
+  "conic-gradient(from 0deg, #E53935, #FDD835, #43A047, #00ACC1, #1E88E5, #8E24AA, #E53935)";
 
 function toggle<T>(list: readonly T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -138,31 +143,60 @@ function FiltersPanel({
     if (radiusKm && !hasPosition) onRequestPosition();
   };
 
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  // Anything chosen that is not a palette swatch came from the wheel
+  const customColors = filters.colors.filter((hex) => !PALETTE_HEXES.has(hex));
+
+  const addColor = (raw: string) => {
+    const hex = raw.trim().toUpperCase();
+    if (!/^#[0-9A-F]{6}$/.test(hex) || filters.colors.includes(hex)) return;
+    onChange({ ...filters, colors: [...filters.colors, hex] });
+  };
+
+  const swatch = (hex: string, label: string) => {
+    const selected = filters.colors.includes(hex);
+    return (
+      <button
+        key={hex}
+        type="button"
+        aria-pressed={selected}
+        aria-label={label}
+        title={label}
+        onClick={() => onChange({ ...filters, colors: toggle(filters.colors, hex) })}
+        className={`h-8 w-8 rounded-full transition-transform cursor-pointer ${
+          selected ? "scale-105 ring-2 ring-accent ring-offset-2 ring-offset-bg" : "border border-border"
+        }`}
+        style={{ backgroundColor: hex }}
+      />
+    );
+  };
+
   return (
     <>
           {/* Everything scrolls; the footer stays put, so "Done" is always in reach */}
           <div data-testid="filters-scroll" className="min-h-0 flex-1 overflow-y-auto p-4">
           <Section title={t("map.filterColors")}>
             <div className="flex flex-wrap gap-2">
-              {COLOR_FAMILIES.map(({ key, swatch }) => {
-                const selected = filters.colors.includes(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={selected}
-                    aria-label={t(`colorFamilies.${key}`)}
-                    title={t(`colorFamilies.${key}`)}
-                    onClick={() => onChange({ ...filters, colors: toggle(filters.colors, key) })}
-                    className={`h-8 w-8 rounded-full transition-transform cursor-pointer ${
-                      selected
-                        ? "scale-105 ring-2 ring-accent ring-offset-2 ring-offset-bg"
-                        : "border border-border"
-                    }`}
-                    style={{ backgroundColor: swatch }}
-                  />
-                );
-              })}
+              {FILTER_PALETTE.map(({ key, hex }) => swatch(hex, t(`colorFamilies.${key}`)))}
+              {/* Colours picked on the wheel sit after the palette */}
+              {customColors.map((hex) => swatch(hex, hex))}
+              <button
+                type="button"
+                onClick={() => colorInputRef.current?.click()}
+                aria-label={t("spots.pickColor")}
+                title={t("spots.pickColor")}
+                className="h-8 w-8 cursor-pointer rounded-full border border-border transition-transform hover:scale-105"
+                style={{ background: COLOR_WHEEL }}
+                data-testid="filters-color-wheel"
+              />
+              <input
+                ref={colorInputRef}
+                type="color"
+                className="sr-only"
+                aria-label={t("spots.pickColor")}
+                onChange={(e) => addColor(e.target.value)}
+                data-testid="filters-color-input"
+              />
             </div>
           </Section>
 

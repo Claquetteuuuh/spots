@@ -21,6 +21,16 @@ jest.mock("react-i18next", () => {
 
 jest.mock("@expo/vector-icons", () => ({ Ionicons: "Ionicons" }));
 
+// The wheel is a WebView (tested on its own); here a button hands back a colour
+jest.mock("../../../components/spots/ColorWheelSheet", () => {
+  const ReactActual = require("react");
+  const { Pressable } = require("react-native");
+  return {
+    ColorWheelSheet: ({ visible, onPick }: { visible: boolean; onPick: (hex: string) => void }) =>
+      visible ? ReactActual.createElement(Pressable, { testID: "wheel-pick", onPress: () => onPick("#1E4A66") }) : null,
+  };
+});
+
 // The filter sheet's drawer runs on native gestures and animations (tested on
 // its own); here a plain view shows its content whenever it is visible.
 jest.mock("../../../components/ui/Drawer", () => {
@@ -548,5 +558,27 @@ describe("MapScreen — where it was left", () => {
     await render(<MapScreen />);
     await settleRegion(LYON);
     expect(recallMapRegion()).toEqual(LYON);
+  });
+});
+
+
+describe("MapScreen — colour wheel", () => {
+  it("adds a colour picked on the wheel as a swatch and filters by it", async () => {
+    useSpotsStore.setState({
+      mapPins: [
+        pin("red", 48.8566, 2.3522, { colors: ["#C44536"] }),
+        pin("sea", 48.84, 2.33, { colors: ["#2C5F7C"] }),
+      ],
+    });
+    await render(<MapScreen />);
+    await settleRegion(DEFAULT_REGION);
+
+    await fireEvent.press(screen.getByTestId("map-filters-button"));
+    await fireEvent.press(screen.getByTestId("map-filters-color-wheel"));
+    await fireEvent.press(screen.getByTestId("wheel-pick"));
+
+    expect(screen.queryByTestId("pin-red")).toBeNull();
+    expect(screen.getByTestId("pin-sea")).toBeTruthy();
+    expect(screen.getByLabelText("#1E4A66").props.accessibilityState).toEqual({ selected: true });
   });
 });

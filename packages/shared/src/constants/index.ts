@@ -155,21 +155,39 @@ export type SpotAccessibility = (typeof SPOT_ACCESSIBILITY)[number];
 // ─── Map filters ─────────────────────────────────────────────────────
 
 /**
- * Colour families a spot's hex colours are bucketed into for filtering,
- * each with a swatch to draw it. Order is the order shown.
+ * The map filter's palette: across the spectrum, then the earth tones,
+ * pastels and neutrals photographers actually shoot. Each swatch matches
+ * every nearby shade (see `colorsAlike`); the wheel covers the rest.
  */
-export const COLOR_FAMILIES = [
-  { key: "red", swatch: "#C44536" },
-  { key: "orange", swatch: "#D98A3C" },
-  { key: "yellow", swatch: "#D4A017" },
-  { key: "green", swatch: "#4F8A5B" },
-  { key: "blue", swatch: "#4A6FA5" },
-  { key: "purple", swatch: "#6B5B8D" },
-  { key: "pink", swatch: "#D98CA6" },
-  { key: "brown", swatch: "#8B7355" },
-  { key: "neutral", swatch: "#B8BCC4" },
+export const FILTER_PALETTE = [
+  { key: "red", hex: "#D32F2F" },
+  { key: "brick", hex: "#C44536" },
+  { key: "orange", hex: "#E67E22" },
+  { key: "yellow", hex: "#F1C40F" },
+  { key: "lime", hex: "#8BC34A" },
+  { key: "green", hex: "#2E7D32" },
+  { key: "mint", hex: "#2ECC71" },
+  { key: "teal", hex: "#1C9C8B" },
+  { key: "cyan", hex: "#2AA7D8" },
+  { key: "blue", hex: "#2F6FD0" },
+  { key: "indigo", hex: "#4B4FC7" },
+  { key: "purple", hex: "#7E57C2" },
+  { key: "fuchsia", hex: "#C837C8" },
+  { key: "magenta", hex: "#C2185B" },
+  { key: "pink", hex: "#E9829E" },
+  { key: "brown", hex: "#8B5A2B" },
+  { key: "tan", hex: "#D2B48C" },
+  { key: "beige", hex: "#E8D9C3" },
+  { key: "olive", hex: "#6B8E23" },
+  { key: "sage", hex: "#7D8C6E" },
+  { key: "navy", hex: "#1E3A8A" },
+  { key: "sky", hex: "#9DB9E8" },
+  { key: "lavender", hex: "#B39DDB" },
+  { key: "white", hex: "#F5F5F5" },
+  { key: "grey", hex: "#8A8A8A" },
+  { key: "black", hex: "#1A1A1A" },
 ] as const;
-export type ColorFamily = (typeof COLOR_FAMILIES)[number]["key"];
+export type FilterSwatch = (typeof FILTER_PALETTE)[number]["key"];
 
 /** "Around me" radii offered by the map filter, in km. */
 export const PROXIMITY_RADII_KM = [1, 5, 20, 50] as const;

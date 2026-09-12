@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import {
-  COLOR_FAMILIES,
+  FILTER_PALETTE,
   COMPOSITION_TYPES,
   PROXIMITY_RADII_KM,
   SPOT_ACCESSIBILITY,
@@ -12,6 +12,7 @@ import { EMPTY_FILTERS, countActiveFilters, type MapFilters } from "@trs/shared/
 import { useTheme } from "../../theme";
 import { CompositionIcon } from "../spots/CompositionIcon";
 import { Drawer } from "../ui/Drawer";
+import { ColorWheelSheet } from "../spots/ColorWheelSheet";
 
 interface MapFiltersSheetProps {
   visible: boolean;
@@ -23,6 +24,13 @@ interface MapFiltersSheetProps {
   /** A radius was picked without a position — go and get one. */
   onRequestPosition: () => void;
 }
+
+const PALETTE_HEXES = new Set<string>(FILTER_PALETTE.map((c) => c.hex));
+/** The wheel button: six hues around a circle, the one place a spectrum belongs. */
+const WHEEL_DOTS = ["#E53935", "#FDD835", "#43A047", "#00ACC1", "#1E88E5", "#8E24AA"].map((color, i) => {
+  const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+  return { color, x: 13 + 9 * Math.cos(angle), y: 13 + 9 * Math.sin(angle) };
+});
 
 function toggle<T>(list: readonly T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -49,6 +57,32 @@ export function MapFiltersSheet({
   const pickRadius = (radiusKm: number | null) => {
     onChange({ ...filters, radiusKm });
     if (radiusKm && !hasPosition) onRequestPosition();
+  };
+
+  const [wheelOpen, setWheelOpen] = useState(false);
+  // Anything chosen that is not a palette swatch came from the wheel
+  const customColors = filters.colors.filter((hex) => !PALETTE_HEXES.has(hex));
+
+  const addColor = (raw: string) => {
+    const hex = raw.trim().toUpperCase();
+    if (!/^#[0-9A-F]{6}$/.test(hex) || filters.colors.includes(hex)) return;
+    onChange({ ...filters, colors: [...filters.colors, hex] });
+  };
+
+  const swatch = (hex: string, label: string) => {
+    const selected = filters.colors.includes(hex);
+    return (
+      <Pressable
+        key={hex}
+        onPress={() => onChange({ ...filters, colors: toggle(filters.colors, hex) })}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected }}
+        style={[styles.swatchRing, { borderColor: selected ? theme.colors.accent : "transparent" }]}
+      >
+        <View style={[styles.swatch, { backgroundColor: hex, borderColor: theme.colors.border }]} />
+      </Pressable>
+    );
   };
 
   const chip = (
@@ -148,29 +182,22 @@ export function MapFiltersSheet({
           {section(
             t("map.filterColors"),
             <View style={styles.row}>
-              {COLOR_FAMILIES.map(({ key, swatch }) => {
-                const selected = filters.colors.includes(key);
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => onChange({ ...filters, colors: toggle(filters.colors, key) })}
-                    accessibilityRole="button"
-                    accessibilityLabel={t(`colorFamilies.${key}`)}
-                    accessibilityState={{ selected }}
-                    style={[
-                      styles.swatchRing,
-                      { borderColor: selected ? theme.colors.accent : "transparent" },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.swatch,
-                        { backgroundColor: swatch, borderColor: theme.colors.border },
-                      ]}
-                    />
-                  </Pressable>
-                );
-              })}
+              {FILTER_PALETTE.map(({ key, hex }) => swatch(hex, t(`colorFamilies.${key}`)))}
+              {/* Colours picked on the wheel sit after the palette */}
+              {customColors.map((hex) => swatch(hex, hex))}
+              <Pressable
+                onPress={() => setWheelOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t("spots.pickColor")}
+                style={[styles.swatchRing, { borderColor: "transparent" }]}
+                testID="map-filters-color-wheel"
+              >
+                <View style={[styles.swatch, styles.wheel, { borderColor: theme.colors.border }]}>
+                  {WHEEL_DOTS.map(({ color, x, y }) => (
+                    <View key={color} style={[styles.wheelDot, { backgroundColor: color, left: x, top: y }]} />
+                  ))}
+                </View>
+              </Pressable>
             </View>,
           )}
 
@@ -254,6 +281,15 @@ export function MapFiltersSheet({
           </Text>
         </Pressable>
         </View>
+
+      <ColorWheelSheet
+        visible={wheelOpen}
+        onClose={() => setWheelOpen(false)}
+        onPick={(hex) => {
+          addColor(hex);
+          setWheelOpen(false);
+        }}
+      />
     </Drawer>
   );
 }
@@ -313,6 +349,15 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  wheel: {
+    backgroundColor: "transparent",
+  },
+  wheelDot: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   done: {
     marginHorizontal: 20,

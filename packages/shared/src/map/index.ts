@@ -1,5 +1,5 @@
 import Supercluster from "supercluster";
-import type { ColorFamily, CompositionType, SpotAccessibility } from "../constants";
+import type { CompositionType, SpotAccessibility } from "../constants";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ export function radiusToBounds(center: LatLng, km: number): MapBounds {
   };
 }
 
-// ─── Colour families ─────────────────────────────────────────────────
+// ─── Colour matching ─────────────────────────────────────────────────
 
 /** Parse "#RRGGBB" into HSL (h in degrees, s and l in 0–1). */
 export function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
@@ -177,29 +177,70 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } | nul
   return { h, s, l };
 }
 
+/** Parse "#RRGGBB" into 0–1 channels. */
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/** sRGB → CIELAB (D65), where distances roughly follow what the eye sees. */
+export function hexToLab(hex: string): [number, number, number] | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const [r, g, b] = rgb.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+  const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+  const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/** CIE76: the straight-line distance between two Lab colours. */
+export function deltaE(a: [number, number, number], b: [number, number, number]): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+/** Hues this far apart (degrees) still read as the same colour, whatever the shade. */
+export const HUE_TOLERANCE = 20;
+/** Closer than this (ΔE) and two colours pass for each other even across hues. */
+export const COLOR_MATCH_DISTANCE = 24;
+/** Greys of a lightness this far apart (0–1) still pass for each other. */
+const NEUTRAL_LIGHTNESS_TOLERANCE = 0.25;
+
+/** Greys, near-whites and near-blacks: no hue worth comparing. */
+function isNeutral({ s, l }: { s: number; l: number }): boolean {
+  return s < 0.12 || l <= 0.08 || l >= 0.94;
+}
+
+function hueDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
 /**
- * Bucket a hex colour into a family. Pale, dark and washed-out colours are
- * "neutral"; muted warm darks are "brown"; the rest goes by hue.
+ * Whether two colours pass for each other: the same hue in any shade (a
+ * pale or a deep green is still green), or close enough overall that the
+ * eye would confuse them (a dark brick and a sienna). Greys only pass for
+ * greys of a similar lightness, never for a colour.
  */
-export function colorFamilyOf(hex: string): ColorFamily {
-  const hsl = hexToHsl(hex);
-  if (!hsl) return "neutral";
-  const { h, s, l } = hsl;
-  if (l >= 0.85 || l <= 0.1 || s < 0.1) return "neutral";
-  if (h >= 15 && h < 45 && l < 0.6 && s < 0.5) return "brown";
-  if (h < 15 || h >= 340) return "red";
-  if (h < 40) return "orange";
-  if (h < 70) return "yellow";
-  if (h < 170) return "green";
-  if (h < 255) return "blue";
-  if (h < 310) return "purple";
-  return "pink";
+export function colorsAlike(a: string, b: string): boolean {
+  const ha = hexToHsl(a);
+  const hb = hexToHsl(b);
+  if (!ha || !hb) return false;
+  const na = isNeutral(ha);
+  const nb = isNeutral(hb);
+  if (na || nb) return na && nb && Math.abs(ha.l - hb.l) <= NEUTRAL_LIGHTNESS_TOLERANCE;
+  if (hueDistance(ha.h, hb.h) <= HUE_TOLERANCE) return true;
+  return deltaE(hexToLab(a)!, hexToLab(b)!) <= COLOR_MATCH_DISTANCE;
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────
 
 export interface MapFilters {
-  colors: ColorFamily[];
+  /** Hex colours to match — from the palette or the wheel. */
+  colors: string[];
   compositions: CompositionType[];
   accessibility: SpotAccessibility[];
   /** "Around me" radius in km, or null for anywhere. */
@@ -226,7 +267,7 @@ export interface MapFilterQuery {
 }
 
 /**
- * The server-side part of the filters as query params. Colour families are
+ * The server-side part of the filters as query params. Colours are
  * matched on the client (hex colours are free-form), and a radius needs a
  * position to be around.
  */
@@ -242,83 +283,10 @@ export function filtersToQuery(f: MapFilters, near: LatLng | null): MapFilterQue
   return q;
 }
 
-// ─── Colour tolerance ────────────────────────────────────────────────
-
-/** Parse "#RRGGBB" into 0–1 channels. */
-function hexToRgb(hex: string): [number, number, number] | null {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-}
-
-/** sRGB → CIELAB (D65), where distances roughly follow what the eye sees. */
-export function hexToLab(hex: string): [number, number, number] | null {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return null;
-  const [r, g, b] = rgb.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
-  const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
-  const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
-  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
-}
-
-/**
- * Each family, in a few of its shades — light, dark and muted — so a colour
- * close to any of them counts as that family too. Brick sits near sienna,
- * so a brick-red spot also answers to "brown"; a pale or a deep green is
- * still green.
- */
-const FAMILY_SHADES: Record<ColorFamily, readonly string[]> = {
-  red: ["#C44536", "#9B2335", "#D32F2F", "#E57373", "#7F1D1D"],
-  orange: ["#D98A3C", "#D4A574", "#E67E22", "#F4A261", "#B5651D"],
-  yellow: ["#D4A017", "#C8B560", "#F1C40F", "#E8D48B", "#B8860B"],
-  green: ["#4F8A5B", "#7D8C6E", "#2E4A3E", "#8BC34A", "#6B8E23", "#A8D5A2"],
-  blue: ["#4A6FA5", "#4A90A4", "#1E3A8A", "#64B5F6", "#2C5F7C", "#9DB9E8"],
-  purple: ["#6B5B8D", "#8E6F8E", "#7E57C2", "#B39DDB", "#4A148C"],
-  pink: ["#D98CA6", "#E0509A", "#E91E63", "#F8BBD0", "#C2185B"],
-  brown: ["#8B7355", "#6B5740", "#B49A7A", "#5D4037", "#A0522D", "#D2B48C"],
-  neutral: ["#B8BCC4", "#FAFAF8", "#F5E6D3", "#6B6960", "#3D3D3D", "#1A1A18", "#FFFFFF", "#000000"],
-};
-
-const FAMILY_SHADES_LAB: Record<ColorFamily, [number, number, number][]> = Object.fromEntries(
-  (Object.keys(FAMILY_SHADES) as ColorFamily[]).map((family) => [
-    family,
-    FAMILY_SHADES[family].map((hex) => hexToLab(hex)!),
-  ]),
-) as Record<ColorFamily, [number, number, number][]>;
-
-/** Closer than this (CIE76 ΔE) to one of a family's shades, and it belongs. */
-export const COLOR_MATCH_DISTANCE = 22;
-
-/**
- * Every family a colour can pass for: its own bucket, plus any family with
- * a shade the eye would confuse it with. This is what the filter uses, so
- * "green" also finds the lighter and darker greens, and "brown" the bricks.
- */
-export function colorFamiliesOf(hex: string): ColorFamily[] {
-  const primary = colorFamilyOf(hex);
-  const lab = hexToLab(hex);
-  if (!lab) return [primary];
-  // A grey passes for nothing else, and nothing coloured passes for grey
-  if (Math.hypot(lab[1], lab[2]) < 12) return [primary];
-  const families = new Set<ColorFamily>([primary]);
-  for (const family of Object.keys(FAMILY_SHADES_LAB) as ColorFamily[]) {
-    if (families.has(family) || family === "neutral") continue;
-    const near = FAMILY_SHADES_LAB[family].some(
-      ([l, a, b]) => Math.hypot(lab[0] - l, lab[1] - a, lab[2] - b) <= COLOR_MATCH_DISTANCE,
-    );
-    if (near) families.add(family);
-  }
-  return [...families];
-}
-
-/** Keep the pins that carry at least one colour passing for one of the families. */
-export function filterPinsByColor(pins: MapPin[], families: ColorFamily[]): MapPin[] {
-  if (families.length === 0) return pins;
-  const wanted = new Set<ColorFamily>(families);
-  return pins.filter((p) => p.colors.some((hex) => colorFamiliesOf(hex).some((f) => wanted.has(f))));
+/** Keep the pins with at least one colour that passes for one of the chosen ones. */
+export function filterPinsByColor(pins: MapPin[], colors: readonly string[]): MapPin[] {
+  if (colors.length === 0) return pins;
+  return pins.filter((p) => p.colors.some((hex) => colors.some((chosen) => colorsAlike(hex, chosen))));
 }
 
 /** The colour a pin is drawn in: the spot's first colour, when it has one. */
