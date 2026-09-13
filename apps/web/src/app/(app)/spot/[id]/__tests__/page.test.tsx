@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterAll, describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, waitFor, screen } from "@testing-library/react";
 import React from "react";
 
@@ -83,6 +83,7 @@ vi.mock("@/components/ui/skeleton", () => ({
 
 // ─── Component import ─────────────────────────────────────────────────
 
+import { stubStyleFetch } from "@/test/maplibre-mock";
 import SpotDetailPage from "../page";
 
 // ─── Test fixtures ────────────────────────────────────────────────────
@@ -216,6 +217,11 @@ describe("SpotDetailPage", () => {
 
 // The expanded map builds a real MapLibre map; jsdom has no WebGL for it
 vi.mock("maplibre-gl", async () => (await import("@/test/maplibre-mock")).createMapLibreMock());
+
+// …and its basemap style would otherwise be fetched over the network,
+// leaving a request in flight when the test ends
+const restoreStyleFetch = stubStyleFetch();
+afterAll(restoreStyleFetch);
 
 describe("SpotDetailPage — likes, deleting, map and photo", () => {
   beforeEach(() => {

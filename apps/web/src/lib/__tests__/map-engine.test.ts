@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // jsdom has no WebGL, so the real MapLibre refuses to start
 vi.mock("maplibre-gl", async () => (await import("@/test/maplibre-mock")).createMapLibreMock());
 
-import { createMap, fromGLZoom, maplibre, toGLZoom } from "../map-engine";
+import { createMap, fromGLZoom, maplibre, markerElement, toGLZoom } from "../map-engine";
 
 describe("the map engine", () => {
   beforeEach(() => {
@@ -40,6 +40,20 @@ describe("the map engine", () => {
 
     second.remove();
     expect(container.children).toHaveLength(0);
+  });
+
+  it("builds a marker rather than parsing one", async () => {
+    const pin = markerElement({ size: 18, color: "#C44536", shadow: "0 0 0 4px red", cursor: "grab" });
+
+    expect(pin.tagName).toBe("DIV");
+    // Nothing is parsed into the DOM, so no colour or title out of the
+    // database can arrive as markup
+    expect(pin.children).toHaveLength(0);
+    expect(pin.innerHTML).toBe("");
+    expect(pin.style.width).toBe("18px");
+    expect(pin.style.background).toBe("rgb(196, 69, 54)");
+    expect(pin.style.borderRadius).toBe("9999px");
+    expect(pin.style.cursor).toBe("grab");
   });
 
   it("counts zoom the way the rest of the app does, one step above MapLibre", async () => {

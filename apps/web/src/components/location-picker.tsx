@@ -17,7 +17,12 @@ const DEFAULT_ZOOM = 5;
 const PLACED_ZOOM = 13;
 
 /** The app's pin, in the brand blue — theme tokens, so it follows dark mode. */
-const PIN_HTML = `<div style="box-sizing:border-box;width:20px;height:20px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 3px var(--color-accent-tint);cursor:grab;"></div>`;
+const PIN = {
+  size: 20,
+  shadow: "0 0 0 3px var(--color-accent-tint)",
+  cursor: "grab",
+  className: "location-pin",
+};
 
 /**
  * A map to put a spot on: tap to place, drag to adjust. Coordinates that
@@ -58,7 +63,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
           markerRef.current.setLngLat([lng, lat]);
           return;
         }
-        const marker = await addMarker(map, [lng, lat], markerElement(PIN_HTML, "location-pin"), { draggable: true });
+        const marker = await addMarker(map, [lng, lat], markerElement(PIN), { draggable: true });
         marker.on("dragend", () => {
           const { lat: dragLat, lng: dragLng } = marker.getLngLat();
           onChangeRef.current(dragLat, dragLng);
@@ -77,7 +82,10 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
         void loadStyle(dark).then((style) => map.setStyle(style as never));
       });
       setIsReady(true);
-    });
+    })
+    // A map that cannot be built — no WebGL, a page already gone — is
+    // not the photographer's problem: the page stands without it.
+    .catch(() => {});
 
     return () => {
       cancelled = true;

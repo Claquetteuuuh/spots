@@ -26,7 +26,7 @@ import { PAGE_WIDE, PageHeader } from "@/components/page";
 const MiniMap = dynamic(() => import("@/components/mini-map"), { ssr: false });
 
 /** The app's pin on the expanded map: a dot in the brand blue. */
-const EXPANDED_PIN_HTML = `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 4px var(--color-accent-tint);"></div>`;
+const EXPANDED_PIN = { size: 18, shadow: "0 0 0 4px var(--color-accent-tint)" };
 
 /** Minimum horizontal travel for a touch to count as a swipe between photos. */
 const SWIPE_THRESHOLD_PX = 40;
@@ -829,12 +829,15 @@ function ExpandedMap({ latitude, longitude }: { latitude: number; longitude: num
           return;
         }
         map = created;
-        await addMarker(created, [longitude, latitude], markerElement(EXPANDED_PIN_HTML));
+        await addMarker(created, [longitude, latitude], markerElement(EXPANDED_PIN));
         stopThemeWatch = watchMapTheme((dark) => {
           void loadStyle(dark).then((style) => created.setStyle(style as never));
         });
       },
-    );
+    )
+      // A map that cannot be built — no WebGL, a page already gone — is
+      // not the photographer's problem: the page stands without it.
+      .catch(() => {});
 
     return () => {
       cancelled = true;

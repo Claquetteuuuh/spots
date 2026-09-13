@@ -11,15 +11,7 @@ interface MiniMapProps {
 }
 
 /** The app's pin: a dot in the brand blue, ringed by the page background. */
-const PIN_HTML = `<div style="
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  background: var(--color-accent);
-  border: 3px solid var(--color-bg);
-  border-radius: 9999px;
-  box-shadow: 0 1px 4px rgba(22, 32, 58, 0.35);
-"></div>`;
+const PIN = { size: 16, shadow: "0 1px 4px rgba(22, 32, 58, 0.35)" };
 
 /**
  * A small, still map showing a single point. Used on spot detail pages.
@@ -43,11 +35,14 @@ export default function MiniMap({ latitude, longitude }: MiniMapProps) {
         return;
       }
       mapRef.current = map;
-      await addMarker(map, [longitude, latitude], markerElement(PIN_HTML));
+      await addMarker(map, [longitude, latitude], markerElement(PIN));
       stopThemeWatch = watchMapTheme((dark) => {
         void loadStyle(dark).then((style) => map.setStyle(style as never));
       });
-    });
+    })
+    // A map that cannot be built — no WebGL, a page already gone — is not
+    // the photographer's problem: the page stands without it.
+    .catch(() => {});
 
     return () => {
       cancelled = true;

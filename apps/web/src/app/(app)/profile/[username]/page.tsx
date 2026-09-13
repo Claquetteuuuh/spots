@@ -5,7 +5,7 @@ import { addMarker, createMap, maplibre, markerElement } from "@/lib/map-engine"
 import type { Map as GLMap } from "maplibre-gl";
 
 /** A spot on the profile map: the app's dot in the brand blue. */
-const SPOT_PIN_HTML = `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 1px 4px rgba(22,32,58,.35);cursor:pointer;"></div>`;
+const SPOT_PIN = { size: 18, shadow: "0 1px 4px rgba(22, 32, 58, 0.35)", cursor: "pointer" };
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
@@ -511,7 +511,7 @@ function ProfileMapView({ spots }: { spots: Spot[] }) {
         }
         map = created;
         for (const spot of spots) {
-          const marker = await addMarker(created, [spot.longitude, spot.latitude], markerElement(SPOT_PIN_HTML));
+          const marker = await addMarker(created, [spot.longitude, spot.latitude], markerElement(SPOT_PIN));
           const link = document.createElement("a");
           link.href = `/spot/${spot.id}`;
           link.style.fontWeight = "500";
@@ -533,7 +533,10 @@ function ProfileMapView({ spots }: { spots: Spot[] }) {
           );
         }
       },
-    );
+    )
+      // A map that cannot be built — no WebGL, a page already gone — is
+      // not the photographer's problem: the page stands without it.
+      .catch(() => {});
 
     return () => {
       cancelled = true;

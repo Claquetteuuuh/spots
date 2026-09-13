@@ -104,11 +104,40 @@ export function fromGLZoom(zoom: number): number {
   return zoom + 1;
 }
 
-/** A marker's element: our own HTML, positioned by MapLibre. */
-export function markerElement(html: string, className = ""): HTMLElement {
+/** How a marker is drawn: the app's dot, in the size and colour asked for. */
+export interface PinLook {
+  size: number;
+  /** The fill; the brand accent unless a spot's own colour says otherwise. */
+  color?: string;
+  /** The ring of page background that lifts it off the map. */
+  border?: string;
+  shadow?: string;
+  cursor?: string;
+  className?: string;
+}
+
+/**
+ * A marker's element, built rather than parsed: no HTML string ever
+ * reaches the DOM, so no colour or label from a spot can carry markup.
+ */
+export function markerElement({
+  size,
+  color = "var(--color-accent)",
+  border = "3px solid var(--color-bg)",
+  shadow,
+  cursor,
+  className,
+}: PinLook): HTMLElement {
   const element = document.createElement("div");
   if (className) element.className = className;
-  element.innerHTML = html;
+  element.style.boxSizing = "border-box";
+  element.style.width = `${size}px`;
+  element.style.height = `${size}px`;
+  element.style.borderRadius = "9999px";
+  element.style.background = color;
+  element.style.border = border;
+  if (shadow) element.style.boxShadow = shadow;
+  if (cursor) element.style.cursor = cursor;
   return element;
 }
 

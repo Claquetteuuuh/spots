@@ -98,6 +98,9 @@ pnpm build
 - ESLint errors → fix the code; warnings are tolerated, errors are not
 - Grype High/Critical → update dependency or add override in root `package.json`
 - Bearer Critical/High → fix the flagged code pattern
+- Keep the `bearer` binary current — CI always runs the latest release, and an
+  older local copy has fewer rules: it waves through what CI then blocks
+  (`bearer version` says when one is available)
 - Medium/Low from grype or bearer are acceptable
 - Pre-commit failures → fix and re-run until all pass
 - Generated files (`prisma migrate diff --script` output, tool dumps) often

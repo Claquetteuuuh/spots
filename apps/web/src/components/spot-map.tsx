@@ -259,8 +259,15 @@ export default function SpotMap({
       const element = document.createElement("div");
       element.className = "you-are-here";
       element.title = labelsRef.current.youAreHere;
-      element.innerHTML = `<div class="you-are-here__wrap"><div class="you-are-here__accuracy"></div><div class="you-are-here__halo"></div><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`;
-      userAccuracyRef.current = element.querySelector(".you-are-here__accuracy");
+      const wrap = element.appendChild(document.createElement("div"));
+      wrap.className = "you-are-here__wrap";
+      // The ring of accuracy, the pulse, the cone of heading, the dot
+      for (const part of ["accuracy", "halo", "cone", "dot"]) {
+        const layer = wrap.appendChild(document.createElement("div"));
+        layer.className = `you-are-here__${part}`;
+        if (part === "cone") layer.hidden = true;
+      }
+      userAccuracyRef.current = wrap.querySelector(".you-are-here__accuracy");
       userMarkerRef.current = new gl.Marker({ element }).setLngLat(at).addTo(map);
     } else {
       userMarkerRef.current.setLngLat(at);
@@ -351,7 +358,10 @@ export default function SpotMap({
         drawUser();
         emitViewport();
       }, 100);
-    });
+    })
+      // A map that cannot be built — no WebGL, a page already gone — is
+      // not the photographer's problem: the screen stands without it.
+      .catch(() => {});
 
     return () => {
       cancelled = true;

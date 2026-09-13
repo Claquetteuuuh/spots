@@ -248,3 +248,19 @@ export function createMapLibreMock() {
   // The app reads the namespace or its default export, whichever the bundler gives
   return { ...gl, default: gl };
 }
+
+/**
+ * Keep a test off the tile server: the basemap style is fetched over the
+ * network, and a request still in flight when a test ends shows up as an
+ * unhandled rejection. Refusing it hands the map its raster stand-in.
+ */
+export function stubStyleFetch(): () => void {
+  const real = globalThis.fetch;
+  globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+    String(input).includes("openfreemap")
+      ? Promise.reject(new Error("offline"))
+      : real(input, init)) as typeof fetch;
+  return () => {
+    globalThis.fetch = real;
+  };
+}
