@@ -2,10 +2,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   BASEMAP_ATTRIBUTION,
-  MAX_NATIVE_ZOOM,
   MAX_ZOOM,
   addBasemap,
-  basemapUrls,
+  basemapLayers,
   isDarkMap,
   watchMapTheme,
   type LeafletForBasemap,
@@ -13,17 +12,13 @@ import {
 
 /** A Leaflet whose tile layers record how they were built and used. */
 function fakeLeaflet() {
-  const layers: { url: string; options: Record<string, unknown>; added: number; urls: string[]; removed: number }[] = [];
+  const layers: { url: string; options: Record<string, unknown>; added: number; removed: number }[] = [];
   const tileLayer = vi.fn((url: string, options: Record<string, unknown> = {}) => {
-    const layer = { url, options, added: 0, urls: [] as string[], removed: 0 };
+    const layer = { url, options, added: 0, removed: 0 };
     layers.push(layer);
     return {
       addTo() {
         layer.added += 1;
-        return this;
-      },
-      setUrl(next: string) {
-        layer.urls.push(next);
         return this;
       },
       remove() {
@@ -40,65 +35,63 @@ describe("basemap", () => {
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("draws Esri's grey canvases, light by day and dark by night, credited to Esri and OSM", () => {
-    const [light, lightLabels] = basemapUrls(false);
-    expect(light).toContain("World_Light_Gray_Base");
-    expect(lightLabels).toContain("World_Light_Gray_Reference");
-    const [dark, darkLabels] = basemapUrls(true);
-    expect(dark).toContain("World_Dark_Gray_Base");
-    expect(darkLabels).toContain("World_Dark_Gray_Reference");
-    for (const url of [light, lightLabels, dark, darkLabels]) {
-      expect(url).toContain("server.arcgisonline.com");
-      expect(url).toMatch(/\{z\}\/\{y\}\/\{x\}$/); // Esri numbers its tiles z/y/x
-    }
+  it("draws Esri's topographic map by day — colour, parks and relief, to street zoom", () => {
+    const layers = basemapLayers(false);
+    expect(layers).toHaveLength(1);
+    expect(layers[0].url).toContain("World_Topo_Map");
+    expect(layers[0].url).toMatch(/\{z\}\/\{y\}\/\{x\}$/); // Esri numbers its tiles z/y/x
+    expect(layers[0].maxNativeZoom).toBe(19);
+  });
+
+  it("turns to the dark grey canvas by night, labels above the land", () => {
+    const [base, labels] = basemapLayers(true);
+    expect(base.url).toContain("World_Dark_Gray_Base");
+    expect(labels.url).toContain("World_Dark_Gray_Reference");
+  });
+
+  it("credits Esri and OpenStreetMap", () => {
     expect(BASEMAP_ATTRIBUTION).toContain("Esri");
     expect(BASEMAP_ATTRIBUTION).toContain("openstreetmap.org");
   });
 
   it("follows the theme chosen on the page, then the system", () => {
     expect(isDarkMap()).toBe(false); // jsdom: no dark preference
+    expect(basemapLayers()[0].url).toContain("World_Topo_Map");
     document.documentElement.setAttribute("data-theme", "dark");
     expect(isDarkMap()).toBe(true);
-    expect(basemapUrls()[0]).toContain("Dark");
+    expect(basemapLayers()[0].url).toContain("Dark");
     document.documentElement.setAttribute("data-theme", "light");
     expect(isDarkMap()).toBe(false);
-    expect(basemapUrls()[0]).toContain("Light");
   });
 
-  it("puts the land under the labels, credited once, and keeps zooming past the last tiles", () => {
+  it("adds the theme's layers, credited once, and keeps zooming past the deepest tiles", () => {
     const { L, layers } = fakeLeaflet();
 
     addBasemap(L, {}, false);
 
-    expect(layers).toHaveLength(2);
-    const [base, labels] = layers;
-    expect(base.url).toContain("World_Light_Gray_Base");
-    expect(labels.url).toContain("World_Light_Gray_Reference");
-    expect(base.added).toBe(1);
-    expect(labels.added).toBe(1);
-    // Only one credit line, and both layers scale past their deepest tiles
-    expect(base.options.attribution).toBe(BASEMAP_ATTRIBUTION);
-    expect(labels.options.attribution).toBeUndefined();
-    for (const layer of layers) {
-      expect(layer.options.maxNativeZoom).toBe(MAX_NATIVE_ZOOM);
-      expect(layer.options.maxZoom).toBe(MAX_ZOOM);
-    }
+    expect(layers).toHaveLength(1);
+    expect(layers[0].added).toBe(1);
+    expect(layers[0].options.attribution).toBe(BASEMAP_ATTRIBUTION);
+    expect(layers[0].options.maxZoom).toBe(MAX_ZOOM);
+    expect(layers[0].options.maxNativeZoom).toBe(19);
   });
 
-  it("swaps both layers when the theme flips, and takes both away together", () => {
+  it("swaps the whole set when the theme flips, and takes it away on remove", () => {
     const { L, layers } = fakeLeaflet();
 
     const basemap = addBasemap(L, {}, false);
     basemap.setDark(true);
 
-    expect(layers[0].urls).toEqual([basemapUrls(true)[0]]);
-    expect(layers[1].urls).toEqual([basemapUrls(true)[1]]);
-
-    basemap.setDark(false);
-    expect(layers[0].urls.at(-1)).toBe(basemapUrls(false)[0]);
+    // The day layer went, the two night ones came — only the land is credited
+    expect(layers[0].removed).toBe(1);
+    expect(layers).toHaveLength(3);
+    expect(layers[1].url).toContain("World_Dark_Gray_Base");
+    expect(layers[1].options.attribution).toBe(BASEMAP_ATTRIBUTION);
+    expect(layers[2].url).toContain("World_Dark_Gray_Reference");
+    expect(layers[2].options.attribution).toBeUndefined();
 
     basemap.remove();
-    expect(layers.map((l) => l.removed)).toEqual([1, 1]);
+    expect(layers.map((l) => l.removed)).toEqual([1, 1, 1]);
   });
 
   it("tells a watcher when the theme changes, until stopped", async () => {

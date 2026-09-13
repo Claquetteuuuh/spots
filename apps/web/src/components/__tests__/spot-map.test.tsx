@@ -81,7 +81,7 @@ describe("SpotMap", () => {
     // The basemap is Esri's quiet grey canvas, not a keyed provider
     await waitFor(() => expect(container.querySelector("img.leaflet-tile")).not.toBeNull());
     expect(container.querySelector<HTMLImageElement>("img.leaflet-tile")?.src).toContain(
-      "server.arcgisonline.com/ArcGIS/rest/services/Canvas",
+      "server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map",
     );
 
     await act(async () => {

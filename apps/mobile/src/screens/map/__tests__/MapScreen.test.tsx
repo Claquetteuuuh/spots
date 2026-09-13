@@ -531,8 +531,8 @@ describe("MapScreen — pin colours", () => {
     await render(<MapScreen />);
     await settleRegion(DEFAULT_REGION);
 
-    // A muted map, so the coloured pins read first
-    expect(mapViewProps.current.mapType).toBe("mutedStandard");
+    // A map with colour: parks, forests and relief, like the web's
+    expect(mapViewProps.current.mapType).toBe("standard");
     expect(mapViewProps.current.userInterfaceStyle).toBe("light");
     const brick = StyleSheet.flatten(screen.getByTestId("pin-dot-brick").props.style);
     expect(brick.backgroundColor).toBe("#C44536");

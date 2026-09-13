@@ -1,28 +1,36 @@
 /**
- * The map's basemap: Esri's grey canvases — quiet roads, near-white land,
- * labels on a layer of their own — so the photos and the coloured pins are
- * what the eye lands on. Free, no key, no watermark, and it follows the
- * app's light and dark themes.
+ * The map's basemap. In the light theme it is Esri's topographic map:
+ * colour where colour means something — green for parks and forests,
+ * shaded relief for hills and cliffs, blue for water — at every zoom a
+ * photographer needs. In the dark theme, where a bright map would fight
+ * the interface, it is Esri's dark grey canvas with its labels on top.
  *
- * The canvases are drawn down to zoom 16; past that Leaflet scales the last
- * tiles, which stays legible where a photographer places a pin.
+ * Free, no key, no watermark.
  */
-const ESRI_CANVAS = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas";
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services";
 
 export const BASEMAP_ATTRIBUTION =
   'Tiles &copy; <a href="https://www.esri.com">Esri</a> &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-/** As deep as the canvases are drawn; Leaflet scales what is past it. */
-export const MAX_NATIVE_ZOOM = 16;
+/** Past a layer's own depth Leaflet scales its last tiles rather than blanking. */
 export const MAX_ZOOM = 19;
 
-/** The two layers a theme is made of: the land, then the labels over it. */
-export function basemapUrls(dark: boolean = isDarkMap()): [base: string, labels: string] {
-  const shade = dark ? "Dark" : "Light";
-  return [
-    `${ESRI_CANVAS}/World_${shade}_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
-    `${ESRI_CANVAS}/World_${shade}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
-  ];
+/** One tile layer of the basemap, bottom first. */
+export interface BasemapLayer {
+  url: string;
+  /** As deep as this layer is actually drawn. */
+  maxNativeZoom: number;
+}
+
+/** The layers a theme is made of: the land, and for the dark canvas its labels. */
+export function basemapLayers(dark: boolean = isDarkMap()): BasemapLayer[] {
+  if (dark) {
+    return [
+      { url: `${ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, maxNativeZoom: 16 },
+      { url: `${ESRI}/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, maxNativeZoom: 16 },
+    ];
+  }
+  return [{ url: `${ESRI}/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`, maxNativeZoom: 19 }];
 }
 
 /** Whether the page is in the dark theme: an explicit choice, else the system's. */
@@ -43,7 +51,6 @@ export interface Basemap {
 /** What a tile layer must offer — method signatures, so Leaflet's own types fit. */
 interface TileLayer {
   addTo(map: unknown): unknown;
-  setUrl(url: string): unknown;
   remove(): unknown;
 }
 
@@ -53,31 +60,36 @@ export interface LeafletForBasemap {
 }
 
 /**
- * Put the basemap under a Leaflet map: the land, then the labels above it.
- * Both layers stay for the map's life, so following the theme is a change
- * of URL rather than a rebuild — no flash of an empty map.
+ * Put the basemap under a Leaflet map. Following the theme swaps the whole
+ * set — the two themes are not the same map with other colours, so there
+ * is nothing to reuse between them.
  */
 export function addBasemap(L: LeafletForBasemap, map: unknown, dark: boolean = isDarkMap()): Basemap {
-  const [baseUrl, labelsUrl] = basemapUrls(dark);
-  const zooms = { maxNativeZoom: MAX_NATIVE_ZOOM, maxZoom: MAX_ZOOM };
-
-  const base = L.tileLayer(baseUrl, { ...zooms, attribution: BASEMAP_ATTRIBUTION });
-  base.addTo(map);
-  // The labels ride above the land, and carry the credit only once
-  const labels = L.tileLayer(labelsUrl, zooms);
-  labels.addTo(map);
+  let layers = draw(L, map, dark);
 
   return {
     setDark: (next) => {
-      const [nextBase, nextLabels] = basemapUrls(next);
-      base.setUrl(nextBase);
-      labels.setUrl(nextLabels);
+      for (const layer of layers) layer.remove();
+      layers = draw(L, map, next);
     },
     remove: () => {
-      base.remove();
-      labels.remove();
+      for (const layer of layers) layer.remove();
+      layers = [];
     },
   };
+}
+
+/** Add a theme's layers, bottom first, crediting the source once. */
+function draw(L: LeafletForBasemap, map: unknown, dark: boolean): TileLayer[] {
+  return basemapLayers(dark).map(({ url, maxNativeZoom }, i) => {
+    const layer = L.tileLayer(url, {
+      maxNativeZoom,
+      maxZoom: MAX_ZOOM,
+      ...(i === 0 ? { attribution: BASEMAP_ATTRIBUTION } : {}),
+    });
+    layer.addTo(map);
+    return layer;
+  });
 }
 
 /**
