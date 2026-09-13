@@ -78,9 +78,11 @@ describe("SpotMap", () => {
 
     expect(errors.filter((m) => m.includes("layerPointToContainerPoint"))).toEqual([]);
     expect(container.querySelector(".leaflet-popup")).not.toBeNull();
-    // The tiles are CARTO's, not the default OSM ones
-    const tile = container.querySelector<HTMLImageElement>("img.leaflet-tile");
-    expect(tile?.src).toContain("basemaps.cartocdn.com/rastertiles/voyager");
+    // The basemap is Esri's quiet grey canvas, not a keyed provider
+    await waitFor(() => expect(container.querySelector("img.leaflet-tile")).not.toBeNull());
+    expect(container.querySelector<HTMLImageElement>("img.leaflet-tile")?.src).toContain(
+      "server.arcgisonline.com/ArcGIS/rest/services/Canvas",
+    );
 
     await act(async () => {
       unmount();

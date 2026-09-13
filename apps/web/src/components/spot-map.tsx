@@ -10,7 +10,7 @@ import {
   pinColor,
 } from "@trs/shared/map";
 import type { LivePosition } from "@/lib/use-live-position";
-import { TILE_OPTIONS, tileUrl, watchMapTheme } from "@/lib/map-tiles";
+import { addBasemap, watchMapTheme } from "@/lib/map-tiles";
 
 /**
  * A place to move the map to. Pass a fresh object each time — the map
@@ -283,9 +283,9 @@ export default function SpotMap({
         DEFAULT_ZOOM,
       );
 
-      // The tiles follow the theme while the map is open
-      const tiles = L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(map);
-      stopThemeWatch = watchMapTheme((dark) => tiles.setUrl(tileUrl(dark)));
+      // The basemap loads on demand and follows the theme while the map is open
+      const basemap = addBasemap(L, map);
+      stopThemeWatch = watchMapTheme((dark) => basemap.setDark(dark));
 
       // The screen's actions sit bottom-right, like the app's, so credit
       // OpenStreetMap on the other side rather than under a button.

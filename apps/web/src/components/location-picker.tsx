@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TILE_OPTIONS, tileUrl } from "@/lib/map-tiles";
+import { addBasemap } from "@/lib/map-tiles";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -54,7 +54,7 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
         hasCoords ? PLACED_ZOOM : DEFAULT_ZOOM,
       );
 
-      L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(map);
+      addBasemap(L, map);
 
       // The app's pin, in the brand blue — theme tokens, so it follows dark mode
       const icon = L.divIcon({

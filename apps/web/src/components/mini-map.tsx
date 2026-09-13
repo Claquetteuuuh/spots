@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { TILE_OPTIONS, tileUrl } from "@/lib/map-tiles";
+import { addBasemap } from "@/lib/map-tiles";
 
 interface MiniMapProps {
   latitude: number;
@@ -38,9 +38,7 @@ export default function MiniMap({ latitude, longitude }: MiniMapProps) {
         touchZoom: false,
       }).setView([latitude, longitude], 14);
 
-      L.tileLayer(tileUrl(), TILE_OPTIONS).addTo(
-        map,
-      );
+      addBasemap(L, map);
 
       // The app's pin: a 14px accent dot ringed in the page background. Theme
       // variables rather than hex so it follows dark mode like the main map.
