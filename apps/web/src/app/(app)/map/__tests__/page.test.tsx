@@ -106,8 +106,11 @@ async function renderPage() {
 }
 
 async function moveTo(bounds: MapBounds, zoom = 12) {
+  // The map reports where it is pointed; the midpoint of the box is close
+  // enough for a test, but never what the map itself would say.
+  const center = { lat: (bounds.swLat + bounds.neLat) / 2, lng: (bounds.swLng + bounds.neLng) / 2 };
   await act(async () => {
-    mapProps.current.onViewportChange({ bounds, zoom });
+    mapProps.current.onViewportChange({ bounds, zoom, center });
   });
 }
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { addBasemap } from "@/lib/map-tiles";
+import type { Map as GLMap, Marker } from "maplibre-gl";
+import { addMarker, createMap, markerElement, toGLZoom } from "@/lib/map-engine";
+import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -9,12 +11,13 @@ interface LocationPickerProps {
   onChange: (lat: number, lng: number) => void;
 }
 
-const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
+/** Paris, until the photographer says otherwise. */
+const DEFAULT_CENTER: [number, number] = [2.3522, 48.8566];
 const DEFAULT_ZOOM = 5;
 const PLACED_ZOOM = 13;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Leaflet = any;
+/** The app's pin, in the brand blue — theme tokens, so it follows dark mode. */
+const PIN_HTML = `<div style="box-sizing:border-box;width:20px;height:20px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 3px var(--color-accent-tint);cursor:grab;"></div>`;
 
 /**
  * A map to put a spot on: tap to place, drag to adjust. Coordinates that
@@ -23,9 +26,9 @@ type Leaflet = any;
  */
 export default function LocationPicker({ latitude, longitude, onChange }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Leaflet>(null);
-  const markerRef = useRef<Leaflet>(null);
-  // Places or moves the pin; set once Leaflet is up.
+  const mapRef = useRef<GLMap | null>(null);
+  const markerRef = useRef<Marker | null>(null);
+  /** Places or moves the pin; set once the map is up. */
   const placeRef = useRef<((lat: number, lng: number) => void) | null>(null);
   const onChangeRef = useRef(onChange);
   const [isReady, setIsReady] = useState(false);
@@ -35,66 +38,54 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
   }, [onChange]);
 
   useEffect(() => {
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
-
     let cancelled = false;
+    let stopThemeWatch = () => {};
+    const hasCoords = latitude !== null && longitude !== null;
 
-    import("leaflet").then((L) => {
-      if (cancelled || !containerRef.current || mapRef.current) return;
+    void createMap({
+      container: containerRef.current!,
+      center: hasCoords ? [longitude, latitude] : DEFAULT_CENTER,
+      zoom: hasCoords ? PLACED_ZOOM : DEFAULT_ZOOM,
+    }).then(async (map) => {
+      if (cancelled) {
+        map.remove();
+        return;
+      }
+      mapRef.current = map;
 
-      const hasCoords = latitude !== null && longitude !== null;
-      const map = L.map(containerRef.current).setView(
-        hasCoords ? [latitude, longitude] : DEFAULT_CENTER,
-        hasCoords ? PLACED_ZOOM : DEFAULT_ZOOM,
-      );
-
-      addBasemap(L, map);
-
-      // The app's pin, in the brand blue — theme tokens, so it follows dark mode
-      const icon = L.divIcon({
-        className: "custom-marker",
-        html: `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 3px var(--color-accent-tint);"></div>`,
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      });
-
-      placeRef.current = (lat, lng) => {
+      const place = async (lat: number, lng: number) => {
         if (markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
+          markerRef.current.setLngLat([lng, lat]);
           return;
         }
-        markerRef.current = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
-        markerRef.current.on("dragend", (e: Leaflet) => {
-          const pos = e.target.getLatLng();
-          onChangeRef.current(pos.lat, pos.lng);
+        const marker = await addMarker(map, [lng, lat], markerElement(PIN_HTML, "location-pin"), { draggable: true });
+        marker.on("dragend", () => {
+          const { lat: dragLat, lng: dragLng } = marker.getLngLat();
+          onChangeRef.current(dragLat, dragLng);
         });
+        markerRef.current = marker;
       };
+      placeRef.current = (lat, lng) => void place(lat, lng);
       if (hasCoords) placeRef.current(latitude, longitude);
 
-      map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
-        const { lat, lng } = e.latlng;
-        placeRef.current?.(lat, lng);
-        onChangeRef.current(lat, lng);
+      map.on("click", (e) => {
+        placeRef.current?.(e.lngLat.lat, e.lngLat.lng);
+        onChangeRef.current(e.lngLat.lat, e.lngLat.lng);
       });
 
-      mapRef.current = map;
+      stopThemeWatch = watchMapTheme((dark) => {
+        void loadStyle(dark).then((style) => map.setStyle(style as never));
+      });
       setIsReady(true);
     });
 
     return () => {
       cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markerRef.current = null;
-        placeRef.current = null;
-      }
+      stopThemeWatch();
+      mapRef.current?.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+      placeRef.current = null;
     };
     // Initialize once
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,9 +97,9 @@ export default function LocationPicker({ latitude, longitude, onChange }: Locati
     const map = mapRef.current;
     if (!isReady || !map || latitude === null || longitude === null) return;
     placeRef.current?.(latitude, longitude);
-    const latlng: [number, number] = [latitude, longitude];
-    if (!map.getBounds().contains(latlng) || map.getZoom() < PLACED_ZOOM) {
-      map.setView(latlng, Math.max(map.getZoom(), PLACED_ZOOM));
+    const inView = map.getBounds().contains([longitude, latitude]);
+    if (!inView || map.getZoom() < toGLZoom(PLACED_ZOOM)) {
+      map.easeTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), toGLZoom(PLACED_ZOOM)) });
     }
   }, [latitude, longitude, isReady]);
 

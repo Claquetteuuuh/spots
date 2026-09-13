@@ -1,97 +1,122 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
+
 import {
-  BASEMAP_ATTRIBUTION,
+  FALLBACK_ATTRIBUTION,
+  GLYPHS_URL,
   MAX_ZOOM,
-  addBasemap,
-  basemapLayers,
+  fallbackLayers,
   isDarkMap,
+  loadStyle,
+  rasterStyle,
+  styleUrl,
   watchMapTheme,
-  type LeafletForBasemap,
+  withAppFont,
 } from "../map-tiles";
 
-/** A Leaflet whose tile layers record how they were built and used. */
-function fakeLeaflet() {
-  const layers: { url: string; options: Record<string, unknown>; added: number; removed: number }[] = [];
-  const tileLayer = vi.fn((url: string, options: Record<string, unknown> = {}) => {
-    const layer = { url, options, added: 0, removed: 0 };
-    layers.push(layer);
-    return {
-      addTo() {
-        layer.added += 1;
-        return this;
-      },
-      remove() {
-        layer.removed += 1;
-        return this;
-      },
-    };
-  });
-  return { L: { tileLayer } as unknown as LeafletForBasemap, layers };
+const STYLE = {
+  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  layers: [
+    { id: "water" },
+    { id: "city", layout: { "text-font": ["Noto Sans Regular"], "text-size": 12 } },
+    { id: "capital", layout: { "text-font": ["Noto Sans Bold"] } },
+    { id: "river", layout: { "text-font": ["Noto Sans Italic"] } },
+    { id: "odd", layout: { "text-font": ["Some Other Face"] } },
+  ],
+};
+
+/** The shape of the raster stand-in, as MapLibre reads it. */
+interface RasterStyle {
+  version: number;
+  glyphs: string;
+  sources: Record<string, { tiles: string[]; maxzoom: number; attribution?: string }>;
+  layers: { id: string; type: string; source: string }[];
 }
 
 describe("basemap", () => {
   afterEach(() => {
     document.documentElement.removeAttribute("data-theme");
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it("draws Esri's topographic map by day — colour, parks and relief, to street zoom", () => {
-    const layers = basemapLayers(false);
-    expect(layers).toHaveLength(1);
-    expect(layers[0].url).toContain("World_Topo_Map");
-    expect(layers[0].url).toMatch(/\{z\}\/\{y\}\/\{x\}$/); // Esri numbers its tiles z/y/x
-    expect(layers[0].maxNativeZoom).toBe(19);
+  it("draws OpenFreeMap's colourful style by day and its dark one by night", () => {
+    expect(styleUrl(false)).toBe("https://tiles.openfreemap.org/styles/liberty");
+    expect(styleUrl(true)).toBe("https://tiles.openfreemap.org/styles/dark");
   });
 
-  it("turns to the dark grey canvas by night, labels above the land", () => {
-    const [base, labels] = basemapLayers(true);
-    expect(base.url).toContain("World_Dark_Gray_Base");
-    expect(labels.url).toContain("World_Dark_Gray_Reference");
+  it("sets every label in the app's own typeface, served from the app itself", () => {
+    const styled = withAppFont(STYLE);
+
+    expect(styled.glyphs).toBe(GLYPHS_URL);
+    expect(GLYPHS_URL.startsWith("/")).toBe(true); // our own files, not the provider's
+    const fonts = styled.layers!.map((l) => l.layout?.["text-font"]);
+    expect(fonts).toEqual([
+      undefined,
+      ["Figtree Regular"],
+      ["Figtree SemiBold"],
+      ["Figtree Regular"],
+      ["Figtree Regular"], // a face we have no glyphs for falls back to the regular weight
+    ]);
+    // Everything else about the style is left alone
+    expect(styled.layers![1].layout!["text-size"]).toBe(12);
   });
 
-  it("credits Esri and OpenStreetMap", () => {
-    expect(BASEMAP_ATTRIBUTION).toContain("Esri");
-    expect(BASEMAP_ATTRIBUTION).toContain("openstreetmap.org");
+  it("fetches the style and hands it back in the app's typeface", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => STYLE }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const style = (await loadStyle(false)) as typeof STYLE;
+
+    expect(fetchMock).toHaveBeenCalledWith(styleUrl(false));
+    expect(style.glyphs).toBe(GLYPHS_URL);
+    expect(style.layers![1].layout!["text-font"]).toEqual(["Figtree Regular"]);
   });
 
   it("follows the theme chosen on the page, then the system", () => {
     expect(isDarkMap()).toBe(false); // jsdom: no dark preference
-    expect(basemapLayers()[0].url).toContain("World_Topo_Map");
     document.documentElement.setAttribute("data-theme", "dark");
     expect(isDarkMap()).toBe(true);
-    expect(basemapLayers()[0].url).toContain("Dark");
+    expect(styleUrl()).toContain("/dark");
     document.documentElement.setAttribute("data-theme", "light");
     expect(isDarkMap()).toBe(false);
   });
 
-  it("adds the theme's layers, credited once, and keeps zooming past the deepest tiles", () => {
-    const { L, layers } = fakeLeaflet();
+  it("stands in with Esri's raster tiles, credited, when the style cannot be fetched", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) })));
 
-    addBasemap(L, {}, false);
+    const style = (await loadStyle(false)) as RasterStyle;
 
-    expect(layers).toHaveLength(1);
-    expect(layers[0].added).toBe(1);
-    expect(layers[0].options.attribution).toBe(BASEMAP_ATTRIBUTION);
-    expect(layers[0].options.maxZoom).toBe(MAX_ZOOM);
-    expect(layers[0].options.maxNativeZoom).toBe(19);
+    expect(style.version).toBe(8);
+    expect(style.layers).toHaveLength(1);
+    const source = style.sources[style.layers[0].source];
+    expect(source.tiles[0]).toContain("World_Topo_Map");
+    expect(source.attribution).toBe(FALLBACK_ATTRIBUTION);
+    expect(source.maxzoom).toBe(MAX_ZOOM);
+    // Labels still come from us, so even the stand-in is set in Figtree
+    expect(style.glyphs).toBe(GLYPHS_URL);
   });
 
-  it("swaps the whole set when the theme flips, and takes it away on remove", () => {
-    const { L, layers } = fakeLeaflet();
+  it("stands in with the dark canvas at night, labels above the land", () => {
+    const [base, labels] = fallbackLayers(true);
+    expect(base.url).toContain("World_Dark_Gray_Base");
+    expect(labels.url).toContain("World_Dark_Gray_Reference");
 
-    const basemap = addBasemap(L, {}, false);
-    basemap.setDark(true);
+    const style = rasterStyle(true) as RasterStyle;
+    expect(style.layers.map((l) => l.id)).toEqual(["esri-0", "esri-1"]);
+  });
 
-    // The day layer went, the two night ones came — only the land is credited
-    expect(layers[0].removed).toBe(1);
-    expect(layers).toHaveLength(3);
-    expect(layers[1].url).toContain("World_Dark_Gray_Base");
-    expect(layers[1].options.attribution).toBe(BASEMAP_ATTRIBUTION);
-    expect(layers[2].url).toContain("World_Dark_Gray_Reference");
-    expect(layers[2].options.attribution).toBeUndefined();
+  it("stands in when the network refuses the style outright", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    );
 
-    basemap.remove();
-    expect(layers.map((l) => l.removed)).toEqual([1, 1, 1]);
+    const style = (await loadStyle(true)) as RasterStyle;
+
+    expect(style.layers).toHaveLength(2);
   });
 
   it("tells a watcher when the theme changes, until stopped", async () => {

@@ -14,7 +14,7 @@ Follow other photographers to discover their spots too.
 - **Database**: PostgreSQL 17 + Prisma ORM
 - **Auth**: JWT (email/password + OAuth Google/Apple)
 - **Storage**: Cloudflare R2 (S3-compatible)
-- **Maps**: react-native-maps (mobile), react-leaflet (web)
+- **Maps**: react-native-maps (mobile), MapLibre GL + OpenFreeMap vector tiles (web)
 - **Geocoding**: Nominatim (OpenStreetMap) — free, no API key
 - **i18n**: FR + EN via shared translation keys
 - **State**: Zustand (mobile), React Context (web)

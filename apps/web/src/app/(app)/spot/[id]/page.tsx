@@ -4,7 +4,9 @@ import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
 import { ZoomablePhoto } from "@/components/zoomable-photo";
 import { LocationDetails } from "@/components/location-details";
-import { addBasemap } from "@/lib/map-tiles";
+import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
+import { addMarker, createMap, markerElement } from "@/lib/map-engine";
+import type { Map as GLMap } from "maplibre-gl";
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -22,6 +24,9 @@ import { useT } from "@/lib/use-t";
 import { PAGE_WIDE, PageHeader } from "@/components/page";
 
 const MiniMap = dynamic(() => import("@/components/mini-map"), { ssr: false });
+
+/** The app's pin on the expanded map: a dot in the brand blue. */
+const EXPANDED_PIN_HTML = `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 4px var(--color-accent-tint);"></div>`;
 
 /** Minimum horizontal travel for a touch to count as a swipe between photos. */
 const SWIPE_THRESHOLD_PX = 40;
@@ -613,7 +618,7 @@ export default function SpotDetailPage({
             type="button"
             onClick={() => setMapExpanded(true)}
             aria-label={t("map.tapToExpand")}
-            // `isolate` keeps Leaflet's stacked panes inside the thumb, under the nav and the expanded map
+            // `isolate` keeps the map's own stacking inside the thumb, under the nav and the expanded map
             className="group relative isolate block h-[140px] w-full cursor-pointer overflow-hidden rounded-md border border-border lg:h-48 lg:rounded-none lg:border-0"
           >
             <MiniMap latitude={spot.latitude} longitude={spot.longitude} />
@@ -808,36 +813,33 @@ export default function SpotDetailPage({
   );
 }
 
-/** Full-screen interactive Leaflet map for spot detail */
+/** Full-screen interactive map for spot detail */
 function ExpandedMap({ latitude, longitude }: { latitude: number; longitude: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
+    let cancelled = false;
+    let map: GLMap | null = null;
+    let stopThemeWatch = () => {};
 
-    import("leaflet").then((L) => {
-      if (!containerRef.current || mapRef.current) return;
-      const map = L.map(containerRef.current).setView([latitude, longitude], 15);
-      mapRef.current = map;
-
-      addBasemap(L, map);
-
-      L.marker([latitude, longitude]).addTo(map);
-    });
+    void createMap({ container: containerRef.current!, center: [longitude, latitude], zoom: 15 }).then(
+      async (created) => {
+        if (cancelled) {
+          created.remove();
+          return;
+        }
+        map = created;
+        await addMarker(created, [longitude, latitude], markerElement(EXPANDED_PIN_HTML));
+        stopThemeWatch = watchMapTheme((dark) => {
+          void loadStyle(dark).then((style) => created.setStyle(style as never));
+        });
+      },
+    );
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      cancelled = true;
+      stopThemeWatch();
+      map?.remove();
     };
   }, [latitude, longitude]);
 

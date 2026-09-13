@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from "vitest";
-import { forgetMapView, recallMapView, rememberMapView, viewFromBounds } from "../map-viewport";
+import { forgetMapView, recallMapView, rememberMapView } from "../map-viewport";
 
 describe("map viewport memory", () => {
   beforeEach(() => {
@@ -26,9 +26,5 @@ describe("map viewport memory", () => {
     expect(recallMapView()).toBeNull();
     sessionStorage.setItem("trs.map.view", JSON.stringify({ lat: "x" }));
     expect(recallMapView()).toBeNull();
-  });
-
-  it("remembers the centre of a box at its zoom", () => {
-    expect(viewFromBounds({ swLat: 48, swLng: 2, neLat: 49, neLng: 3 }, 11)).toEqual({ lat: 48.5, lng: 2.5, zoom: 11 });
   });
 });

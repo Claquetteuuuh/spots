@@ -1,7 +1,11 @@
 "use client";
 
 import { startTransition, use, useCallback, useEffect, useRef, useState } from "react";
-import { addBasemap } from "@/lib/map-tiles";
+import { addMarker, createMap, maplibre, markerElement } from "@/lib/map-engine";
+import type { Map as GLMap } from "maplibre-gl";
+
+/** A spot on the profile map: the app's dot in the brand blue. */
+const SPOT_PIN_HTML = `<div style="box-sizing:border-box;width:18px;height:18px;border-radius:9999px;background:var(--color-accent);border:3px solid var(--color-bg);box-shadow:0 1px 4px rgba(22,32,58,.35);cursor:pointer;"></div>`;
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, User } from "@/lib/api-client";
@@ -77,17 +81,6 @@ export default function ProfilePage({
       loadProfile();
     });
   }, [loadProfile]);
-
-  // Load Leaflet CSS for map tab
-  useEffect(() => {
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
-  }, []);
 
   async function handleFollowToggle() {
     if (!profile) return;
@@ -499,46 +492,52 @@ function LockIcon({ className, strokeWidth = 1.5 }: { className?: string; stroke
   );
 }
 
-/** Vanilla-Leaflet map showing a user's spots */
+/** A map of everything a photographer has posted */
 function ProfileMapView({ spots }: { spots: Spot[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    import("leaflet").then((L) => {
-      if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
+    let map: GLMap | null = null;
 
-      const centerLat = spots.reduce((s, p) => s + p.latitude, 0) / spots.length;
-      const centerLng = spots.reduce((s, p) => s + p.longitude, 0) / spots.length;
+    const centerLat = spots.reduce((sum, p) => sum + p.latitude, 0) / spots.length;
+    const centerLng = spots.reduce((sum, p) => sum + p.longitude, 0) / spots.length;
 
-      const map = L.map(containerRef.current).setView([centerLat, centerLng], 11);
-      mapRef.current = map;
+    void createMap({ container: containerRef.current!, center: [centerLng, centerLat], zoom: 11 }).then(
+      async (created) => {
+        if (cancelled) {
+          created.remove();
+          return;
+        }
+        map = created;
+        for (const spot of spots) {
+          const marker = await addMarker(created, [spot.longitude, spot.latitude], markerElement(SPOT_PIN_HTML));
+          const link = document.createElement("a");
+          link.href = `/spot/${spot.id}`;
+          link.style.fontWeight = "500";
+          link.textContent = spot.title ?? "Spot";
+          const gl = await maplibre();
+          marker.setPopup(new gl.Popup({ closeButton: false, offset: 14 }).setDOMContent(link));
+        }
 
-      addBasemap(L, map);
-
-      for (const spot of spots) {
-        L.marker([spot.latitude, spot.longitude])
-          .addTo(map)
-          .bindPopup(
-            `<a href="/spot/${spot.id}" style="font-weight:500">${spot.title ?? "Spot"}</a>`,
+        // More than one spot: frame them all
+        if (spots.length > 1) {
+          const lats = spots.map((s) => s.latitude);
+          const lngs = spots.map((s) => s.longitude);
+          created.fitBounds(
+            [
+              [Math.min(...lngs), Math.min(...lats)],
+              [Math.max(...lngs), Math.max(...lats)],
+            ],
+            { padding: 48, animate: false },
           );
-      }
-
-      // Fit bounds if multiple spots
-      if (spots.length > 1) {
-        const group = L.featureGroup(
-          spots.map((s) => L.marker([s.latitude, s.longitude])),
-        );
-        map.fitBounds(group.getBounds().pad(0.15));
-      }
-    });
+        }
+      },
+    );
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      cancelled = true;
+      map?.remove();
     };
   }, [spots]);
 

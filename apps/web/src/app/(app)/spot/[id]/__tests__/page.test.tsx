@@ -214,17 +214,8 @@ describe("SpotDetailPage", () => {
 
 // ─── Likes, the two-step delete, the map's stacking and the lightbox ──
 
-// The expanded map builds a real Leaflet map; jsdom has no layout for it
-vi.mock("leaflet", () => {
-  const map = { setView: () => map, remove: vi.fn() };
-  // The page reads `L.map` off the module namespace, so the API sits at both levels
-  const L = {
-    map: () => map,
-    tileLayer: () => ({ addTo: vi.fn() }),
-    marker: () => ({ addTo: vi.fn() }),
-  };
-  return { ...L, default: L };
-});
+// The expanded map builds a real MapLibre map; jsdom has no WebGL for it
+vi.mock("maplibre-gl", async () => (await import("@/test/maplibre-mock")).createMapLibreMock());
 
 describe("SpotDetailPage — likes, deleting, map and photo", () => {
   beforeEach(() => {
@@ -299,7 +290,7 @@ describe("SpotDetailPage — likes, deleting, map and photo", () => {
     renderPage();
     await screen.findByText("Eiffel Tower");
 
-    // Leaflet's panes carry z-index 400–1000: a stacking context keeps them inside the thumb
+    // The map stacks its own controls high: a stacking context keeps them inside the thumb
     const thumb = screen.getByRole("button", { name: "map.tapToExpand" });
     expect(thumb.className.split(" ")).toContain("isolate");
 

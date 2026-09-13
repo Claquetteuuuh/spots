@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { MAP_STYLE } from "../../lib/map-style";
+import { mapStyle } from "../../lib/map-style";
 import MapView, {
   Circle,
   Marker,
@@ -382,8 +382,7 @@ export function MapScreen() {
         <MapView
           ref={mapRef}
           provider={PROVIDER_DEFAULT}
-              {...MAP_STYLE}
-              userInterfaceStyle={theme.dark ? "dark" : "light"}
+              {...mapStyle(theme.dark)}
           style={StyleSheet.absoluteFill}
           initialRegion={startRegion}
           onRegionChangeComplete={handleRegionChange}

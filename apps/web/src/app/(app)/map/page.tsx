@@ -26,10 +26,10 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useLivePosition } from "@/lib/use-live-position";
 import { useLivePositionPref } from "@/lib/preferences";
-import { recallMapView, rememberMapView, viewFromBounds } from "@/lib/map-viewport";
+import { recallMapView, rememberMapView } from "@/lib/map-viewport";
 import { useT } from "@/lib/use-t";
 
-// Leaflet must be loaded without SSR
+// The map engine is browser-only
 const SpotMap = dynamic(() => import("@/components/spot-map"), { ssr: false });
 
 /** Pans settle for this long before the viewport is fetched. */
@@ -126,9 +126,9 @@ export default function MapPage() {
 
   // Debounced viewport handler
   const handleViewportChange = useCallback(
-    ({ bounds, zoom }: MapViewport) => {
+    ({ bounds, zoom, center: at }: MapViewport) => {
       viewportRef.current = bounds;
-      rememberMapView(viewFromBounds(bounds, zoom));
+      rememberMapView({ lat: at.lat, lng: at.lng, zoom });
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => loadPins(bounds, scope), FETCH_DEBOUNCE_MS);
     },
@@ -256,7 +256,7 @@ export default function MapPage() {
         </span>
       </div>
 
-      {/* Map — isolate z-index so Leaflet internals don't overlap the bottom nav */}
+      {/* Map — isolate z-index so the map's controls don't overlap the bottom nav */}
       <div className="relative z-0 min-h-0 flex-1">
         <SpotMap
           pins={visiblePins}

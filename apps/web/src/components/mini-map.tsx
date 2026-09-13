@@ -1,72 +1,61 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { addBasemap } from "@/lib/map-tiles";
+import type { Map as GLMap } from "maplibre-gl";
+import { addMarker, createMap, markerElement } from "@/lib/map-engine";
+import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
 
 interface MiniMapProps {
   latitude: number;
   longitude: number;
 }
 
+/** The app's pin: a dot in the brand blue, ringed by the page background. */
+const PIN_HTML = `<div style="
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  background: var(--color-accent);
+  border: 3px solid var(--color-bg);
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(22, 32, 58, 0.35);
+"></div>`;
+
 /**
- * A small, non-interactive map showing a single point.
- * Used on spot detail pages.
+ * A small, still map showing a single point. Used on spot detail pages.
  */
 export default function MiniMap({ latitude, longitude }: MiniMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<GLMap | null>(null);
 
   useEffect(() => {
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
+    let cancelled = false;
+    let stopThemeWatch = () => {};
 
-    import("leaflet").then((L) => {
-      if (!containerRef.current || mapRef.current) return;
-
-      const map = L.map(containerRef.current, {
-        zoomControl: false,
-        attributionControl: false,
-        dragging: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        touchZoom: false,
-      }).setView([latitude, longitude], 14);
-
-      addBasemap(L, map);
-
-      // The app's pin: a 14px accent dot ringed in the page background. Theme
-      // variables rather than hex so it follows dark mode like the main map.
-      const icon = L.divIcon({
-        className: "custom-marker",
-        html: `<div style="
-          width: 14px;
-          height: 14px;
-          box-sizing: border-box;
-          background: var(--color-accent);
-          border: 2px solid var(--color-bg);
-          border-radius: 50%;
-        "></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-      });
-
-      L.marker([latitude, longitude], { icon, interactive: false }).addTo(map);
-
+    void createMap({
+      container: containerRef.current!,
+      center: [longitude, latitude],
+      zoom: 15,
+      interactive: false,
+    }).then(async (map) => {
+      if (cancelled) {
+        map.remove();
+        return;
+      }
       mapRef.current = map;
+      await addMarker(map, [longitude, latitude], markerElement(PIN_HTML));
+      stopThemeWatch = watchMapTheme((dark) => {
+        void loadStyle(dark).then((style) => map.setStyle(style as never));
+      });
     });
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      cancelled = true;
+      stopThemeWatch();
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
+    // The point never changes for a mounted mini map
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

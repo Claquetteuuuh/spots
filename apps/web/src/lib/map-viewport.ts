@@ -1,5 +1,3 @@
-import type { MapBounds } from "@trs/shared/map";
-
 /** Where the map was left: its centre and zoom. */
 export interface RememberedView {
   lat: number;
@@ -57,13 +55,4 @@ export function forgetMapView(): void {
   } catch {
     // Nothing to forget
   }
-}
-
-/** The centre of a box — what a viewport remembers. */
-export function viewFromBounds(bounds: MapBounds, zoom: number): RememberedView {
-  return {
-    lat: (bounds.swLat + bounds.neLat) / 2,
-    lng: (bounds.swLng + bounds.neLng) / 2,
-    zoom,
-  };
 }

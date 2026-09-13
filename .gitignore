@@ -3,6 +3,7 @@ node_modules/
 .pnpm-store/
 
 # Build outputs
+apps/web/public/map-worker/
 dist/
 .next/
 out/

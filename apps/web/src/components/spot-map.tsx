@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import type { Map as GLMap, Marker as GLMarker, Popup as GLPopup } from "maplibre-gl";
 import {
   SpotClusterer,
   clusterMarkerSize,
@@ -10,7 +11,8 @@ import {
   pinColor,
 } from "@trs/shared/map";
 import type { LivePosition } from "@/lib/use-live-position";
-import { addBasemap, watchMapTheme } from "@/lib/map-tiles";
+import { createMap, fromGLZoom, maplibre, toGLZoom } from "@/lib/map-engine";
+import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
 
 /**
  * A place to move the map to. Pass a fresh object each time — the map
@@ -27,9 +29,11 @@ interface MapCenter {
 interface MapViewport {
   bounds: MapBounds;
   zoom: number;
+  /** Where the map is pointed, as the map itself has it. */
+  center: { lat: number; lng: number };
 }
 
-/** Copy the map needs; passed in so this component stays hook-free inside Leaflet callbacks. */
+/** Copy the map needs; passed in so this component stays hook-free inside map callbacks. */
 interface SpotMapLabels {
   cluster: (count: number) => string;
   untitled: string;
@@ -47,28 +51,26 @@ interface SpotMapProps {
   onViewportChange?: (viewport: MapViewport) => void;
 }
 
-// Default center: Paris
-const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
+// Default center: Paris, in the order MapLibre reads a point.
+const DEFAULT_CENTER: [number, number] = [2.3522, 48.8566];
 const DEFAULT_ZOOM = 5;
 // Roughly the app's 0.05° region once the photographer is located.
 const LOCATE_ZOOM = 13;
 const PREVIEW_WIDTH = 220;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Leaflet = any;
+/** The Earth's circumference, for turning metres of accuracy into pixels. */
+const EQUATOR_METERS = 40075016.686;
 
 /**
- * Popup chrome and marker styling. Injected once, next to the Leaflet CSS,
- * so the map owns its own look and the page stylesheet stays untouched.
- * Theme tokens throughout, so it follows dark mode.
+ * Popup chrome and marker styling. Injected once, so the map owns its own
+ * look and the page stylesheet stays untouched. Theme tokens throughout,
+ * so it follows dark mode.
  */
 const MAP_CSS = `
-.spot-pin,.spot-cluster{background:none;border:0}
-.spot-cluster__badge{display:flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:9999px;background:var(--color-accent);color:var(--color-on-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 4px var(--color-accent-tint);font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:transform .15s}
+.spot-pin,.spot-cluster{cursor:pointer}
+.spot-cluster__badge{display:flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:9999px;background:var(--color-accent);color:var(--color-on-accent);border:3px solid var(--color-bg);box-shadow:0 0 0 4px var(--color-accent-tint);font-weight:600;font-variant-numeric:tabular-nums;transition:transform .15s}
 .spot-cluster__badge:hover{transform:scale(1.06)}
-.spot-preview-popup .leaflet-popup-content-wrapper{padding:0;border-radius:16px;background:var(--color-bg);box-shadow:0 8px 24px rgba(22,32,58,.18);overflow:hidden}
-.spot-preview-popup .leaflet-popup-content{margin:0;width:${PREVIEW_WIDTH}px!important;line-height:1.3}
-.spot-preview-popup .leaflet-popup-tip{background:var(--color-bg);box-shadow:none}
+.spot-preview-popup .maplibregl-popup-content{padding:0;border-radius:16px;background:var(--color-bg);box-shadow:0 8px 24px rgba(22,32,58,.18);overflow:hidden;width:${PREVIEW_WIDTH}px;line-height:1.3}
+.spot-preview-popup .maplibregl-popup-tip{display:none}
 .spot-preview{display:block;color:var(--color-text);text-decoration:none;outline:none}
 .spot-preview:focus-visible{box-shadow:inset 0 0 0 2px var(--color-accent)}
 .spot-preview__photo{display:block;width:${PREVIEW_WIDTH}px;height:140px;object-fit:cover;background:var(--color-bg-tertiary)}
@@ -78,8 +80,9 @@ const MAP_CSS = `
 .spot-preview__city{display:block;margin-top:2px;font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spot-preview__chevron{flex:none;width:18px;height:18px;color:var(--color-text-tertiary);transition:color .15s}
 .spot-preview:hover .spot-preview__chevron{color:var(--color-accent)}
-.you-are-here{background:none;border:0;pointer-events:none}
+.you-are-here{pointer-events:none;z-index:3}
 .you-are-here__wrap{position:relative;width:20px;height:20px}
+.you-are-here__accuracy{position:absolute;left:50%;top:50%;width:0;height:0;border-radius:50%;background:var(--color-accent);opacity:.12;transform:translate(-50%,-50%)}
 .you-are-here__halo{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:var(--color-accent);opacity:.2;animation:you-are-here-pulse 2.4s ease-out infinite}
 @keyframes you-are-here-pulse{0%{transform:scale(.5);opacity:.4}70%{transform:scale(1.2);opacity:0}100%{transform:scale(1.2);opacity:0}}
 @media (prefers-reduced-motion:reduce){.you-are-here__halo{animation:none;transform:scale(.9)}}
@@ -87,6 +90,9 @@ const MAP_CSS = `
 .you-are-here__cone[hidden]{display:none}
 .you-are-here__dot{position:absolute;inset:0;border-radius:9999px;background:var(--color-accent);border:3px solid #fff;box-shadow:0 1px 6px rgba(22,32,58,.4)}
 `;
+
+/** The MapLibre namespace, once loaded — markers and popups are built from it. */
+type MapLibre = Awaited<ReturnType<typeof maplibre>>;
 
 export default function SpotMap({
   pins,
@@ -97,24 +103,27 @@ export default function SpotMap({
   onViewportChange,
 }: SpotMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Leaflet>(null);
-  const leafletRef = useRef<Leaflet>(null);
-  const layerRef = useRef<Leaflet>(null);
+  const mapRef = useRef<GLMap | null>(null);
+  const glRef = useRef<MapLibre | null>(null);
   const clustererRef = useRef<SpotClusterer | null>(null);
-  // The "you are here" dot and its accuracy ring — created once, then moved.
-  const userMarkerRef = useRef<Leaflet>(null);
-  const userCircleRef = useRef<Leaflet>(null);
+  // Every marker currently on the map, cleared and rebuilt on each redraw.
+  const markersRef = useRef<GLMarker[]>([]);
+  // The pin elements by id, so the open one can be restyled without a redraw.
+  const pinElementsRef = useRef(new Map<string, HTMLElement>());
+  // One preview card at a time, anchored to a point rather than to a marker,
+  // so regrouping the pins underneath never snatches it away.
+  const popupRef = useRef<GLPopup | null>(null);
+  const activePinRef = useRef<MapPin | null>(null);
+  // The "you are here" dot and the ring of its accuracy — created once, then moved.
+  const userMarkerRef = useRef<GLMarker | null>(null);
+  const userAccuracyRef = useRef<HTMLElement | null>(null);
   const userPositionRef = useRef<LivePosition | null | undefined>(userPosition);
   // Latest callbacks/copy, so markers never need rebuilding when they change.
   const onSpotClickRef = useRef(onSpotClick);
   const onViewportChangeRef = useRef(onViewportChange);
   const labelsRef = useRef(labels);
-  // A centre asked for before Leaflet finished loading — applied on init.
+  // A centre asked for before MapLibre finished loading — applied on init.
   const pendingCenterRef = useRef<MapCenter | null>(null);
-  // The pin whose preview is open — re-opened after a redraw so a fetch
-  // landing mid-read doesn't snatch the card away.
-  const activePinIdRef = useRef<string | null>(null);
-  const redrawingRef = useRef(false);
 
   useEffect(() => {
     onSpotClickRef.current = onSpotClick;
@@ -122,146 +131,152 @@ export default function SpotMap({
     labelsRef.current = labels;
   }, [onSpotClick, onViewportChange, labels]);
 
+  /** Put the preview card away and let its pin shrink back. */
+  const closePreview = useCallback(() => {
+    const pin = activePinRef.current;
+    activePinRef.current = null;
+    popupRef.current?.remove();
+    if (pin) {
+      const element = pinElementsRef.current.get(pin.id);
+      if (element) paintPin(element, pin, false);
+    }
+  }, []);
+
+  /** Show the preview card for a pin, and grow the pin under it. */
+  const openPreview = useCallback(
+    (pin: MapPin) => {
+      const map = mapRef.current;
+      const popup = popupRef.current;
+      if (!map || !popup) return;
+      closePreview();
+      activePinRef.current = pin;
+      const element = pinElementsRef.current.get(pin.id);
+      if (element) paintPin(element, pin, true);
+      popup
+        .setLngLat([pin.longitude, pin.latitude])
+        .setDOMContent(previewCard(pin, labelsRef.current, () => onSpotClickRef.current?.(pin)))
+        .addTo(map);
+    },
+    [closePreview],
+  );
+
   /** Draw clusters and lone pins for the current view. */
   const redraw = useCallback(() => {
     const map = mapRef.current;
-    const L = leafletRef.current;
-    const layer = layerRef.current;
-    if (!map || !L || !layer) return;
+    const gl = glRef.current;
+    if (!map || !gl) return;
 
-    redrawingRef.current = true;
-    layer.clearLayers();
+    for (const marker of markersRef.current) marker.remove();
+    markersRef.current = [];
+    pinElementsRef.current.clear();
 
     const clusterer = clustererRef.current;
-    if (clusterer) {
-      const zoom = map.getZoom();
-      for (const item of clusterer.getItems(toBounds(map), zoom)) {
-        if (item.kind === "cluster") {
-          const { latitude, longitude, count, id } = item;
-          const marker = L.marker([latitude, longitude], {
-            icon: clusterIcon(L, count),
-            title: labelsRef.current.cluster(count),
-          });
-          // Tapping a cluster zooms just far enough for it to split.
-          marker.on("click", () =>
-            map.flyTo([latitude, longitude], clusterer.getExpansionZoom(id), { duration: 0.5 }),
-          );
-          layer.addLayer(marker);
-          continue;
-        }
-
-        const { pin } = item;
-        const active = activePinIdRef.current === pin.id;
-        const marker = L.marker([pin.latitude, pin.longitude], {
-          icon: pinIcon(L, pin, active),
-          title: pin.title ?? labelsRef.current.untitled,
-          riseOnHover: true,
-        });
-        marker.bindPopup(
-          () => previewCard(pin, labelsRef.current, () => onSpotClickRef.current?.(pin)),
-          {
-            className: "spot-preview-popup",
-            closeButton: false,
-            minWidth: PREVIEW_WIDTH,
-            maxWidth: PREVIEW_WIDTH,
-            offset: [0, -6],
-            autoPanPadding: [24, 24],
-          },
-        );
-        marker.on("popupopen", () => {
-          activePinIdRef.current = pin.id;
-          marker.setIcon(pinIcon(L, pin, true));
-        });
-        marker.on("popupclose", () => {
-          // Closing because we're clearing the layer is not the user's doing.
-          if (redrawingRef.current) return;
-          activePinIdRef.current = null;
-          marker.setIcon(pinIcon(L, pin, false));
-        });
-        layer.addLayer(marker);
-        if (active) marker.openPopup();
-      }
+    if (!clusterer) {
+      if (activePinRef.current) closePreview();
+      return;
     }
 
-    redrawingRef.current = false;
-  }, []);
+    const zoom = fromGLZoom(map.getZoom());
+    for (const item of clusterer.getItems(toBounds(map), zoom)) {
+      if (item.kind === "cluster") {
+        const { latitude, longitude, count, id } = item;
+        const element = clusterElement(count, labelsRef.current.cluster(count));
+        // Tapping a cluster zooms just far enough for it to split.
+        element.addEventListener("click", (e) => {
+          e.stopPropagation();
+          map.flyTo({
+            center: [longitude, latitude],
+            zoom: toGLZoom(clusterer.getExpansionZoom(id)),
+            duration: 500,
+          });
+        });
+        markersRef.current.push(
+          new gl.Marker({ element }).setLngLat([longitude, latitude]).addTo(map),
+        );
+        continue;
+      }
+
+      const { pin } = item;
+      const active = activePinRef.current?.id === pin.id;
+      const element = pinElement(pin, active, pin.title ?? labelsRef.current.untitled);
+      element.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (activePinRef.current?.id === pin.id) closePreview();
+        else openPreview(pin);
+      });
+      pinElementsRef.current.set(pin.id, element);
+      markersRef.current.push(
+        new gl.Marker({ element }).setLngLat([pin.longitude, pin.latitude]).addTo(map),
+      );
+    }
+
+    // A pin swallowed by a cluster takes its preview card with it.
+    const open = activePinRef.current;
+    if (open && !pinElementsRef.current.has(open.id)) closePreview();
+  }, [closePreview, openPreview]);
 
   const emitViewport = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
-    onViewportChangeRef.current?.({ bounds: toBounds(map), zoom: map.getZoom() });
+    const { lat, lng } = map.getCenter();
+    onViewportChangeRef.current?.({
+      bounds: toBounds(map),
+      zoom: fromGLZoom(map.getZoom()),
+      center: { lat, lng },
+    });
+  }, []);
+
+  /** The accuracy ring is drawn in metres, so it is resized at every zoom. */
+  const sizeAccuracyRing = useCallback(() => {
+    const map = mapRef.current;
+    const pos = userPositionRef.current;
+    const ring = userAccuracyRef.current;
+    if (!map || !pos || !ring) return;
+    // MapLibre counts zoom in 512px tiles, so that is the width of the world.
+    const metersPerPixel =
+      (EQUATOR_METERS * Math.cos((pos.latitude * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    const diameter = Math.min((2 * pos.accuracy) / metersPerPixel, 2000);
+    ring.style.width = `${diameter}px`;
+    ring.style.height = `${diameter}px`;
   }, []);
 
   /** Move (or create, or remove) the "you are here" dot for the latest position. */
   const drawUser = useCallback(() => {
     const map = mapRef.current;
-    const L = leafletRef.current;
-    if (!map || !L) return;
+    const gl = glRef.current;
+    if (!map || !gl) return;
     const pos = userPositionRef.current;
 
     if (!pos) {
       userMarkerRef.current?.remove();
-      userCircleRef.current?.remove();
       userMarkerRef.current = null;
-      userCircleRef.current = null;
+      userAccuracyRef.current = null;
       return;
     }
 
-    const latlng: [number, number] = [pos.latitude, pos.longitude];
-    if (!userCircleRef.current) {
-      userCircleRef.current = L.circle(latlng, {
-        radius: pos.accuracy,
-        weight: 1,
-        opacity: 0.35,
-        fillOpacity: 0.08,
-        interactive: false,
-      }).addTo(map);
-      // Theme tokens as inline style, so the ring follows dark mode
-      const el = userCircleRef.current.getElement() as SVGElement | null;
-      if (el) {
-        el.style.stroke = "var(--color-accent)";
-        el.style.fill = "var(--color-accent)";
-      }
-    } else {
-      userCircleRef.current.setLatLng(latlng);
-      userCircleRef.current.setRadius(pos.accuracy);
-    }
-
+    const at: [number, number] = [pos.longitude, pos.latitude];
     if (!userMarkerRef.current) {
-      userMarkerRef.current = L.marker(latlng, {
-        icon: L.divIcon({
-          className: "you-are-here",
-          html: `<div class="you-are-here__wrap"><div class="you-are-here__halo"></div><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-        }),
-        title: labelsRef.current.youAreHere,
-        interactive: false,
-        keyboard: false,
-        pane: "you",
-      }).addTo(map);
+      const element = document.createElement("div");
+      element.className = "you-are-here";
+      element.title = labelsRef.current.youAreHere;
+      element.innerHTML = `<div class="you-are-here__wrap"><div class="you-are-here__accuracy"></div><div class="you-are-here__halo"></div><div class="you-are-here__cone" hidden></div><div class="you-are-here__dot"></div></div>`;
+      userAccuracyRef.current = element.querySelector(".you-are-here__accuracy");
+      userMarkerRef.current = new gl.Marker({ element }).setLngLat(at).addTo(map);
     } else {
-      userMarkerRef.current.setLatLng(latlng);
+      userMarkerRef.current.setLngLat(at);
     }
+    sizeAccuracyRing();
 
-    const cone = userMarkerRef.current.getElement()?.querySelector(".you-are-here__cone") as
-      | HTMLElement
-      | null;
+    const cone = userMarkerRef.current
+      .getElement()
+      .querySelector<HTMLElement>(".you-are-here__cone");
     if (cone) {
       cone.hidden = pos.heading === null;
       if (pos.heading !== null) cone.style.transform = `rotate(${pos.heading}deg)`;
     }
-  }, []);
+  }, [sizeAccuracyRing]);
 
   useEffect(() => {
-    // Load Leaflet CSS, plus ours
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
     if (!document.getElementById("spot-map-css")) {
       const style = document.createElement("style");
       style.id = "spot-map-css";
@@ -270,44 +285,56 @@ export default function SpotMap({
     }
 
     let cancelled = false;
+    // Held here so the teardown empties the very map the effect filled
+    const pinElements = pinElementsRef.current;
     // The redraw scheduled by the last `moveend`, if it has not run yet
     let moveFrame = 0;
     let stopThemeWatch = () => {};
+    let firstDraw: ReturnType<typeof setTimeout> | undefined;
 
-    // Dynamically import Leaflet (client-side only)
-    import("leaflet").then((L) => {
-      if (cancelled || !containerRef.current || mapRef.current) return;
-
-      const map = L.map(containerRef.current, { attributionControl: false }).setView(
-        DEFAULT_CENTER,
-        DEFAULT_ZOOM,
-      );
-
-      // The basemap loads on demand and follows the theme while the map is open
-      const basemap = addBasemap(L, map);
-      stopThemeWatch = watchMapTheme((dark) => basemap.setDark(dark));
-
-      // The screen's actions sit bottom-right, like the app's, so credit
-      // OpenStreetMap on the other side rather than under a button.
-      L.control.attribution({ position: "bottomleft" }).addTo(map);
-
+    void Promise.all([
+      maplibre(),
+      createMap({
+        container: containerRef.current!,
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        // The screen's own actions sit bottom-right, so credit
+        // OpenStreetMap on the other side rather than under a button.
+        attributionPosition: "bottom-left",
+      }),
+    ]).then(([gl, map]) => {
+      if (cancelled) {
+        map.remove();
+        return;
+      }
       mapRef.current = map;
-      leafletRef.current = L;
-      layerRef.current = L.layerGroup().addTo(map);
-      // The photographer sits above every pin
-      map.createPane("you").style.zIndex = "650";
+      glRef.current = gl;
+      popupRef.current = new gl.Popup({
+        className: "spot-preview-popup",
+        closeButton: false,
+        closeOnClick: true,
+        maxWidth: `${PREVIEW_WIDTH}px`,
+        offset: 16,
+      });
+      // Dismissed by a tap on the map, not by us: let the pin shrink back.
+      popupRef.current.on("close", () => {
+        if (activePinRef.current) closePreview();
+      });
+
+      map.addControl(new gl.NavigationControl({ showCompass: false }), "top-left");
+      stopThemeWatch = watchMapTheme((dark) => {
+        void loadStyle(dark).then((style) => map.setStyle(style as never));
+      });
 
       const pending = pendingCenterRef.current;
       if (pending) {
         pendingCenterRef.current = null;
-        map.setView([pending.lat, pending.lng], pending.zoom ?? LOCATE_ZOOM);
+        map.jumpTo({ center: [pending.lng, pending.lat], zoom: toGLZoom(pending.zoom ?? LOCATE_ZOOM) });
       }
 
       // Every pan or zoom regroups the markers and asks the page for pins —
-      // a frame later, on purpose: when a popup's auto-pan stops a pan that
-      // is still running, Leaflet fires `moveend` synchronously, and
-      // clearing the layer right then removes the very marker whose popup
-      // it is still positioning (a crash on `layerPointToContainerPoint`).
+      // a frame later, on purpose, so a redraw never lands in the middle of
+      // the movement that triggered it.
       map.on("moveend", () => {
         cancelAnimationFrame(moveFrame);
         moveFrame = requestAnimationFrame(() => {
@@ -316,8 +343,10 @@ export default function SpotMap({
           emitViewport();
         });
       });
+      map.on("zoom", sizeAccuracyRing);
+
       // Initial draw + viewport once the map has a size
-      setTimeout(() => {
+      firstDraw = setTimeout(() => {
         redraw();
         drawUser();
         emitViewport();
@@ -327,14 +356,16 @@ export default function SpotMap({
     return () => {
       cancelled = true;
       cancelAnimationFrame(moveFrame);
+      clearTimeout(firstDraw);
       stopThemeWatch();
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        layerRef.current = null;
-        userMarkerRef.current = null;
-        userCircleRef.current = null;
-      }
+      popupRef.current?.remove();
+      popupRef.current = null;
+      mapRef.current?.remove();
+      mapRef.current = null;
+      markersRef.current = [];
+      pinElements.clear();
+      userMarkerRef.current = null;
+      userAccuracyRef.current = null;
     };
     // Only initialize once
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -348,7 +379,11 @@ export default function SpotMap({
       pendingCenterRef.current = center;
       return;
     }
-    map.flyTo([center.lat, center.lng], center.zoom ?? LOCATE_ZOOM, { duration: 0.8 });
+    map.flyTo({
+      center: [center.lng, center.lat],
+      zoom: toGLZoom(center.zoom ?? LOCATE_ZOOM),
+      duration: 800,
+    });
   }, [center]);
 
   // New pins: rebuild the cluster index (the costly part) and redraw.
@@ -364,16 +399,16 @@ export default function SpotMap({
   }, [userPosition, drawUser]);
 
   // Below `lg` the map is touch-first like the app: no +/- buttons, pinch
-  // to zoom. Desktop keeps Leaflet's zoom control.
+  // to zoom. Desktop keeps the zoom control.
   return (
     <div
       ref={containerRef}
-      className="h-full w-full [&_.leaflet-control-zoom]:hidden lg:[&_.leaflet-control-zoom]:block"
+      className="h-full w-full [&_.maplibregl-ctrl-group]:hidden lg:[&_.maplibregl-ctrl-group]:block"
     />
   );
 }
 
-function toBounds(map: Leaflet): MapBounds {
+function toBounds(map: GLMap): MapBounds {
   const b = map.getBounds();
   return {
     swLat: b.getSouthWest().lat,
@@ -384,14 +419,11 @@ function toBounds(map: Leaflet): MapBounds {
 }
 
 /**
- * The app's pin: a spot in the brand blue, ringed by the page background
- * so it reads on any tile. Own spots are the full accent, followed ones
- * the lighter tint; the open one grows and gains a halo.
+ * The app's pin: a spot in its own first colour, ringed by the page
+ * background so it reads on any basemap. Own spots add an accent ring;
+ * the open one grows and gains a halo.
  */
-function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
-  // Big enough to read as a marker on any tile: the spot's colour inside a
-  // white ring with a soft shadow; own spots add an accent ring; the open
-  // one grows and gains a halo.
+function paintPin(element: HTMLElement, pin: MapPin, active: boolean) {
   const size = active ? 28 : 22;
   const fill = pinColor(pin.colors) ?? `var(${pin.isOwn ? "--color-accent" : "--color-accent-light"})`;
   const shadows = [
@@ -399,32 +431,40 @@ function pinIcon(L: Leaflet, pin: MapPin, active: boolean) {
     active ? "0 0 0 6px var(--color-accent-tint)" : null,
     "0 2px 6px rgba(22, 32, 58, 0.35)",
   ].filter(Boolean);
-  return L.divIcon({
-    className: "spot-pin",
-    html: `<div style="
-      box-sizing: border-box;
-      width: ${size}px;
-      height: ${size}px;
-      border-radius: 9999px;
-      background: ${fill};
-      border: ${active ? 4 : 3}px solid var(--color-bg);
-      box-shadow: ${shadows.join(", ")};
-    "></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+  element.style.boxSizing = "border-box";
+  element.style.width = `${size}px`;
+  element.style.height = `${size}px`;
+  element.style.borderRadius = "9999px";
+  element.style.background = fill;
+  element.style.border = `${active ? 4 : 3}px solid var(--color-bg)`;
+  element.style.boxShadow = shadows.join(", ");
+}
+
+function pinElement(pin: MapPin, active: boolean, title: string): HTMLElement {
+  const element = document.createElement("div");
+  element.className = "spot-pin";
+  element.title = title;
+  element.setAttribute("data-pin", pin.id);
+  paintPin(element, pin, active);
+  return element;
 }
 
 /** A filled dot that grows gently with its count and shows it. */
-function clusterIcon(L: Leaflet, count: number) {
+function clusterElement(count: number, title: string): HTMLElement {
   const size = clusterMarkerSize(count);
   const fontSize = size >= 52 ? 15 : size >= 42 ? 14 : 13;
-  return L.divIcon({
-    className: "spot-cluster",
-    html: `<div class="spot-cluster__badge" style="width:${size}px;height:${size}px;font-size:${fontSize}px">${formatClusterCount(count)}</div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+  const element = document.createElement("div");
+  element.className = "spot-cluster";
+  element.title = title;
+  element.setAttribute("data-cluster", String(count));
+  const badge = document.createElement("div");
+  badge.className = "spot-cluster__badge";
+  badge.style.width = `${size}px`;
+  badge.style.height = `${size}px`;
+  badge.style.fontSize = `${fontSize}px`;
+  badge.textContent = formatClusterCount(count);
+  element.appendChild(badge);
+  return element;
 }
 
 /**
