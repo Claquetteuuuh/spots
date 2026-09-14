@@ -325,6 +325,7 @@ describe("SpotPhotosSection", () => {
           { uri: "file:///small.jpg", fileName: "other.jpg" },
         ],
         "Blue hour",
+        expect.any(Function), // what fills the ring on the way up
       );
     });
 
@@ -345,6 +346,7 @@ describe("SpotPhotosSection", () => {
         "s1",
         [{ uri: "file:///small.jpg", fileName: "b.jpg" }],
         undefined,
+        expect.any(Function),
       );
     });
 
@@ -357,6 +359,31 @@ describe("SpotPhotosSection", () => {
       await waitFor(() => expect(mockedPicker.launchImageLibraryAsync).toHaveBeenCalled());
       expect(screen.queryByTestId("spot-photo-caption")).toBeNull();
       expect(mockedApi.addSpotPhoto).not.toHaveBeenCalled();
+    });
+
+    it("shows how far the photos have got while they travel", async () => {
+      pickerReturns({ uri: "file:///a.jpg", fileName: "a.jpg" });
+      // Hold the upload open, calling back with the share already sent
+      let report: ((fraction: number) => void) | undefined;
+      mockedApi.addSpotPhoto.mockImplementation(
+        (_spot, _photos, _caption, onProgress) =>
+          new Promise(() => {
+            report = onProgress;
+          }),
+      );
+      await renderSection();
+      await screen.findByText("spotPhotos.noPhotos");
+
+      await fireEvent.press(screen.getByTestId("add-spot-photo"));
+      await fireEvent.press(await screen.findByTestId("submit-spot-photo"));
+
+      const dial = await screen.findByTestId("upload-progress-percent");
+      expect(dial.props.children).toBe(0);
+
+      await act(async () => {
+        report?.(0.6);
+      });
+      expect(screen.getByTestId("upload-progress-percent").props.children).toBe(60);
     });
 
     it("reports an upload failure and keeps the form open", async () => {

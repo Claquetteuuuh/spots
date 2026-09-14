@@ -405,6 +405,11 @@ describe("SpotDetailPage — the community's posts", () => {
       fireEvent.click(screen.getByText("spotPhotos.post"));
     });
 
-    expect(mockSpotsUploadPhoto).toHaveBeenCalledWith("spot-1", files, "Mine");
+    expect(mockSpotsUploadPhoto).toHaveBeenCalledWith(
+      "spot-1",
+      files,
+      "Mine",
+      expect.any(Function), // what fills the ring on the way up
+    );
   });
 });

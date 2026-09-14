@@ -3,7 +3,7 @@
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getToken } from "@/lib/api-client";
+import { getToken, fetchOrExplain } from "@/lib/api-client";
 import { Input, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/avatar";
@@ -58,7 +58,7 @@ export default function EditProfilePage() {
         body.avatarUrl = avatarUrl;
       }
 
-      const res = await fetch("/api/auth/me", {
+      const res = await fetchOrExplain("/api/auth/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

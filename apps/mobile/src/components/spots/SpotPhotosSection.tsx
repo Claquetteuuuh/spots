@@ -12,6 +12,7 @@ import { addSpotPhoto, deleteSpotPhoto, getSpotPhotos, type OutgoingPhoto } from
 import { extractErrorMessage } from "../../lib/error";
 import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
 import { Button } from "../ui/Button";
+import { UploadProgress } from "../ui/UploadProgress";
 import { CommunityPost } from "./CommunityPost";
 import { MentionInput } from "./MentionInput";
 import { PhotoLightbox } from "./PhotoLightbox";
@@ -50,6 +51,8 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
   const [isComposing, setIsComposing] = useState(false);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  /** How much of the post has gone out, 0 → 1. */
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -123,8 +126,14 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
   const submitPost = async () => {
     if (pending.length === 0) return;
     setIsUploading(true);
+    setUploadProgress(0);
     try {
-      const post = await addSpotPhoto(spotId, pending, caption.trim() || undefined);
+      const post = await addSpotPhoto(
+        spotId,
+        pending,
+        caption.trim() || undefined,
+        setUploadProgress,
+      );
       setPhotos((prev) => [post, ...prev]);
       setPending([]);
       setCaption("");
@@ -293,8 +302,16 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
             testID="spot-photo-caption"
           />
 
+          {isUploading ? (
+            <UploadProgress
+              value={uploadProgress}
+              label={t("spotPhotos.uploading")}
+              testID="upload-progress"
+            />
+          ) : null}
+
           <Button
-            title={isUploading ? t("spotPhotos.uploading") : t("spotPhotos.post")}
+            title={t("spotPhotos.post")}
             onPress={() => void submitPost()}
             loading={isUploading}
             disabled={pending.length === 0}

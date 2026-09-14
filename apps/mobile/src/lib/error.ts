@@ -25,9 +25,11 @@ interface ApiErrorBody {
  */
 export function extractErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
-    // Network error — device offline, wrong URL, server unreachable
-    if (!error.response && error.message === "Network Error") {
-      return i18n.t("auth.errors.networkError");
+    // Nothing came back: the phone lost its signal, the server could not
+    // be reached, the request timed out. Axios spells that several ways —
+    // the absence of a response is what they have in common.
+    if (!error.response) {
+      return i18n.t("common.networkError");
     }
 
     const body = error.response?.data as ApiErrorBody | undefined;

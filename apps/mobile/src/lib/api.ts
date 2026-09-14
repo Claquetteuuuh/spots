@@ -448,11 +448,16 @@ export interface OutgoingPhoto {
   fileName?: string;
 }
 
-/** Post one to `MAX_POST_PHOTOS` photos under a spot, with a caption. */
+/**
+ * Post one to `MAX_POST_PHOTOS` photos under a spot, with a caption.
+ * `onProgress` is called with the share of the body already sent, which
+ * is what fills the ring on screen.
+ */
 export async function addSpotPhoto(
   spotId: string,
   photos: OutgoingPhoto[],
   caption?: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<SpotPhoto> {
   const formData = new FormData();
   for (const { uri, fileName = "photo.jpg" } of photos) {
@@ -463,7 +468,13 @@ export async function addSpotPhoto(
     } as unknown as Blob);
   }
   if (caption) formData.append("caption", caption);
-  const { data } = await client.post<SpotPhoto>(API_ROUTES.spots.photos(spotId), formData, MULTIPART);
+  const { data } = await client.post<SpotPhoto>(API_ROUTES.spots.photos(spotId), formData, {
+    ...MULTIPART,
+    onUploadProgress: (event) => {
+      if (event.total) onProgress?.(event.loaded / event.total);
+    },
+  });
+  onProgress?.(1);
   return data;
 }
 

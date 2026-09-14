@@ -8,7 +8,7 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { apiClient, getToken } from "@/lib/api-client";
+import { apiClient, getToken, fetchOrExplain } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/locale-context";
@@ -203,7 +203,7 @@ export default function SettingsPage() {
 
       try {
         const token = getToken();
-        const res = await fetch("/api/auth/me", {
+        const res = await fetchOrExplain("/api/auth/me", {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -277,7 +277,7 @@ export default function SettingsPage() {
     setIsSavingPrivacy(true);
     try {
       const token = getToken();
-      const res = await fetch("/api/auth/me", {
+      const res = await fetchOrExplain("/api/auth/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

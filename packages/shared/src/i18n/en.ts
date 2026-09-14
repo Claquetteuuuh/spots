@@ -8,6 +8,7 @@ export const en = {
   common: {
     loading: "Loading...",
     error: "Something went wrong",
+    networkError: "Check your internet connection",
     retry: "Retry",
     save: "Save",
     cancel: "Cancel",

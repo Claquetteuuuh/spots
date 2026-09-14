@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { API_ROUTES, type SpotAccessibility } from "@trs/shared/constants";
 import type { MapBounds, MapFilterQuery, MapPin, MapScope } from "@trs/shared/map";
 import type {
@@ -160,6 +161,39 @@ async function doRefresh(): Promise<AuthResponse> {
 }
 
 /** Send an authenticated request, refreshing the token once on a 401. */
+/**
+ * A request that never left: the connection dropped, the phone lost its
+ * signal, the server could not be reached. `fetch` says "Load failed" or
+ * "Failed to fetch" depending on the browser, which means nothing to a
+ * photographer — every screen shows this instead.
+ */
+export class NetworkError extends Error {
+  readonly isNetworkError = true;
+
+  constructor() {
+    super(t("common.networkError"));
+    this.name = "NetworkError";
+  }
+}
+
+/** Whether a thrown value is a connection failure rather than a refusal. */
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof NetworkError || (error as { isNetworkError?: boolean })?.isNetworkError === true;
+}
+
+/**
+ * `fetch`, with a failure a person can act on. Exported for the handful
+ * of screens that call the API without going through this client.
+ */
+export async function fetchOrExplain(path: string, init: RequestInit = {}): Promise<Response> {
+  try {
+    return await fetch(path, init);
+  } catch {
+    // fetch only rejects when the request never completed
+    throw new NetworkError();
+  }
+}
+
 async function send(path: string, options: RequestInit = {}, _skipRefresh = false): Promise<Response> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -175,7 +209,7 @@ async function send(path: string, options: RequestInit = {}, _skipRefresh = fals
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(path, {
+  const res = await fetchOrExplain(path, {
     // A refresh must always reach the server, never the browser's cache
     cache: "no-store",
     ...options,
@@ -198,6 +232,51 @@ async function send(path: string, options: RequestInit = {}, _skipRefresh = fals
   }
 
   return res;
+}
+
+/**
+ * A multipart POST that says how far it has got. `fetch` cannot: it has
+ * no upload progress, so this one is XHR — the only part of the client
+ * that is.
+ */
+function upload<T>(
+  path: string,
+  body: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", path);
+
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    });
+
+    xhr.addEventListener("load", () => {
+      let json: ApiResponse<T> | null = null;
+      try {
+        json = JSON.parse(xhr.responseText) as ApiResponse<T>;
+      } catch {
+        // A body that is not JSON means the request never reached the route
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && json && !(json as ApiError).error) {
+        onProgress?.(1);
+        resolve((json as { data: T }).data);
+        return;
+      }
+      reject(new Error((json as ApiError | null)?.error ?? `Request failed (${xhr.status})`));
+    });
+
+    // Nothing came back at all: the connection, not the server
+    xhr.addEventListener("error", () => reject(new NetworkError()));
+    xhr.addEventListener("abort", () => reject(new NetworkError()));
+    xhr.addEventListener("timeout", () => reject(new NetworkError()));
+
+    xhr.send(body);
+  });
 }
 
 async function request<T>(
@@ -608,18 +687,21 @@ export const apiClient = {
       );
     },
 
+    /**
+     * Post photos under a spot. Sent with XHR rather than fetch for one
+     * reason: it reports how much of the body has gone out, which is what
+     * fills the ring on screen while a handful of photos travel.
+     */
     async uploadPhoto(
       spotId: string,
       files: File[],
       caption?: string,
+      onProgress?: (fraction: number) => void,
     ): Promise<SpotPhoto> {
       const formData = new FormData();
       for (const file of files) formData.append("photo", file);
       if (caption) formData.append("caption", caption);
-      return request<SpotPhoto>(API_ROUTES.spots.photos(spotId), {
-        method: "POST",
-        body: formData,
-      });
+      return upload<SpotPhoto>(API_ROUTES.spots.photos(spotId), formData, onProgress);
     },
 
     async deletePhoto(spotId: string, photoId: string): Promise<void> {

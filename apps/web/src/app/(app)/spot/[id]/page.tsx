@@ -4,6 +4,7 @@ import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
 import { CommunityPost } from "@/components/community-post";
 import { MentionInput } from "@/components/mention-input";
+import { UploadProgress } from "@/components/upload-progress";
 import { ZoomablePhoto } from "@/components/zoomable-photo";
 import { LocationDetails } from "@/components/location-details";
 import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
@@ -232,6 +233,8 @@ export default function SpotDetailPage({
   const [photosCursor, setPhotosCursor] = useState<string | null>(null);
   const [showAddPhoto, setShowAddPhoto] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  /** How much of the post has gone out, 0 → 1. */
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [caption, setCaption] = useState("");
   const [uploadMessage, setUploadMessage] = useState<{
     type: "success" | "error";
@@ -354,12 +357,18 @@ export default function SpotDetailPage({
     if (chosen.length === 0 || isUploading) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     setUploadMessage(null);
 
     try {
       // Shrunk here so a 12 MP original never crosses the network
       const files = await Promise.all(chosen.map(downscaleForUpload));
-      const post = await apiClient.spots.uploadPhoto(id, files, caption || undefined);
+      const post = await apiClient.spots.uploadPhoto(
+        id,
+        files,
+        caption || undefined,
+        setUploadProgress,
+      );
       setPhotos((prev) => [post, ...prev]);
       setCaption("");
       setChosen([]);
@@ -761,13 +770,17 @@ export default function SpotDetailPage({
             />
 
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-text-tertiary">
-                {chosen.length > 0
-                  ? t("spotPhotos.photosChosen", { count: chosen.length })
-                  : t("spotPhotos.maxPhotos", { count: MAX_POST_PHOTOS })}
-              </p>
+              {isUploading ? (
+                <UploadProgress value={uploadProgress} label={t("spotPhotos.uploading")} />
+              ) : (
+                <p className="text-xs text-text-tertiary">
+                  {chosen.length > 0
+                    ? t("spotPhotos.photosChosen", { count: chosen.length })
+                    : t("spotPhotos.maxPhotos", { count: MAX_POST_PHOTOS })}
+                </p>
+              )}
               <Button onClick={handlePost} disabled={chosen.length === 0 || isUploading}>
-                {isUploading ? t("spotPhotos.uploading") : t("spotPhotos.post")}
+                {t("spotPhotos.post")}
               </Button>
             </div>
           </Card>

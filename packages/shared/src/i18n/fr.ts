@@ -8,6 +8,7 @@ export const fr = {
   common: {
     loading: "Chargement...",
     error: "Une erreur est survenue",
+    networkError: "Vérifiez votre connexion internet",
     retry: "Réessayer",
     save: "Enregistrer",
     cancel: "Annuler",

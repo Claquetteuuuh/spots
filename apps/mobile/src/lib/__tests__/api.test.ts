@@ -265,7 +265,11 @@ describe("API client", () => {
       expect(client.post).toHaveBeenCalledWith(
         "/api/spots/s1/photos",
         expect.any(FormData),
-        { headers: { "Content-Type": "multipart/form-data" } }
+        expect.objectContaining({
+          headers: { "Content-Type": "multipart/form-data" },
+          // …and a way to report how far the body has got
+          onUploadProgress: expect.any(Function),
+        })
       );
       expect(result).toEqual(mockPhoto);
     });

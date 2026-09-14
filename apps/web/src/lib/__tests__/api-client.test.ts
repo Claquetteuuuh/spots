@@ -2,7 +2,10 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { en } from "@trs/shared/i18n";
 import {
+  apiClient,
+  isNetworkError,
   getToken,
   setToken,
   clearToken,
@@ -183,5 +186,98 @@ describe("apiClient", () => {
 
     expect(getToken()).toBeNull();
     expect(getRefreshToken()).toBeNull();
+  });
+});
+
+// ─── When the request never left ─────────────────────────────────────
+
+describe("a connection that drops", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearToken();
+  });
+
+  it("says to check the connection, not 'Load failed'", async () => {
+    // What fetch throws when the request never completed — the browser's
+    // own wording ("Load failed" in Safari) means nothing to anyone.
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("Load failed");
+    }));
+
+    const failure = await apiClient.spots.get("spot-1").catch((e: unknown) => e);
+
+    expect(isNetworkError(failure)).toBe(true);
+    expect((failure as Error).message).toBe(en.common.networkError);
+    expect((failure as Error).message).not.toContain("Load failed");
+  });
+
+  it("leaves a refusal from the server alone", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "Spot not found" }), { status: 404 })));
+
+    const failure = await apiClient.spots.get("nope").catch((e: unknown) => e);
+
+    expect(isNetworkError(failure)).toBe(false);
+    expect((failure as Error).message).toBe("Spot not found");
+  });
+});
+
+// ─── Posting photos, with something to watch ─────────────────────────
+
+/** A stand-in XHR whose upload can be played frame by frame. */
+function fakeXhr() {
+  const listeners = new Map<string, (e?: unknown) => void>();
+  const uploadListeners = new Map<string, (e?: unknown) => void>();
+  const xhr = {
+    status: 200,
+    responseText: "",
+    open: vi.fn(),
+    setRequestHeader: vi.fn(),
+    send: vi.fn(),
+    addEventListener: (event: string, fn: (e?: unknown) => void) => listeners.set(event, fn),
+    upload: { addEventListener: (event: string, fn: (e?: unknown) => void) => uploadListeners.set(event, fn) },
+    /** Play the body going out. */
+    progress: (loaded: number, total: number) =>
+      uploadListeners.get("progress")?.({ lengthComputable: true, loaded, total }),
+    finish: (status: number, body: unknown) => {
+      xhr.status = status;
+      xhr.responseText = JSON.stringify(body);
+      listeners.get("load")?.();
+    },
+    drop: () => listeners.get("error")?.(),
+  };
+  vi.stubGlobal("XMLHttpRequest", vi.fn(() => xhr));
+  return xhr;
+}
+
+describe("uploadPhoto", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearToken();
+  });
+
+  it("reports how far the photos have got, and hands back the post", async () => {
+    const xhr = fakeXhr();
+    const seen: number[] = [];
+    const file = new File(["x"], "a.jpg", { type: "image/jpeg" });
+
+    const pending = apiClient.spots.uploadPhoto("spot-1", [file], "hi", (f) => seen.push(f));
+    xhr.progress(50, 200);
+    xhr.progress(200, 200);
+    xhr.finish(201, { data: { id: "post-1" } });
+
+    await expect(pending).resolves.toEqual({ id: "post-1" });
+    expect(seen).toEqual([0.25, 1, 1]); // …and 1 once more when the answer lands
+    expect(xhr.open).toHaveBeenCalledWith("POST", "/api/spots/spot-1/photos");
+  });
+
+  it("says to check the connection when the upload never lands", async () => {
+    const xhr = fakeXhr();
+    const file = new File(["x"], "a.jpg", { type: "image/jpeg" });
+
+    const pending = apiClient.spots.uploadPhoto("spot-1", [file]);
+    xhr.drop();
+
+    const failure = await pending.catch((e: unknown) => e);
+    expect(isNetworkError(failure)).toBe(true);
   });
 });
