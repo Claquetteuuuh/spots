@@ -1,3 +1,11 @@
+# ──────────────────────────────────────────────────────────────────────
+# Dependabot — one pull request per ecosystem, per week.
+#
+# Groups matter twice over: without them each bump is its own PR, and
+# each PR fires the whole CI fleet. `applies-to: security-updates` is the
+# one that bites — security bumps ignore version-update groups unless it
+# is spelled out, which is how eight separate PRs land in one morning.
+# ──────────────────────────────────────────────────────────────────────
 version: 2
 updates:
   # ── pnpm (root monorepo) ────────────────────────────────────────────
@@ -6,15 +14,18 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     labels:
       - dependencies
     groups:
-      # Group minor+patch to avoid PR spam.
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
+      all-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
     # Ignore Expo-managed packages — they must stay in sync with the SDK.
     ignore:
       - dependency-name: "expo-*"
@@ -27,14 +38,19 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - web
     groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
+      all-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
 
   # ── Mobile app ──────────────────────────────────────────────────────
   - package-ecosystem: npm
@@ -42,14 +58,19 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - mobile
     groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
+      all-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "expo-*"
       - dependency-name: "react-native"
@@ -60,11 +81,17 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 1
     labels:
       - dependencies
       - ci
     groups:
       actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      actions-security:
+        applies-to: security-updates
         patterns:
           - "*"

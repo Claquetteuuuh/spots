@@ -32,7 +32,8 @@ jobs:
     # public repos (or with Code Security on paid plans). On a private repo the
     # analysis fails at upload time, so skip it until then — drop this guard once
     # Code scanning is enabled in Settings → Security.
-    if: ${{ !github.event.repository.private }}
+    # …and a dependency bump changes no source to analyse.
+    if: ${{ !github.event.repository.private && github.actor != 'dependabot[bot]' }}
     strategy:
       fail-fast: false
       matrix:
