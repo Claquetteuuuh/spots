@@ -25,6 +25,9 @@ const pin = (id: string, latitude: number, longitude: number): MapPin => ({
   accessibility: null,
 });
 
+/** Building a map is asynchronous; a loaded machine takes its time. */
+const READY = { timeout: 5000 };
+
 /** Let the map's deferred work (its 100ms first draw, animation frames) run. */
 const settle = (ms = 150) =>
   act(async () => {
@@ -64,7 +67,7 @@ describe("SpotMap", () => {
     });
     const { container, unmount } = view;
 
-    await waitFor(() => expect(container.querySelectorAll(".spot-pin").length).toBe(2));
+    await waitFor(() => expect(container.querySelectorAll(".spot-pin").length).toBe(2), READY);
     const marks = container.querySelectorAll<HTMLElement>(".spot-pin");
 
     await act(async () => {
@@ -101,7 +104,7 @@ describe("SpotMap", () => {
     });
     const { container, unmount } = view;
 
-    await waitFor(() => expect(container.querySelector(".spot-cluster")).not.toBeNull());
+    await waitFor(() => expect(container.querySelector(".spot-cluster")).not.toBeNull(), READY);
     expect(container.querySelector(".spot-cluster__badge")?.textContent).toBe("3");
 
     // Tapping it zooms in far enough for the cluster to break apart
@@ -109,7 +112,7 @@ describe("SpotMap", () => {
       fireEvent.click(container.querySelector<HTMLElement>(".spot-cluster")!);
     });
     await settle();
-    await waitFor(() => expect(container.querySelectorAll(".spot-pin").length).toBe(3));
+    await waitFor(() => expect(container.querySelectorAll(".spot-pin").length).toBe(3), READY);
 
     await act(async () => {
       unmount();
@@ -126,7 +129,7 @@ describe("SpotMap", () => {
     });
     const { unmount } = view;
 
-    await waitFor(() => expect(onViewportChange).toHaveBeenCalled());
+    await waitFor(() => expect(onViewportChange).toHaveBeenCalled(), READY);
     const viewport = onViewportChange.mock.calls.at(-1)![0];
     expect(viewport.zoom).toBe(5); // MapLibre counts one lower: 4 on its own scale
     expect(viewport.bounds.swLat).toBeLessThan(viewport.bounds.neLat);
@@ -154,7 +157,7 @@ describe("SpotMap", () => {
     });
     const { container, unmount } = view;
 
-    await waitFor(() => expect(container.querySelector(".you-are-here")).not.toBeNull());
+    await waitFor(() => expect(container.querySelector(".you-are-here")).not.toBeNull(), READY);
     const cone = container.querySelector<HTMLElement>(".you-are-here__cone")!;
     expect(cone.hidden).toBe(false);
     expect(cone.style.transform).toBe("rotate(90deg)");

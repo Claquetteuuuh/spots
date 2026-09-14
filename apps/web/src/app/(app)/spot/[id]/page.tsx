@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/api-client";
 import type { Spot, SpotPhoto, SpotImage } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
 import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
+import { downscaleForUpload } from "@/lib/downscale";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
@@ -356,7 +357,9 @@ export default function SpotDetailPage({
     setUploadMessage(null);
 
     try {
-      const post = await apiClient.spots.uploadPhoto(id, chosen, caption || undefined);
+      // Shrunk here so a 12 MP original never crosses the network
+      const files = await Promise.all(chosen.map(downscaleForUpload));
+      const post = await apiClient.spots.uploadPhoto(id, files, caption || undefined);
       setPhotos((prev) => [post, ...prev]);
       setCaption("");
       setChosen([]);
