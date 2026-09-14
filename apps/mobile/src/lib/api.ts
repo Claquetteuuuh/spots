@@ -442,13 +442,26 @@ export async function getSpotPhotos(
   return data;
 }
 
+/** A photo on its way up: where it is, and what to call it. */
+export interface OutgoingPhoto {
+  uri: string;
+  fileName?: string;
+}
+
+/** Post one to `MAX_POST_PHOTOS` photos under a spot, with a caption. */
 export async function addSpotPhoto(
   spotId: string,
-  uri: string,
+  photos: OutgoingPhoto[],
   caption?: string,
-  fileName = "photo.jpg",
 ): Promise<SpotPhoto> {
-  const formData = photoFormData(uri, fileName);
+  const formData = new FormData();
+  for (const { uri, fileName = "photo.jpg" } of photos) {
+    formData.append("photo", {
+      uri,
+      name: fileName,
+      type: mimeTypeFor(fileName),
+    } as unknown as Blob);
+  }
   if (caption) formData.append("caption", caption);
   const { data } = await client.post<SpotPhoto>(API_ROUTES.spots.photos(spotId), formData, MULTIPART);
   return data;

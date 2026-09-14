@@ -10,15 +10,27 @@ import { clampZoom, nextTapZoom } from "../../lib/zoom";
 interface PhotoLightboxProps {
   uri: string | null;
   onClose: () => void;
+  /** A post's photos, when there is more than one to step through. */
+  uris?: string[];
+  index?: number;
+  onIndexChange?: (index: number) => void;
 }
 
 /**
  * A photo over everything, on black. Pinch or double-tap to zoom, drag to
  * look around; the cross closes it.
  */
-export function PhotoLightbox({ uri, onClose }: PhotoLightboxProps) {
+export function PhotoLightbox({
+  uri,
+  onClose,
+  uris = [],
+  index = 0,
+  onIndexChange,
+}: PhotoLightboxProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const count = uris.length;
+  const step = (by: number) => onIndexChange?.((index + by + count) % count);
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -86,6 +98,36 @@ export function PhotoLightbox({ uri, onClose }: PhotoLightboxProps) {
           />
         </GestureDetector>
 
+        {count > 1 ? (
+          <>
+            <Pressable
+              onPress={() => step(-1)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.previous")}
+              style={[styles.step, styles.stepLeft]}
+              testID="lightbox-previous"
+            >
+              <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={() => step(1)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.next")}
+              style={[styles.step, styles.stepRight]}
+              testID="lightbox-next"
+            >
+              <Ionicons name="chevron-forward" size={26} color="#FFFFFF" />
+            </Pressable>
+            <View pointerEvents="none" style={[styles.counter, { top: insets.top + 16 }]}>
+              <Text style={styles.counterText}>
+                {t("spotPhotos.photoOf", { index: index + 1, count })}
+              </Text>
+            </View>
+          </>
+        ) : null}
+
         <Pressable
           onPress={onClose}
           hitSlop={8}
@@ -113,6 +155,36 @@ const styles = StyleSheet.create({
   photo: {
     flex: 1,
     width: "100%",
+  },
+  step: {
+    position: "absolute",
+    top: "50%",
+    width: 44,
+    height: 44,
+    marginTop: -22,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  stepLeft: {
+    left: 12,
+  },
+  stepRight: {
+    right: 12,
+  },
+  counter: {
+    position: "absolute",
+    left: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  counterText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
   close: {
     position: "absolute",

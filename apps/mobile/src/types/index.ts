@@ -189,14 +189,22 @@ export interface UploadPhotoResult {
 }
 
 /** A photo another user added under a spot. */
+/** One photo of a community post. */
+export interface SpotPhotoImage {
+  id: string;
+  photoUrl: string;
+}
+
+/** A post under a spot: what was written, who was named, what was shot. */
 export interface SpotPhoto {
   id: string;
   spotId: string;
   userId: string;
-  photoUrl: string;
-  photoKey: string;
   caption: string | null;
   createdAt: string;
+  images: SpotPhotoImage[];
+  /** The accounts the caption named — the apps link these, nothing else. */
+  mentions: Pick<User, "id" | "username">[];
   user: Pick<User, "id" | "username" | "name" | "avatarUrl">;
 }
 

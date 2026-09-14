@@ -1,44 +1,39 @@
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { useTranslation } from "react-i18next";
+import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
-import { addSpotPhoto, deleteSpotPhoto, getSpotPhotos } from "../../lib/api";
+import { addSpotPhoto, deleteSpotPhoto, getSpotPhotos, type OutgoingPhoto } from "../../lib/api";
 import { extractErrorMessage } from "../../lib/error";
 import { confirmDialog, noticeDialog } from "../../stores/dialog-store";
-import { Avatar } from "../Avatar";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { CommunityPost } from "./CommunityPost";
+import { MentionInput } from "./MentionInput";
+import { PhotoLightbox } from "./PhotoLightbox";
 import type { SpotPhoto } from "../../types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const COLUMNS = 3;
-const GRID_GAP = 2;
-/** The grid is full-bleed, three squares with a hairline gutter, like the profile. */
-const TILE = (SCREEN_WIDTH - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
 
 interface SpotPhotosSectionProps {
   spotId: string;
-  /** The spot's author — they may remove any community photo. */
+  /** The spot's author — they may remove any community post. */
   ownerId: string;
 }
 
 /**
- * Photos other users added under a spot: a grid, an "add your photo" flow
- * with a caption, and deletion by the photo's author or the spot's owner.
- * Tapping a tile opens a preview with the author and caption — the mobile
- * stand-in for the web's hover overlay.
+ * The longest edge a posted photo needs. The server re-encodes anyway;
+ * shrinking here is what keeps a 12 MP phone photo off a mobile network.
+ */
+const UPLOAD_MAX_EDGE = 2560;
+const UPLOAD_QUALITY = 0.82;
+
+/**
+ * What the community posted under a spot: each post its author, its text
+ * and its photos fanned out, plus the flow to add one — several photos at
+ * a time, a caption that can name people with an `@`.
  */
 export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
   const { t } = useTranslation();
@@ -49,8 +44,10 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [preview, setPreview] = useState<SpotPhoto | null>(null);
-  const [pending, setPending] = useState<{ uri: string; fileName: string } | null>(null);
+  /** Which post is open in the lightbox, and at which of its photos. */
+  const [openPost, setOpenPost] = useState<{ id: string; index: number } | null>(null);
+  const [pending, setPending] = useState<OutgoingPhoto[]>([]);
+  const [isComposing, setIsComposing] = useState(false);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -82,37 +79,56 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
       setPhotos((prev) => [...prev, ...page.items]);
       setNextCursor(page.nextCursor);
     } catch {
-      // Keep what we have.
+      // Leave what is already on screen
     } finally {
       setIsLoadingMore(false);
     }
   };
 
-  const pickPhoto = async () => {
+  /** Shrink and re-encode before the photo ever leaves the phone. */
+  const prepare = async (uri: string, fileName: string): Promise<OutgoingPhoto> => {
+    try {
+      const ctx = ImageManipulator.manipulate(uri);
+      ctx.resize({ width: UPLOAD_MAX_EDGE });
+      const rendered = await ctx.renderAsync();
+      const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: UPLOAD_QUALITY });
+      return { uri: saved.uri, fileName };
+    } catch {
+      // A photo the phone cannot re-encode still goes up as it is
+      return { uri, fileName };
+    }
+  };
+
+  const pickPhotos = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.7,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_POST_PHOTOS,
+      quality: 1,
     });
-    const asset = result.canceled ? null : result.assets[0];
-    if (!asset) return;
+    if (result.canceled || result.assets.length === 0) return;
+
+    const chosen = await Promise.all(
+      result.assets
+        .slice(0, MAX_POST_PHOTOS)
+        .map((asset, i) => prepare(asset.uri, asset.fileName ?? `photo-${Date.now()}-${i}.jpg`)),
+    );
+    setPending(chosen);
     setCaption("");
-    setPending({ uri: asset.uri, fileName: asset.fileName ?? `photo-${Date.now()}.jpg` });
+    setIsComposing(true);
   };
 
-  const submitPhoto = async () => {
-    if (!pending) return;
+  const submitPost = async () => {
+    if (pending.length === 0) return;
     setIsUploading(true);
     try {
-      const photo = await addSpotPhoto(
-        spotId,
-        pending.uri,
-        caption.trim() || undefined,
-        pending.fileName,
-      );
-      setPhotos((prev) => [photo, ...prev]);
-      setPending(null);
+      const post = await addSpotPhoto(spotId, pending, caption.trim() || undefined);
+      setPhotos((prev) => [post, ...prev]);
+      setPending([]);
+      setCaption("");
+      setIsComposing(false);
     } catch (err) {
       void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
     } finally {
@@ -120,12 +136,12 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
     }
   };
 
-  const removePhoto = async (photo: SpotPhoto) => {
-    setDeletingId(photo.id);
+  const removePost = async (post: SpotPhoto) => {
+    setDeletingId(post.id);
     try {
-      await deleteSpotPhoto(spotId, photo.id);
-      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      setPreview((current) => (current?.id === photo.id ? null : current));
+      await deleteSpotPhoto(spotId, post.id);
+      setPhotos((prev) => prev.filter((p) => p.id !== post.id));
+      setOpenPost((current) => (current?.id === post.id ? null : current));
     } catch (err) {
       void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
     } finally {
@@ -133,36 +149,40 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
     }
   };
 
-  const confirmDelete = (photo: SpotPhoto) => {
+  const confirmDelete = (post: SpotPhoto) => {
     void confirmDialog({
       title: t("spotPhotos.deletePhoto"),
       message: t("spotPhotos.deleteConfirm"),
       confirmLabel: t("common.delete"),
       destructive: true,
     }).then((sure) => {
-      if (sure) void removePhoto(photo);
+      if (sure) void removePost(post);
     });
   };
 
-  const canDelete = (photo: SpotPhoto) =>
-    !!user && (user.id === photo.userId || user.id === ownerId);
+  const canDelete = (post: SpotPhoto) =>
+    !!user && (user.id === post.user.id || user.id === ownerId);
+
+  /** The photos of the post the lightbox is showing, if it is still here. */
+  const openImages =
+    photos.find((post) => post.id === openPost?.id)?.images.map((image) => image.photoUrl) ?? [];
+  const openIndex = openPost ? Math.min(openPost.index, Math.max(openImages.length - 1, 0)) : 0;
 
   return (
     <View>
-      {/* Header row: label + add */}
       <View style={styles.headerRow}>
         <Text
           style={{
             color: theme.colors.textSecondary,
             fontSize: theme.typography.size.xs,
-            textTransform: "uppercase",
             letterSpacing: 0.5,
+            textTransform: "uppercase",
           }}
         >
           {t("spotPhotos.title")}
         </Text>
         <Pressable
-          onPress={() => void pickPhoto()}
+          onPress={() => void pickPhotos()}
           hitSlop={8}
           style={styles.addButton}
           accessibilityRole="button"
@@ -193,35 +213,16 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
           {t("spotPhotos.noPhotos")}
         </Text>
       ) : (
-        <View style={[styles.grid, { marginHorizontal: -theme.spacing.lg }]}>
-          {photos.map((photo) => (
-            <View key={photo.id} style={styles.tile}>
-              <Pressable
-                onPress={() => setPreview(photo)}
-                style={StyleSheet.absoluteFill}
-                accessibilityRole="imagebutton"
-                accessibilityLabel={photo.caption ?? photo.user.username}
-                testID={`spot-photo-${photo.id}`}
-              >
-                <Image
-                  source={{ uri: photo.photoUrl }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                />
-              </Pressable>
-              {canDelete(photo) ? (
-                <Pressable
-                  onPress={() => confirmDelete(photo)}
-                  disabled={deletingId === photo.id}
-                  hitSlop={6}
-                  style={styles.deleteButton}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("spotPhotos.deletePhoto")}
-                  testID={`delete-spot-photo-${photo.id}`}
-                >
-                  <Ionicons name="trash-outline" size={14} color="#FFFFFF" />
-                </Pressable>
-              ) : null}
+        <View>
+          {photos.map((post) => (
+            <View key={post.id} style={[styles.divider, { borderTopColor: theme.colors.border }]}>
+              <CommunityPost
+                post={post}
+                canDelete={canDelete(post)}
+                isDeleting={deletingId === post.id}
+                onDelete={() => confirmDelete(post)}
+                onOpenPhoto={(index) => setOpenPost({ id: post.id, index })}
+              />
             </View>
           ))}
         </View>
@@ -237,51 +238,21 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
         />
       ) : null}
 
-      {/* Preview: author + caption over the photo */}
-      <Modal
-        visible={preview !== null}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setPreview(null)}
-      >
-        <Pressable style={styles.previewBackdrop} onPress={() => setPreview(null)}>
-          {preview ? (
-            <View style={styles.previewCard}>
-              <Image
-                source={{ uri: preview.photoUrl }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
-              <View style={styles.previewMeta}>
-                <Avatar url={preview.user.avatarUrl} name={preview.user.name} size={28} />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: "#FFFFFF",
-                      fontSize: theme.typography.size.sm,
-                      fontWeight: theme.typography.weight.semibold,
-                    }}
-                  >
-                    {preview.user.username}
-                  </Text>
-                  {preview.caption ? (
-                    <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: theme.typography.size.sm }}>
-                      {preview.caption}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          ) : null}
-        </Pressable>
-      </Modal>
+      {/* A post's photos, over everything */}
+      <PhotoLightbox
+        uri={openImages.length > 0 ? openImages[openIndex] : null}
+        uris={openImages}
+        index={openIndex}
+        onIndexChange={(index) => setOpenPost((current) => (current ? { ...current, index } : current))}
+        onClose={() => setOpenPost(null)}
+      />
 
-      {/* Add photo: the picked image and a caption, then upload */}
+      {/* Compose: the photos picked, a caption, then post */}
       <Modal
-        visible={pending !== null}
+        visible={isComposing}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setPending(null)}
+        onRequestClose={() => setIsComposing(false)}
       >
         <View
           style={[
@@ -289,32 +260,50 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
             { backgroundColor: theme.colors.bg, padding: theme.spacing.xl, gap: theme.spacing.lg },
           ]}
         >
-          {pending ? (
-            <Image
-              source={{ uri: pending.uri }}
-              style={[styles.addPreview, { borderRadius: theme.radius.lg }]}
-              resizeMode="cover"
-            />
-          ) : null}
-          <Input
+          <View style={styles.thumbs}>
+            {pending.map((photo, i) => (
+              <View key={`${photo.uri}-${i}`} style={[styles.thumb, { borderRadius: theme.radius.md }]}>
+                <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <Pressable
+                  onPress={() => setPending((prev) => prev.filter((_, at) => at !== i))}
+                  hitSlop={6}
+                  style={styles.thumbRemove}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("spotPhotos.removePhoto")}
+                  testID={`remove-pending-${i}`}
+                >
+                  <Ionicons name="close" size={12} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+
+          <Text style={{ color: theme.colors.textTertiary, fontSize: theme.typography.size.xs }}>
+            {pending.length > 0
+              ? t("spotPhotos.photosChosen", { count: pending.length })
+              : t("spotPhotos.maxPhotos", { count: MAX_POST_PHOTOS })}
+          </Text>
+
+          <MentionInput
             label={t("spotPhotos.caption")}
-            placeholder={t("spotPhotos.captionPlaceholder")}
             value={caption}
             onChangeText={setCaption}
             maxLength={500}
-            multiline
+            editable={!isUploading}
             testID="spot-photo-caption"
           />
+
           <Button
-            title={isUploading ? t("spotPhotos.uploading") : t("spotPhotos.addPhoto")}
-            onPress={() => void submitPhoto()}
+            title={isUploading ? t("spotPhotos.uploading") : t("spotPhotos.post")}
+            onPress={() => void submitPost()}
             loading={isUploading}
+            disabled={pending.length === 0}
             testID="submit-spot-photo"
           />
           <Button
             title={t("common.cancel")}
             variant="ghost"
-            onPress={() => setPending(null)}
+            onPress={() => setIsComposing(false)}
             disabled={isUploading}
           />
         </View>
@@ -342,49 +331,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: 32,
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: GRID_GAP,
-  },
-  tile: {
-    width: TILE,
-    height: TILE,
-  },
-  deleteButton: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  previewBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.9)",
-    justifyContent: "center",
-  },
-  previewCard: {
-    width: "100%",
-  },
-  previewImage: {
-    width: "100%",
-    aspectRatio: 1,
-  },
-  previewMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 16,
+  divider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   addSheet: {
     flex: 1,
   },
-  addPreview: {
-    width: "100%",
-    aspectRatio: 1,
+  thumbs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  thumb: {
+    width: 72,
+    height: 72,
+    overflow: "hidden",
+    backgroundColor: "rgba(22,32,58,0.06)",
+  },
+  thumbRemove: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
 });

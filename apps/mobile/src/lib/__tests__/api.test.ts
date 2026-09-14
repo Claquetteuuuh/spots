@@ -252,11 +252,15 @@ describe("API client", () => {
       expect(result).toEqual(mockData);
     });
 
-    it("addSpotPhoto posts multipart form data to the spot's photos route", async () => {
-      const mockPhoto = { id: "p1", photoUrl: "https://cdn.example.com/p1.webp", caption: "Golden hour" };
+    it("addSpotPhoto posts every photo of a post as multipart form data", async () => {
+      const mockPhoto = { id: "p1", images: [{ id: "i1", photoUrl: "https://cdn.example.com/p1.webp" }] };
       jest.spyOn(client, "post").mockResolvedValueOnce({ data: mockPhoto });
 
-      const result = await api.addSpotPhoto("s1", "file:///photo.jpg", "Golden hour");
+      const result = await api.addSpotPhoto(
+        "s1",
+        [{ uri: "file:///photo.jpg" }, { uri: "file:///other.jpg", fileName: "other.jpg" }],
+        "Golden hour",
+      );
 
       expect(client.post).toHaveBeenCalledWith(
         "/api/spots/s1/photos",

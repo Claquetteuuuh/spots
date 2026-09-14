@@ -29,11 +29,12 @@ model User {
   locale    String  @default("fr")
   isPrivate Boolean @default(false)
 
-  spots              Spot[]
-  spotPhotos         SpotPhoto[]
-  spotLikes          SpotLike[]
-  followers          Follow[]             @relation("following")
-  following          Follow[]             @relation("follower")
+  spots               Spot[]
+  spotPhotos          SpotPhoto[]
+  photoMentions       SpotPhotoMention[]
+  spotLikes           SpotLike[]
+  followers           Follow[]             @relation("following")
+  following           Follow[]             @relation("follower")
   passwordResetTokens PasswordResetToken[]
 
   createdAt DateTime @default(now())
@@ -141,7 +142,7 @@ model Spot {
   accessibility SpotAccessibility?
 
   // Photography attributes — PostgreSQL native arrays
-  colors       String[]          // hex values e.g. ["#D4A574", "#2E4A3E"]
+  colors       String[] // hex values e.g. ["#D4A574", "#2E4A3E"]
   compositions CompositionType[]
   tags         String[]
 
@@ -193,19 +194,47 @@ model SpotLike {
 
 // ─── Community Photos ───────────────────────────────────────────────
 
+/// A photographer's post under a spot: what they wrote, who they named,
+/// and the photos they brought — one or several.
 model SpotPhoto {
-  id      String @id @default(cuid())
-  spotId  String
-  spot    Spot   @relation(fields: [spotId], references: [id], onDelete: Cascade)
-  userId  String
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  spotId String
+  spot   Spot   @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  photoUrl String
-  photoKey String // R2 object key
-  caption  String?
+  caption String?
+
+  images   SpotPhotoImage[]
+  mentions SpotPhotoMention[]
 
   createdAt DateTime @default(now())
 
   @@index([spotId, createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+/// One photo of a post, in the order it was chosen.
+model SpotPhotoImage {
+  id      String    @id @default(cuid())
+  photoId String
+  photo   SpotPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  photoUrl String
+  photoKey String // R2 object key
+  position Int    @default(0)
+
+  @@index([photoId, position])
+}
+
+/// Someone named with an @ in a post, resolved to the account they meant.
+model SpotPhotoMention {
+  id      String    @id @default(cuid())
+  photoId String
+  photo   SpotPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([photoId, userId])
   @@index([userId])
 }

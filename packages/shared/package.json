@@ -9,7 +9,8 @@
     "./validation": "./src/validation/index.ts",
     "./i18n": "./src/i18n/index.ts",
     "./constants": "./src/constants/index.ts",
-    "./map": "./src/map/index.ts"
+    "./map": "./src/map/index.ts",
+    "./mentions": "./src/mentions/index.ts"
   },
   "scripts": {
     "build": "echo 'no build needed'",

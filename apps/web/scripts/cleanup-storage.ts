@@ -43,7 +43,7 @@ async function referencedKeys(prisma: PrismaClient): Promise<Set<string>> {
   const [spots, images, communityPhotos, users] = await Promise.all([
     prisma.spot.findMany({ select: { photoKey: true } }),
     prisma.spotImage.findMany({ select: { photoKey: true } }),
-    prisma.spotPhoto.findMany({ select: { photoKey: true } }),
+    prisma.spotPhotoImage.findMany({ select: { photoKey: true } }),
     prisma.user.findMany({
       where: { avatarUrl: { not: null } },
       select: { avatarUrl: true },

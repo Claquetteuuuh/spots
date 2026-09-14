@@ -466,9 +466,15 @@ describe("DELETE /api/spots/[id]", () => {
         { photoKey: "spots/user-1/photo.jpg" }, // the cover, listed again as image 0
         { photoKey: "spots/user-1/second.webp" },
       ],
+      // A post carries its photos: all of them leave the bucket with it
       spotPhotos: [
-        { photoKey: "spot-photos/spot-1/user-2/c1.webp" },
-        { photoKey: "spot-photos/spot-1/user-3/c2.webp" },
+        { images: [{ photoKey: "spot-photos/spot-1/user-2/c1.webp" }] },
+        {
+          images: [
+            { photoKey: "spot-photos/spot-1/user-3/c2.webp" },
+            { photoKey: "spot-photos/spot-1/user-3/c3.webp" },
+          ],
+        },
       ],
     });
     mockSpotDelete.mockResolvedValue(SAMPLE_SPOT);
@@ -494,6 +500,7 @@ describe("DELETE /api/spots/[id]", () => {
       "spots/user-1/second.webp",
       "spot-photos/spot-1/user-2/c1.webp",
       "spot-photos/spot-1/user-3/c2.webp",
+      "spot-photos/spot-1/user-3/c3.webp",
     ]);
   });
 

@@ -221,6 +221,9 @@ vi.mock("maplibre-gl", async () => (await import("@/test/maplibre-mock")).create
 // …and its basemap style would otherwise be fetched over the network,
 // leaving a request in flight when the test ends
 const restoreStyleFetch = stubStyleFetch();
+
+// jsdom has no object URLs for the thumbnails of what was just chosen
+URL.createObjectURL = () => "blob:chosen";
 afterAll(restoreStyleFetch);
 
 describe("SpotDetailPage — likes, deleting, map and photo", () => {
@@ -322,5 +325,86 @@ describe("SpotDetailPage — likes, deleting, map and photo", () => {
       fireEvent.keyDown(document, { key: "Escape" });
     });
     expect(screen.queryByTestId("lightbox")).toBeNull();
+  });
+});
+
+// ─── Community posts ─────────────────────────────────────────────────
+
+/** A post as the API hands it back. */
+function communityPost(over: Record<string, unknown> = {}) {
+  return {
+    id: "post-1",
+    spotId: "spot-1",
+    userId: "user-2",
+    caption: "Golden hour with @bob",
+    createdAt: "2026-09-14T09:00:00.000Z",
+    images: [
+      { id: "ci-1", photoUrl: "https://cdn/c1.webp" },
+      { id: "ci-2", photoUrl: "https://cdn/c2.webp" },
+    ],
+    mentions: [{ id: "user-3", username: "bob" }],
+    user: { id: "user-2", username: "carol", name: "Carol", avatarUrl: null },
+    ...over,
+  };
+}
+
+describe("SpotDetailPage — the community's posts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSpotsGet.mockResolvedValue(MOCK_SPOT);
+    mockSpotsListPhotos.mockResolvedValue({ items: [communityPost()], nextCursor: null });
+  });
+
+  it("shows who posted, what they wrote and their photos fanned out", async () => {
+    renderPage();
+
+    expect(await screen.findByText("carol")).toBeTruthy();
+    // The name in the caption points at the account it meant
+    expect(screen.getByText("@bob").closest("a")?.getAttribute("href")).toBe("/profile/bob");
+    const fan = screen.getAllByRole("button").filter((b) => b.querySelector('img[src^="https://cdn/c"]'));
+    expect(fan).toHaveLength(2);
+  });
+
+  it("opens a post's photos full screen, at the one clicked", async () => {
+    renderPage();
+    await screen.findByText("carol");
+
+    const cards = screen.getAllByRole("button").filter((b) => b.querySelector('img[src^="https://cdn/c"]'));
+    // Stacked back to front: the last in the DOM is the photo in front
+    await act(async () => {
+      fireEvent.click(cards[cards.length - 1]);
+    });
+
+    const img = screen.getByTestId("lightbox-image") as HTMLImageElement;
+    expect(img.src).toBe("https://cdn/c1.webp");
+  });
+
+  it("posts every photo chosen, with the caption, and shows the post first", async () => {
+    mockSpotsUploadPhoto.mockResolvedValue(communityPost({ id: "post-2", caption: "Mine" }));
+    renderPage();
+    await screen.findByText("carol");
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("spotPhotos.addPhoto"));
+    });
+
+    const input = screen.getByLabelText("spotPhotos.choosePhotos") as HTMLInputElement;
+    const files = [
+      new File(["a"], "a.jpg", { type: "image/jpeg" }),
+      new File(["b"], "b.jpg", { type: "image/jpeg" }),
+    ];
+    await act(async () => {
+      fireEvent.change(input, { target: { files } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("spotPhotos.captionPlaceholder"), {
+        target: { value: "Mine" },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText("spotPhotos.post"));
+    });
+
+    expect(mockSpotsUploadPhoto).toHaveBeenCalledWith("spot-1", files, "Mine");
   });
 });

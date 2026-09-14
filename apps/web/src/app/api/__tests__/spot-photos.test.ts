@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
+import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
 
 // Mock storage
 const mockUploadFile = vi.fn();
@@ -23,9 +24,11 @@ const mockSpotFindUnique = vi.fn();
 const mockSpotPhotoFindUnique = vi.fn();
 const mockSpotPhotoCreate = vi.fn();
 const mockSpotPhotoDelete = vi.fn();
+const mockUserFindMany = vi.fn();
 vi.mock("@/lib/db", () => ({
   prisma: {
     spot: { findUnique: (...args: unknown[]) => mockSpotFindUnique(...args) },
+    user: { findMany: (...args: unknown[]) => mockUserFindMany(...args) },
     spotPhoto: {
       findUnique: (...args: unknown[]) => mockSpotPhotoFindUnique(...args),
       create: (...args: unknown[]) => mockSpotPhotoCreate(...args),
@@ -39,16 +42,33 @@ import { DELETE } from "../spots/[id]/photos/[photoId]/route";
 
 const CALLER = { userId: "user-1", email: "alice@example.com", username: "alice" };
 
+const KEYS = ["spot-photos/spot-1/user-1/a.webp", "spot-photos/spot-1/user-1/b.webp"];
+
 const PHOTO = {
   id: "photo-1",
   spotId: "spot-1",
   userId: "user-1",
-  photoUrl: "https://cdn.example.com/spot-photos/spot-1/user-1/p.webp",
-  photoKey: "spot-photos/spot-1/user-1/p.webp",
   caption: null,
   createdAt: new Date(),
+  images: KEYS.map((photoKey) => ({ photoKey })),
   spot: { userId: "owner-9" },
 };
+
+/** A real JPEG, big enough for the pipeline to have something to do. */
+async function jpeg(size = 3000) {
+  return sharp({ create: { width: size, height: size, channels: 3, background: "#4574C4" } })
+    .jpeg()
+    .toBuffer();
+}
+
+function postRequest(body: FormData, spotId = "spot-1") {
+  const req = new NextRequest(`http://localhost/api/spots/${spotId}/photos`, {
+    method: "POST",
+    headers: { Authorization: "Bearer mock-token" },
+    body,
+  });
+  return POST(req, { params: Promise.resolve({ id: spotId }) });
+}
 
 function deleteRequest(spotId: string, photoId: string) {
   const req = new NextRequest(`http://localhost/api/spots/${spotId}/photos/${photoId}`, {
@@ -69,36 +89,30 @@ describe("POST /api/spots/[id]/photos", () => {
     mockGetUserFromRequest.mockResolvedValue(CALLER);
     mockSpotFindUnique.mockResolvedValue({ id: "spot-1", userId: "owner-9" });
     mockUploadFile.mockResolvedValue("https://cdn.example.com/spot-photos/x.webp");
+    mockUserFindMany.mockResolvedValue([]);
     mockSpotPhotoCreate.mockImplementation(async ({ data }) => ({
       id: "photo-new",
       ...data,
       createdAt: new Date(),
+      images: data.images.create,
+      mentions: (data.mentions.create as { userId: string }[]).map(({ userId }) => ({
+        user: { id: userId, username: "bob" },
+      })),
       user: { id: CALLER.userId, username: CALLER.username, name: "Alice", avatarUrl: null },
     }));
   });
 
   it("compresses the photo, stores it as WebP and keeps the caption", async () => {
-    const jpeg = await sharp({
-      create: { width: 3000, height: 3000, channels: 3, background: "#4574C4" },
-    })
-      .jpeg()
-      .toBuffer();
     const formData = new FormData();
-    formData.append("photo", new File([jpeg], "shot.jpg", { type: "image/jpeg" }));
+    formData.append("photo", new File([await jpeg()], "shot.jpg", { type: "image/jpeg" }));
     formData.append("caption", "Golden hour");
 
-    const req = new NextRequest("http://localhost/api/spots/spot-1/photos", {
-      method: "POST",
-      headers: { Authorization: "Bearer mock-token" },
-      body: formData,
-    });
-
-    const res = await POST(req, { params: Promise.resolve({ id: "spot-1" }) });
+    const res = await postRequest(formData);
     const json = await res.json();
 
     expect(res.status).toBe(201);
     expect(json.data.caption).toBe("Golden hour");
-    expect(json.data.photoKey).toMatch(/^spot-photos\/spot-1\/user-1\/.+\.webp$/);
+    expect(json.data.images[0].photoKey).toMatch(/^spot-photos\/spot-1\/user-1\/.+\.webp$/);
 
     const [, body, contentType] = mockUploadFile.mock.calls[0];
     expect(contentType).toBe("image/webp");
@@ -107,18 +121,66 @@ describe("POST /api/spots/[id]/photos", () => {
     expect(meta.width).toBe(2560);
   });
 
+  it("keeps several photos of one post, in the order they were chosen", async () => {
+    const formData = new FormData();
+    formData.append("photo", new File([await jpeg(400)], "a.jpg", { type: "image/jpeg" }));
+    formData.append("photo", new File([await jpeg(500)], "b.jpg", { type: "image/jpeg" }));
+
+    const res = await postRequest(formData);
+    const json = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(mockUploadFile).toHaveBeenCalledTimes(2);
+    expect(json.data.images.map((i: { position: number }) => i.position)).toEqual([0, 1]);
+  });
+
+  it("refuses more photos than a post may hold", async () => {
+    const formData = new FormData();
+    for (let i = 0; i < MAX_POST_PHOTOS + 1; i++) {
+      formData.append("photo", new File([await jpeg(200)], `p${i}.jpg`, { type: "image/jpeg" }));
+    }
+
+    const res = await postRequest(formData);
+
+    expect(res.status).toBe(400);
+    expect(mockUploadFile).not.toHaveBeenCalled();
+  });
+
+  it("records the accounts a caption names, and no one it does not", async () => {
+    mockUserFindMany.mockResolvedValue([{ id: "user-2" }]);
+    const formData = new FormData();
+    formData.append("photo", new File([await jpeg(300)], "a.jpg", { type: "image/jpeg" }));
+    formData.append("caption", "shot with @bob and @nobody");
+
+    const res = await postRequest(formData);
+    const json = await res.json();
+
+    expect(mockUserFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { username: { in: ["bob", "nobody"], mode: "insensitive" } },
+      }),
+    );
+    expect(json.data.mentions).toEqual([{ id: "user-2", username: "bob" }]);
+  });
+
+  it("does not let the author notify themselves", async () => {
+    mockUserFindMany.mockResolvedValue([{ id: CALLER.userId }]);
+    const formData = new FormData();
+    formData.append("photo", new File([await jpeg(300)], "a.jpg", { type: "image/jpeg" }));
+    formData.append("caption", "@alice was here");
+
+    const res = await postRequest(formData);
+    const json = await res.json();
+
+    expect(json.data.mentions).toEqual([]);
+  });
+
   it("returns 404 for an unknown spot before reading the file", async () => {
     mockSpotFindUnique.mockResolvedValue(null);
     const formData = new FormData();
     formData.append("photo", new File(["x"], "shot.jpg", { type: "image/jpeg" }));
 
-    const req = new NextRequest("http://localhost/api/spots/nope/photos", {
-      method: "POST",
-      headers: { Authorization: "Bearer mock-token" },
-      body: formData,
-    });
-
-    const res = await POST(req, { params: Promise.resolve({ id: "nope" }) });
+    const res = await postRequest(formData, "nope");
     expect(res.status).toBe(404);
     expect(mockUploadFile).not.toHaveBeenCalled();
   });
@@ -140,7 +202,8 @@ describe("DELETE /api/spots/[id]/photos/[photoId]", () => {
     expect(res.status).toBe(200);
     expect(json.data.id).toBe("photo-1");
     expect(mockSpotPhotoDelete).toHaveBeenCalledWith({ where: { id: "photo-1" } });
-    expect(mockDeleteFile).toHaveBeenCalledWith(PHOTO.photoKey);
+    // Every photo of the post leaves the bucket, not just the first
+    expect(mockDeleteFile.mock.calls.map(([key]) => key)).toEqual(KEYS);
   });
 
   it("lets the spot owner remove someone else's photo", async () => {
@@ -152,7 +215,7 @@ describe("DELETE /api/spots/[id]/photos/[photoId]", () => {
 
     const res = await deleteRequest("spot-1", "photo-1");
     expect(res.status).toBe(200);
-    expect(mockDeleteFile).toHaveBeenCalledOnce();
+    expect(mockDeleteFile).toHaveBeenCalledTimes(KEYS.length);
   });
 
   it("refuses anyone else with a 403", async () => {

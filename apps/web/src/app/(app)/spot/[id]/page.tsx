@@ -2,6 +2,8 @@
 
 import { confirmDialog } from "@/components/dialog";
 import { PhotoLightbox } from "@/components/photo-lightbox";
+import { CommunityPost } from "@/components/community-post";
+import { MentionInput } from "@/components/mention-input";
 import { ZoomablePhoto } from "@/components/zoomable-photo";
 import { LocationDetails } from "@/components/location-details";
 import { loadStyle, watchMapTheme } from "@/lib/map-tiles";
@@ -15,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, SpotPhoto, SpotImage } from "@/lib/api-client";
 import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
+import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
@@ -234,6 +237,10 @@ export default function SpotDetailPage({
     text: string;
   } | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  /** The photos chosen for the post being written, before it is sent. */
+  const [chosen, setChosen] = useState<File[]>([]);
+  /** Which post is open in the lightbox, and at which of its photos. */
+  const [openPost, setOpenPost] = useState<{ id: string; index: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const loadSpot = useCallback(async () => {
@@ -247,6 +254,10 @@ export default function SpotDetailPage({
       setIsLoading(false);
     }
   }, [id]);
+
+  /** The photos of the post the lightbox is showing, if it is still here. */
+  const openPostImages =
+    photos.find((post) => post.id === openPost?.id)?.images.map((image) => image.photoUrl) ?? [];
 
   const loadPhotos = useCallback(
     async (cursor?: string) => {
@@ -316,30 +327,39 @@ export default function SpotDetailPage({
     }
   }
 
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  /** Take the photos the photographer picked, as many as a post may hold. */
+  function handlePhotosChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
 
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    const usable = files.filter(
+      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type) && file.size <= MAX_PHOTO_SIZE_BYTES,
+    );
+    if (usable.length < files.length) {
       setUploadMessage({ type: "error", text: t("settings.avatarHint") });
-      return;
+    } else {
+      setUploadMessage(
+        files.length > MAX_POST_PHOTOS
+          ? { type: "error", text: t("spotPhotos.tooManyPhotos", { count: MAX_POST_PHOTOS }) }
+          : null,
+      );
     }
-    if (file.size > MAX_PHOTO_SIZE_BYTES) {
-      setUploadMessage({ type: "error", text: t("settings.avatarHint") });
-      return;
-    }
+
+    setChosen((prev) => [...prev, ...usable].slice(0, MAX_POST_PHOTOS));
+    if (photoInputRef.current) photoInputRef.current.value = "";
+  }
+
+  async function handlePost() {
+    if (chosen.length === 0 || isUploading) return;
 
     setIsUploading(true);
     setUploadMessage(null);
 
     try {
-      const newPhoto = await apiClient.spots.uploadPhoto(
-        id,
-        file,
-        caption || undefined,
-      );
-      setPhotos((prev) => [newPhoto, ...prev]);
+      const post = await apiClient.spots.uploadPhoto(id, chosen, caption || undefined);
+      setPhotos((prev) => [post, ...prev]);
       setCaption("");
+      setChosen([]);
       setShowAddPhoto(false);
       setUploadMessage({ type: "success", text: t("spotPhotos.photoAdded") });
     } catch (err) {
@@ -349,7 +369,6 @@ export default function SpotDetailPage({
       });
     } finally {
       setIsUploading(false);
-      if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
 
@@ -693,9 +712,11 @@ export default function SpotDetailPage({
             <input
               ref={photoInputRef}
               type="file"
+              multiple
               accept={ACCEPTED_IMAGE_TYPES.join(",")}
-              onChange={handlePhotoUpload}
+              onChange={handlePhotosChosen}
               disabled={isUploading}
+              aria-label={t("spotPhotos.choosePhotos")}
               className="block w-full text-sm text-text-secondary
                 file:mr-3 file:py-2 file:px-4
                 file:rounded-full file:border-0
@@ -705,23 +726,47 @@ export default function SpotDetailPage({
                 hover:file:bg-accent-dark
                 disabled:opacity-50"
             />
-            <input
-              type="text"
+
+            {/* What has been picked so far, in the order it will be posted */}
+            {chosen.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {chosen.map((file, i) => (
+                  <div key={`${file.name}-${i}`} className="relative h-16 w-16 overflow-hidden rounded-lg bg-bg-secondary">
+                    <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setChosen((prev) => prev.filter((_, at) => at !== i))}
+                      title={t("spotPhotos.removePhoto")}
+                      aria-label={t("spotPhotos.removePhoto")}
+                      className="absolute right-0.5 top-0.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-error"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <MentionInput
               value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+              onChange={setCaption}
               placeholder={t("spotPhotos.captionPlaceholder")}
               maxLength={500}
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent"
+              disabled={isUploading}
             />
-            {isUploading ? (
-              <p className="flex items-center gap-2 text-sm text-text-tertiary">
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                {t("spotPhotos.uploading")}
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-text-tertiary">
+                {chosen.length > 0
+                  ? t("spotPhotos.photosChosen", { count: chosen.length })
+                  : t("spotPhotos.maxPhotos", { count: MAX_POST_PHOTOS })}
               </p>
-            ) : null}
+              <Button onClick={handlePost} disabled={chosen.length === 0 || isUploading}>
+                {isUploading ? t("spotPhotos.uploading") : t("spotPhotos.post")}
+              </Button>
+            </div>
           </Card>
         ) : null}
 
@@ -734,56 +779,35 @@ export default function SpotDetailPage({
           </p>
         ) : null}
 
-        {/* Photos grid — the app's three-column, 1px-gutter grid below lg */}
+        {/* One post after another: who, what they wrote, then the photos */}
         {photos.length > 0 ? (
-          <div className="-mx-4 grid grid-cols-3 gap-px lg:mx-0 lg:gap-2">
-            {photos.map((photo) => {
-              const canDelete =
-                user && (user.id === photo.user.id || isOwner);
-              return (
-                <div
-                  key={photo.id}
-                  className="group relative aspect-square overflow-hidden rounded-none bg-bg-secondary lg:rounded-xl"
-                >
-                  <img
-                    src={photo.photoUrl}
-                    alt={photo.caption ?? ""}
-                    className="h-full w-full object-cover"
-                  />
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 p-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                    <p className="text-xs font-semibold text-white">
-                      {photo.user.username}
-                    </p>
-                    {photo.caption ? (
-                      <p className="mt-1 line-clamp-2 text-center text-xs text-white/80">
-                        {photo.caption}
-                      </p>
-                    ) : null}
-                  </div>
-                  {/* Delete button */}
-                  {canDelete ? (
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePhoto(photo)}
-                      disabled={deletingPhotoId === photo.id}
-                      className="absolute top-1.5 right-1.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-200 hover:bg-error group-hover:opacity-100 disabled:opacity-50"
-                      title={t("spotPhotos.deletePhoto")}
-                      aria-label={t("spotPhotos.deletePhoto")}
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                      </svg>
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
+          <div className="divide-y divide-border">
+            {photos.map((post) => (
+              <CommunityPost
+                key={post.id}
+                post={post}
+                canDelete={!!user && (user.id === post.user.id || isOwner)}
+                isDeleting={deletingPhotoId === post.id}
+                onDelete={() => handleDeletePhoto(post)}
+                onOpenPhoto={(index) => setOpenPost({ id: post.id, index })}
+              />
+            ))}
           </div>
         ) : !photosLoading ? (
           <p className="py-8 text-center text-sm text-text-tertiary">
             {t("spotPhotos.noPhotos")}
           </p>
+        ) : null}
+
+        {/* A post's photos, over everything */}
+        {openPostImages.length > 0 && openPost ? (
+          <PhotoLightbox
+            urls={openPostImages}
+            index={Math.min(openPost.index, openPostImages.length - 1)}
+            alt={t("spotPhotos.title")}
+            onIndexChange={(index) => setOpenPost({ id: openPost.id, index })}
+            onClose={() => setOpenPost(null)}
+          />
         ) : null}
 
         {/* Loading */}

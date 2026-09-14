@@ -142,7 +142,7 @@ export const DELETE = withAuth<RouteParams>(async (_request, authUser, { params 
     where: { id },
     include: {
       images: { select: { photoKey: true } },
-      spotPhotos: { select: { photoKey: true } },
+      spotPhotos: { select: { images: { select: { photoKey: true } } } },
     },
   });
   if (!existing) {
@@ -158,7 +158,7 @@ export const DELETE = withAuth<RouteParams>(async (_request, authUser, { params 
   const keys = [
     existing.photoKey,
     ...existing.images.map((image) => image.photoKey),
-    ...existing.spotPhotos.map((photo) => photo.photoKey),
+    ...existing.spotPhotos.flatMap((post) => post.images.map((image) => image.photoKey)),
   ];
 
   await prisma.spot.delete({ where: { id } });

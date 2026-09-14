@@ -393,14 +393,22 @@ export interface Spot {
   isLiked?: boolean;
 }
 
+/** One photo of a community post. */
+export interface SpotPhotoImage {
+  id: string;
+  photoUrl: string;
+}
+
+/** A post under a spot: what was written, who was named, what was shot. */
 export interface SpotPhoto {
   id: string;
   spotId: string;
   userId: string;
-  photoUrl: string;
-  photoKey: string;
   caption: string | null;
   createdAt: string;
+  images: SpotPhotoImage[];
+  /** The accounts the caption named — the apps link these, nothing else. */
+  mentions: { id: string; username: string }[];
   user: {
     id: string;
     username: string;
@@ -602,11 +610,11 @@ export const apiClient = {
 
     async uploadPhoto(
       spotId: string,
-      file: File,
+      files: File[],
       caption?: string,
     ): Promise<SpotPhoto> {
       const formData = new FormData();
-      formData.append("photo", file);
+      for (const file of files) formData.append("photo", file);
       if (caption) formData.append("caption", caption);
       return request<SpotPhoto>(API_ROUTES.spots.photos(spotId), {
         method: "POST",
