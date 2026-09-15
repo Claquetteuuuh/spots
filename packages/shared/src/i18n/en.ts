@@ -71,6 +71,8 @@ export const en = {
     },
   },
   spots: {
+    photoTooLarge: "Images must be smaller than {{size}}MB.",
+    photoFormats: "JPEG, PNG, HEIC or WebP · {{size}}MB max",
     title: "My spots",
     feed: "Feed",
     map: "Map",
@@ -378,6 +380,7 @@ export const en = {
     requested: "Requested",
   },
   spotPhotos: {
+    photoRejected: "JPEG, PNG, HEIC or WebP · {{size}}MB max per photo. They are compressed before sending.",
     title: "Community photos",
     addPhoto: "Add your photos",
     noPhotos: "No photos yet. Be the first to share!",

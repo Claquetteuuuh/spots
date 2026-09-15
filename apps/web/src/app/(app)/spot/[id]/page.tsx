@@ -17,9 +17,9 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import type { Spot, SpotPhoto, SpotImage } from "@/lib/api-client";
-import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
+import { ACCEPTED_IMAGE_TYPES, MAX_PHOTO_SIZE_MB } from "@trs/shared/constants";
 import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
-import { prepareForUpload } from "@/lib/downscale";
+import { isUsablePhoto, prepareForUpload } from "@/lib/downscale";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
@@ -336,11 +336,14 @@ export default function SpotDetailPage({
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
 
-    const usable = files.filter(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type) && file.size <= MAX_PHOTO_SIZE_BYTES,
-    );
+    const usable = files.filter(isUsablePhoto);
     if (usable.length < files.length) {
-      setUploadMessage({ type: "error", text: t("settings.avatarHint") });
+      // The avatar's own hint used to stand in here, which named a 2MB
+      // limit that has never applied to a spot's photos.
+      setUploadMessage({
+        type: "error",
+        text: t("spotPhotos.photoRejected", { size: MAX_PHOTO_SIZE_MB }),
+      });
     } else {
       setUploadMessage(
         files.length > MAX_POST_PHOTOS

@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
-import { downscaleForUpload } from "@/lib/downscale";
+import { downscaleForUpload, isUsablePhoto } from "@/lib/downscale";
 import type { ForwardGeocodeResult } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -281,14 +281,14 @@ function AddSpotForm() {
 
     let processed = 0;
     for (const file of filesToProcess) {
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        setError("Please select JPEG, PNG, WebP, or HEIC images.");
-        hasError = true;
-        continue;
-      }
-
-      if (file.size > MAX_PHOTO_SIZE_BYTES) {
-        setError(`Images must be smaller than ${MAX_PHOTO_SIZE_MB}MB.`);
+      // One rule for both, and the same one the community picker uses:
+      // an iPhone's HEIC often arrives with no MIME type at all.
+      if (!isUsablePhoto(file)) {
+        setError(
+          file.size > MAX_PHOTO_SIZE_BYTES
+            ? t("spots.photoTooLarge", { size: MAX_PHOTO_SIZE_MB })
+            : t("spots.photoFormats", { size: MAX_PHOTO_SIZE_MB }),
+        );
         hasError = true;
         continue;
       }
@@ -1169,7 +1169,8 @@ function AddSpotForm() {
                   {t("spots.pickPhoto")}
                 </Button>
                 <p className="text-center text-xs text-text-tertiary">
-                  JPEG, PNG, WebP · {MAX_PHOTO_SIZE_MB}MB max · {t("spots.upToPhotos", { count: String(MAX_PHOTOS) })}
+                  {t("spots.photoFormats", { size: MAX_PHOTO_SIZE_MB })} ·{" "}
+                  {t("spots.upToPhotos", { count: String(MAX_PHOTOS) })}
                 </p>
               </>
             )}

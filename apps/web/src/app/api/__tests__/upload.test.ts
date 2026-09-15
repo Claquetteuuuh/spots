@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { MAX_PHOTO_SIZE_BYTES } from "@trs/shared/constants";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 import { PHOTO_MAX_EDGE } from "@/lib/image";
@@ -158,8 +159,8 @@ describe("POST /api/upload/photo", () => {
   });
 
   it("rejects file larger than max size", async () => {
-    // 21MB exceeds the 20MB ceiling
-    const bigContent = new Uint8Array(21 * 1024 * 1024);
+    // A megabyte past whatever the ceiling is
+    const bigContent = new Uint8Array(MAX_PHOTO_SIZE_BYTES + 1024 * 1024);
     const file = new File([bigContent], "big.jpg", { type: "image/jpeg" });
 
     const res = await PhotoUpload(makeUploadRequest("photo", file), undefined as never);

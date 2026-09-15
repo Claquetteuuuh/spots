@@ -1,4 +1,11 @@
-import { MAX_POST_BYTES, UPLOAD_PRESETS, shrinkPasses, type UploadPreset } from "@trs/shared/constants";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_PHOTO_SIZE_BYTES,
+  MAX_POST_BYTES,
+  UPLOAD_PRESETS,
+  shrinkPasses,
+  type UploadPreset,
+} from "@trs/shared/constants";
 import { t } from "@/lib/i18n";
 
 /**
@@ -11,6 +18,24 @@ import { t } from "@/lib/i18n";
 
 /** How long a browser gets to draw a photo it decodes the slow way. */
 const DECODE_TIMEOUT_MS = 8000;
+
+/**
+ * Extensions a browser sometimes hands over with no MIME type at all —
+ * an iPhone's HEIC, most often, which is then refused for being of "no
+ * type" even though it is exactly the photo the photographer meant.
+ */
+const PHOTO_EXTENSIONS = /\.(jpe?g|png|webp|heic|heif|avif)$/i;
+
+/**
+ * Whether a chosen file is a photo this app can take. The weight checked
+ * is the one on disk: what leaves the browser is drawn down first, so
+ * the ceiling is only about what the device is asked to decode.
+ */
+export function isUsablePhoto(file: File): boolean {
+  const known = ACCEPTED_IMAGE_TYPES.includes(file.type) || file.type.startsWith("image/");
+  const unnamed = file.type === "" && PHOTO_EXTENSIONS.test(file.name);
+  return (known || unnamed) && file.size <= MAX_PHOTO_SIZE_BYTES;
+}
 
 /**
  * Decode a chosen file. `createImageBitmap` is the fast path and the one

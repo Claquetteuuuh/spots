@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { MAX_POST_BYTES, UPLOAD_PRESETS } from "@trs/shared/constants";
+import { MAX_PHOTO_SIZE_BYTES, MAX_POST_BYTES, UPLOAD_PRESETS } from "@trs/shared/constants";
 import { en } from "@trs/shared/i18n";
-import { downscaleForUpload, prepareForUpload } from "../downscale";
+import { downscaleForUpload, isUsablePhoto, prepareForUpload } from "../downscale";
 
 /** A file of a given size, as the picker would hand one over. */
 function file(bytes: number, name = "shot.jpg", type = "image/jpeg") {
@@ -158,5 +158,33 @@ describe("presets", () => {
 
     // 6000px on the long edge, drawn down to each preset
     expect(widths).toEqual([UPLOAD_PRESETS.spot.maxEdge, UPLOAD_PRESETS.community.maxEdge]);
+  });
+});
+
+// ─── What a photographer is allowed to pick ──────────────────────────
+
+describe("isUsablePhoto", () => {
+  it("takes the formats a camera and a phone produce", () => {
+    expect(isUsablePhoto(file(1_000, "shot.jpg", "image/jpeg"))).toBe(true);
+    expect(isUsablePhoto(file(1_000, "shot.png", "image/png"))).toBe(true);
+    expect(isUsablePhoto(file(1_000, "shot.heic", "image/heic"))).toBe(true);
+  });
+
+  it("takes an iPhone's HEIC even when the browser names no type for it", () => {
+    // Safari hands these over with an empty MIME type; refusing them is
+    // what put an avatar's "2MB max" in front of a 6MB photo.
+    expect(isUsablePhoto(file(6_000_000, "IMG_0001.HEIC", ""))).toBe(true);
+  });
+
+  it("refuses what is not a photo at all", () => {
+    expect(isUsablePhoto(file(1_000, "notes.txt", "text/plain"))).toBe(false);
+    expect(isUsablePhoto(file(1_000, "archive.zip", ""))).toBe(false);
+  });
+
+  it("refuses only what the device cannot be asked to decode", () => {
+    expect(isUsablePhoto(file(MAX_PHOTO_SIZE_BYTES, "big.jpg", "image/jpeg"))).toBe(true);
+    expect(isUsablePhoto(file(MAX_PHOTO_SIZE_BYTES + 1, "huge.jpg", "image/jpeg"))).toBe(false);
+    // …which is the 30MB a modern phone can reach, not 20
+    expect(MAX_PHOTO_SIZE_BYTES).toBe(30 * 1024 * 1024);
   });
 });

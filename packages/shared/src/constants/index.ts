@@ -253,12 +253,12 @@ export function dicebearRasterUrl(url: string, size = 256): string {
 // ─── Photo ───────────────────────────────────────────────────────────
 
 /**
- * Upload ceiling for the *original* file. Every photo is downscaled and
- * re-encoded server-side before it reaches storage (see
- * `apps/web/src/lib/image.ts`), so this only bounds request size and
- * decode memory, not what ends up in the bucket.
+ * Upload ceiling for the *original* file — what a photographer may pick,
+ * not what travels. Both apps draw a photo down to `UPLOAD_PRESETS`
+ * before sending it and the server re-encodes whatever arrives, so this
+ * only bounds how large a file the device is asked to decode.
  */
-export const MAX_PHOTO_SIZE_MB = 20;
+export const MAX_PHOTO_SIZE_MB = 30;
 export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
 
 /**

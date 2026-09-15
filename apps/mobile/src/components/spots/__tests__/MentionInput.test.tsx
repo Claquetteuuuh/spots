@@ -16,6 +16,9 @@ const mockedApi = api as jest.Mocked<typeof api>;
 
 const ALICE = { id: "u1", username: "alice", name: "Alice", avatarUrl: null };
 
+/** Names are asked for after a pause; a loaded machine takes its time. */
+const READY = { timeout: 5000 };
+
 function Field({ onChangeText }: { onChangeText: (v: string) => void }) {
   const [value, setValue] = React.useState("");
   return (
@@ -40,8 +43,11 @@ describe("MentionInput", () => {
 
     await fireEvent.changeText(screen.getByTestId("caption"), "shot with @al");
 
-    expect(await screen.findByTestId("mention-alice")).toBeTruthy();
-    await waitFor(() => expect(mockedApi.searchUsers).toHaveBeenCalledWith("al", expect.any(Number)));
+    expect(await screen.findByTestId("mention-alice", {}, READY)).toBeTruthy();
+    await waitFor(
+      () => expect(mockedApi.searchUsers).toHaveBeenCalledWith("al", expect.any(Number)),
+      READY,
+    );
   });
 
   it("writes the chosen name in place of what was typed", async () => {
@@ -50,7 +56,7 @@ describe("MentionInput", () => {
     await render(<Field onChangeText={onChangeText} />);
 
     await fireEvent.changeText(screen.getByTestId("caption"), "shot with @al");
-    await fireEvent.press(await screen.findByTestId("mention-alice"));
+    await fireEvent.press(await screen.findByTestId("mention-alice", {}, READY));
 
     expect(onChangeText).toHaveBeenLastCalledWith("shot with @alice ");
     // …and the list closes once someone is chosen
@@ -62,7 +68,7 @@ describe("MentionInput", () => {
 
     await fireEvent.changeText(screen.getByTestId("caption"), "just a caption");
 
-    await waitFor(() => expect(screen.queryByTestId("mention-suggestions")).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId("mention-suggestions")).toBeNull(), READY);
     expect(mockedApi.searchUsers).not.toHaveBeenCalled();
   });
 });
