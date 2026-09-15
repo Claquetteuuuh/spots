@@ -1,7 +1,13 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -32,6 +38,15 @@ export function PhotoLightbox({
   const count = uris.length;
   const step = (by: number) => onIndexChange?.((index + by + count) % count);
 
+  /** A finger's worth of travel, or a flick, moves to the next photo. */
+  const SWIPE_DISTANCE = 70;
+  const SWIPE_VELOCITY = 500;
+  /** The gesture runs on the UI thread and cannot read `count` directly. */
+  const canStep = useSharedValue(count > 1);
+  canStep.value = count > 1;
+  /** How far the photo follows the finger before it hands over. */
+  const swipe = useSharedValue(0);
+
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const x = useSharedValue(0);
@@ -56,11 +71,25 @@ export function PhotoLightbox({
 
   const drag = Gesture.Pan()
     .onUpdate((e) => {
-      if (savedScale.value <= 1) return;
+      // At 1× a drag is not a pan — there is nothing to look around at —
+      // so it steps through the post's photos instead.
+      if (savedScale.value <= 1) {
+        swipe.value = canStep.value ? e.translationX : 0;
+        return;
+      }
       x.value = savedX.value + e.translationX;
       y.value = savedY.value + e.translationY;
     })
-    .onEnd(() => {
+    .onEnd((e) => {
+      if (savedScale.value <= 1) {
+        const far = Math.abs(e.translationX) > SWIPE_DISTANCE;
+        const flicked = Math.abs(e.velocityX) > SWIPE_VELOCITY;
+        if (canStep.value && (far || flicked)) {
+          runOnJS(step)(e.translationX < 0 ? 1 : -1);
+        }
+        swipe.value = withTiming(0);
+        return;
+      }
       savedX.value = x.value;
       savedY.value = y.value;
     });
@@ -80,7 +109,11 @@ export function PhotoLightbox({
   const gesture = Gesture.Simultaneous(pinch, drag, doubleTap);
 
   const photoStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }, { scale: scale.value }],
+    transform: [
+      { translateX: x.value + swipe.value },
+      { translateY: y.value },
+      { scale: scale.value },
+    ],
   }));
 
   return (

@@ -122,3 +122,78 @@ describe("PhotoLightbox", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── Stepping through a post's photos with a finger ──────────────────
+
+describe("PhotoLightbox — swiping", () => {
+  const URLS = ["https://cdn/1.webp", "https://cdn/2.webp", "https://cdn/3.webp"];
+
+  /** Drag across the frame with one finger, from rest to release. */
+  async function drag(distance: number) {
+    const frame = screen.getByTestId("lightbox-frame");
+    await act(async () => {
+      fireEvent.pointerDown(frame, { pointerId: 1, clientX: 200, clientY: 200 });
+      fireEvent.pointerMove(frame, { pointerId: 1, clientX: 200 + distance, clientY: 200 });
+      fireEvent.pointerUp(frame, { pointerId: 1, clientX: 200 + distance, clientY: 200 });
+    });
+  }
+
+  async function show(index = 1) {
+    const onIndexChange = vi.fn();
+    await act(async () => {
+      render(
+        <PhotoLightbox
+          urls={URLS}
+          index={index}
+          alt="a post"
+          onIndexChange={onIndexChange}
+          onClose={vi.fn()}
+        />,
+      );
+    });
+    return onIndexChange;
+  }
+
+  it("goes to the next photo when dragged to the left", async () => {
+    const onIndexChange = await show(1);
+
+    await drag(-120);
+
+    expect(onIndexChange).toHaveBeenCalledWith(2);
+  });
+
+  it("goes back when dragged to the right, and wraps around", async () => {
+    const onIndexChange = await show(0);
+
+    await drag(150);
+
+    expect(onIndexChange).toHaveBeenCalledWith(URLS.length - 1);
+  });
+
+  it("stays put when the finger barely moved — that is a tap, not a swipe", async () => {
+    const onIndexChange = await show(1);
+
+    await drag(-20);
+
+    expect(onIndexChange).not.toHaveBeenCalled();
+  });
+
+  it("leaves a lone photo alone, however far it is dragged", async () => {
+    const onIndexChange = vi.fn();
+    await act(async () => {
+      render(
+        <PhotoLightbox
+          urls={["https://cdn/only.webp"]}
+          index={0}
+          alt="one"
+          onIndexChange={onIndexChange}
+          onClose={vi.fn()}
+        />,
+      );
+    });
+
+    await drag(-200);
+
+    expect(onIndexChange).not.toHaveBeenCalled();
+  });
+});

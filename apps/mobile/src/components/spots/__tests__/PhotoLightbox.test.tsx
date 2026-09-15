@@ -37,3 +37,78 @@ describe("PhotoLightbox", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── Stepping through a post's photos with a finger ──────────────────
+
+describe("PhotoLightbox — swiping", () => {
+  const URIS = ["https://cdn/1.webp", "https://cdn/2.webp", "https://cdn/3.webp"];
+
+  /** The pan gesture the frame mounted, whichever way it is composed. */
+  const panGesture = () => {
+    const { findGesture } = require("react-native-gesture-handler") as {
+      findGesture: (kind: string) => { handlers: Record<string, (e: unknown) => void> };
+    };
+    return findGesture("pan");
+  };
+
+  async function show(index = 1, uris = URIS) {
+    const onIndexChange = jest.fn();
+    await render(
+      <PhotoLightbox
+        uri={uris[index]}
+        uris={uris}
+        index={index}
+        onIndexChange={onIndexChange}
+        onClose={jest.fn()}
+      />,
+    );
+    return onIndexChange;
+  }
+
+  /** Drag across the screen and let go. */
+  const drag = (translationX: number, velocityX = 0) => {
+    const pan = panGesture();
+    pan.handlers.onUpdate?.({ translationX, translationY: 0 });
+    pan.handlers.onEnd?.({ translationX, translationY: 0, velocityX });
+  };
+
+  it("goes to the next photo when dragged to the left", async () => {
+    const onIndexChange = await show(1);
+
+    drag(-120);
+
+    expect(onIndexChange).toHaveBeenCalledWith(2);
+  });
+
+  it("goes back when dragged to the right, and wraps around", async () => {
+    const onIndexChange = await show(0);
+
+    drag(150);
+
+    expect(onIndexChange).toHaveBeenCalledWith(URIS.length - 1);
+  });
+
+  it("takes a flick, even a short one", async () => {
+    const onIndexChange = await show(0);
+
+    drag(-30, -900);
+
+    expect(onIndexChange).toHaveBeenCalledWith(1);
+  });
+
+  it("stays put when the finger barely moved — that is a tap, not a swipe", async () => {
+    const onIndexChange = await show(1);
+
+    drag(-20, 0);
+
+    expect(onIndexChange).not.toHaveBeenCalled();
+  });
+
+  it("leaves a lone photo alone, however far it is dragged", async () => {
+    const onIndexChange = await show(0, ["https://cdn/only.webp"]);
+
+    drag(-200, -900);
+
+    expect(onIndexChange).not.toHaveBeenCalled();
+  });
+});

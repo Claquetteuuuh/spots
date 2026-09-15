@@ -55,7 +55,13 @@ export function PhotoLightbox({ urls, index, alt, onIndexChange, onClose }: Phot
       data-testid="lightbox"
     >
       {/* Keyed on the index: a new photo starts back at 1× */}
-      <ZoomableImage key={index} src={urls[index]} alt={alt} onClose={onClose} />
+      <ZoomableImage
+        key={index}
+        src={urls[index]}
+        alt={alt}
+        onClose={onClose}
+        onSwipe={hasMultiple ? (by) => onIndexChange((index + by + count) % count) : undefined}
+      />
 
       <button
         type="button"
@@ -106,8 +112,29 @@ export function PhotoLightbox({ urls, index, alt, onIndexChange, onClose }: Phot
   );
 }
 
-function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+/** A finger's worth of travel moves to the next photo. */
+const SWIPE_THRESHOLD_PX = 60;
+
+function ZoomableImage({
+  src,
+  alt,
+  onClose,
+  onSwipe,
+}: {
+  src: string;
+  alt: string;
+  onClose: () => void;
+  /** Absent when there is only one photo to look at. */
+  onSwipe?: (by: 1 | -1) => void;
+}) {
   const [zoom, setZoom] = useState<ZoomState>(IDENTITY);
+  /**
+   * How far the photo follows the finger before it hands over. Held in a
+   * ref as well: a flick fires move and up in one batch, and the state
+   * read at release would still be the one from before the drag.
+   */
+  const swipe = useRef(0);
+  const [swipeX, setSwipeX] = useState(0);
   const frameRef = useRef<HTMLDivElement>(null);
   // Fingers (or the mouse) currently down, by pointer id
   const pointers = useRef(new Map<number, Point>());
@@ -155,6 +182,12 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
       const dx = e.clientX - before.x;
       const dy = e.clientY - before.y;
       if (dx || dy) moved.current = true;
+      // At 1× there is nothing to look around at, so the drag steps
+      // through the post's photos instead of panning nowhere.
+      if (onSwipe && zoom.scale === IDENTITY.scale) {
+        swipe.current += dx;
+        setSwipeX(swipe.current);
+      }
       setZoom((z) => pan(z, dx, dy));
     }
   };
@@ -162,6 +195,13 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
   const onPointerUp = (e: React.PointerEvent) => {
     pointers.current.delete(e.pointerId);
     pinchDistance.current = null;
+
+    if (pointers.current.size === 0 && swipe.current !== 0) {
+      const travelled = swipe.current;
+      swipe.current = 0;
+      setSwipeX(0);
+      if (onSwipe && Math.abs(travelled) > SWIPE_THRESHOLD_PX) onSwipe(travelled < 0 ? 1 : -1);
+    }
   };
 
   // A tap on the black beside the photo closes; a drag or a tap on it does not
@@ -192,7 +232,7 @@ function ZoomableImage({ src, alt, onClose }: { src: string; alt: string; onClos
         alt={alt}
         draggable={false}
         className="absolute inset-0 m-auto max-h-full max-w-full"
-        style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})` }}
+        style={{ transform: `translate(${zoom.x + swipeX}px, ${zoom.y}px) scale(${zoom.scale})` }}
         data-testid="lightbox-image"
       />
     </motion.div>
