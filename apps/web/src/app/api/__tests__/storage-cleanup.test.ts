@@ -116,7 +116,18 @@ describe("GET /api/cron/storage-cleanup", () => {
   it("refuses everyone when no secret is configured, rather than running openly", async () => {
     delete process.env.CRON_SECRET;
 
-    expect((await GET(cronRequest("s3cret"))).status).toBe(401);
+    const res = await GET(cronRequest("s3cret"));
+    expect(res.status).toBe(401);
     expect(mockListAllObjects).not.toHaveBeenCalled();
+    // …and says which of the two it is: a wrong secret, or a deployment
+    // built before the secret existed. They are fixed in different places.
+    expect((await res.json()).error).toContain("CRON_SECRET is not set");
+  });
+
+  it("forgives the newline a dashboard adds to a pasted secret", async () => {
+    process.env.CRON_SECRET = "s3cret\n";
+    mockListAllObjects.mockResolvedValue([object("spots/u1/orphan.webp", 48)]);
+
+    expect((await GET(cronRequest("s3cret"))).status).toBe(200);
   });
 });

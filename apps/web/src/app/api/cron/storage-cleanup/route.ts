@@ -15,8 +15,20 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  // Trimmed on both sides: a secret pasted into a dashboard arrives with
+  // a trailing newline more often than anyone would like.
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) {
+    // Worth saying out loud: it is the difference between "the secret is
+    // wrong" and "this deployment was built before the secret existed",
+    // and the two are fixed in completely different places.
+    return NextResponse.json(
+      { error: "CRON_SECRET is not set on this deployment. Add it, then redeploy." },
+      { status: 401 },
+    );
+  }
+
+  if (request.headers.get("authorization")?.trim() !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
