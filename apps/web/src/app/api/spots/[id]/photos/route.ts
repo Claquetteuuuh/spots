@@ -8,7 +8,7 @@ import {
   successResponse,
   withAuth,
 } from "@/lib/api-utils";
-import { uploadFile } from "@/lib/storage";
+import { deleteFiles, uploadFile } from "@/lib/storage";
 import { readPhotoUploads } from "@/lib/upload";
 
 const PHOTO_AUTHOR_SELECT = {
@@ -98,18 +98,29 @@ export const POST = withAuth<RouteParams>(
       }),
     );
 
-    const post = await prisma.spotPhoto.create({
-      data: {
-        spotId: id,
-        userId: authUser.userId,
-        caption,
-        images: { create: stored },
-        mentions: { create: mentioned.map((userId) => ({ userId })) },
-      },
-      include: POST_INCLUDE,
-    });
+    try {
+      const post = await prisma.spotPhoto.create({
+        data: {
+          spotId: id,
+          userId: authUser.userId,
+          caption,
+          images: { create: stored },
+          mentions: { create: mentioned.map((userId) => ({ userId })) },
+        },
+        include: POST_INCLUDE,
+      });
 
-    return successResponse(serializePost(post), 201);
+      return successResponse(serializePost(post), 201);
+    } catch (error) {
+      // The photos reached storage but the post never existed: take them
+      // back out rather than leave them for the nightly sweep.
+      try {
+        await deleteFiles(stored.map((image) => image.photoKey));
+      } catch (cleanupError) {
+        console.error("Failed to discard photos of a post that was not created:", cleanupError);
+      }
+      throw error;
+    }
   },
 );
 

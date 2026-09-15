@@ -186,13 +186,22 @@ export default function EditSpotPage({
     if (!file || !spot) return;
     setPhotoBusy(true);
     setError(null);
+    let staged: string | null = null;
     try {
       // Shrunk here first: a 12 MP original is eight megabytes
       const uploaded = await apiClient.upload.photo(
         await downscaleForUpload(file, UPLOAD_PRESETS.spot),
       );
+      staged = uploaded.key;
       setImages(await apiClient.spots.addImage(spot.id, { photoUrl: uploaded.url, photoKey: uploaded.key }));
+      staged = null;
     } catch (err) {
+      // The photo reached storage but never got a row to belong to
+      if (staged) {
+        void apiClient.upload.discard([staged]).catch(() => {
+          // Best effort — the nightly sweep picks up anything left behind
+        });
+      }
       setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setPhotoBusy(false);

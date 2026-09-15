@@ -16,8 +16,8 @@
  *   pnpm --filter @trs/web storage:cleanup --apply
  *   pnpm --filter @trs/web storage:cleanup --apply --min-age-hours=1
  */
-import { PrismaClient } from "../src/generated/prisma";
-import { deleteFiles, keyFromUrl, listAllObjects } from "../src/lib/storage";
+import { prisma } from "../src/lib/db";
+import { MIN_ORPHAN_AGE_HOURS, sweepOrphans } from "../src/lib/storage-sweep";
 
 // Node ≥ 20.12 — no dotenv dependency needed. Missing file = env is set elsewhere.
 try {
@@ -39,81 +39,44 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-async function referencedKeys(prisma: PrismaClient): Promise<Set<string>> {
-  const [spots, images, communityPhotos, users] = await Promise.all([
-    prisma.spot.findMany({ select: { photoKey: true } }),
-    prisma.spotImage.findMany({ select: { photoKey: true } }),
-    prisma.spotPhotoImage.findMany({ select: { photoKey: true } }),
-    prisma.user.findMany({
-      where: { avatarUrl: { not: null } },
-      select: { avatarUrl: true },
-    }),
-  ]);
-
-  const keys = new Set<string>();
-  for (const row of [...spots, ...images, ...communityPhotos]) keys.add(row.photoKey);
-  // Legacy uploaded avatars are still in use until the user picks a DiceBear one.
-  for (const user of users) {
-    const key = keyFromUrl(user.avatarUrl);
-    if (key) keys.add(key);
-  }
-  return keys;
-}
-
 async function main() {
   const apply = flag("apply") === "true";
-  const minAgeHours = Number(flag("min-age-hours") ?? 24);
-  const cutoff = Date.now() - minAgeHours * 60 * 60 * 1000;
+  const minAgeHours = Number(flag("min-age-hours") ?? MIN_ORPHAN_AGE_HOURS);
 
-  const prisma = new PrismaClient();
-  try {
-    console.log(`Listing bucket…`);
-    const [objects, referenced] = await Promise.all([
-      listAllObjects(),
-      referencedKeys(prisma),
-    ]);
+  console.log("Listing bucket…");
+  const summary = await sweepOrphans({ apply, minAgeHours });
 
-    const totalBytes = objects.reduce((sum, o) => sum + o.size, 0);
+  console.log(
+    `${summary.objects} object(s) — ${summary.referenced} key(s) referenced by the database`,
+  );
+  if (summary.skipped > 0) {
     console.log(
-      `${objects.length} object(s), ${formatBytes(totalBytes)} — ${referenced.size} key(s) referenced by the database`,
+      `Skipping ${summary.skipped} unreferenced object(s) newer than ${minAgeHours}h (may still be in flight)`,
     );
-
-    const orphans = objects.filter((o) => !referenced.has(o.key));
-    const tooRecent = orphans.filter((o) => o.lastModified.getTime() > cutoff);
-    const deletable = orphans.filter((o) => o.lastModified.getTime() <= cutoff);
-    const reclaimable = deletable.reduce((sum, o) => sum + o.size, 0);
-
-    if (tooRecent.length > 0) {
-      console.log(
-        `Skipping ${tooRecent.length} unreferenced object(s) newer than ${minAgeHours}h (may still be in flight)`,
-      );
-    }
-
-    if (deletable.length === 0) {
-      console.log("Nothing to clean up.");
-      return;
-    }
-
-    console.log(
-      `\n${deletable.length} orphaned object(s), ${formatBytes(reclaimable)} reclaimable:`,
-    );
-    for (const o of deletable) {
-      console.log(`  ${o.key}  ${formatBytes(o.size)}  ${o.lastModified.toISOString()}`);
-    }
-
-    if (!apply) {
-      console.log(`\nDry run — re-run with --apply to delete.`);
-      return;
-    }
-
-    await deleteFiles(deletable.map((o) => o.key));
-    console.log(`\nDeleted ${deletable.length} object(s), freed ${formatBytes(reclaimable)}.`);
-  } finally {
-    await prisma.$disconnect();
   }
+
+  if (summary.orphans === 0) {
+    console.log("Nothing to clean up.");
+    return;
+  }
+
+  console.log(`\n${summary.orphans} orphaned object(s), ${formatBytes(summary.bytesFreed)} reclaimable:`);
+  for (const key of summary.keys) console.log(`  ${key}`);
+  if (summary.orphans > summary.keys.length) {
+    console.log(`  …and ${summary.orphans - summary.keys.length} more`);
+  }
+
+  if (!apply) {
+    console.log("\nDry run — re-run with --apply to delete.");
+    return;
+  }
+
+  console.log(`\nDeleted ${summary.deleted} object(s), freed ${formatBytes(summary.bytesFreed)}.`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

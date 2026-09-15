@@ -6,10 +6,11 @@ import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
 // Mock storage
 const mockUploadFile = vi.fn();
 const mockDeleteFile = vi.fn();
+const mockDeleteFiles = vi.fn();
 vi.mock("@/lib/storage", () => ({
   uploadFile: (...args: unknown[]) => mockUploadFile(...args),
   deleteFile: (...args: unknown[]) => mockDeleteFile(...args),
-  deleteFiles: vi.fn().mockResolvedValue(undefined),
+  deleteFiles: (...args: unknown[]) => mockDeleteFiles(...args),
 }));
 
 // Mock auth — the caller is user-1
@@ -253,5 +254,31 @@ describe("DELETE /api/spots/[id]/photos/[photoId]", () => {
     mockGetUserFromRequest.mockResolvedValue(null);
     const res = await deleteRequest("spot-1", "photo-1");
     expect(res.status).toBe(401);
+  });
+});
+
+describe("a post that could not be saved", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetUserFromRequest.mockResolvedValue(CALLER);
+    mockSpotFindUnique.mockResolvedValue({ id: "spot-1", userId: "owner-9" });
+    mockUploadFile.mockResolvedValue("https://cdn.example.com/spot-photos/x.webp");
+    mockUserFindMany.mockResolvedValue([]);
+  });
+
+  it("takes its photos back out of storage", async () => {
+    mockSpotPhotoCreate.mockRejectedValue(new Error("db down"));
+    const formData = new FormData();
+    formData.append("photo", new File([await jpeg(300)], "a.jpg", { type: "image/jpeg" }));
+    formData.append("photo", new File([await jpeg(300)], "b.jpg", { type: "image/jpeg" }));
+
+    const res = await postRequest(formData);
+
+    expect(res.status).toBe(500);
+    // Both uploads are discarded, not left for the nightly sweep
+    expect(mockDeleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^spot-photos\/spot-1\/user-1\//),
+      expect.stringMatching(/^spot-photos\/spot-1\/user-1\//),
+    ]);
   });
 });

@@ -1,9 +1,15 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { API_ROUTES, type CompositionType, type SpotAccessibility } from "@trs/shared/constants";
+import {
+  API_ROUTES,
+  UPLOAD_PRESETS,
+  type CompositionType,
+  type SpotAccessibility,
+} from "@trs/shared/constants";
 import type { ActivityKind } from "@trs/shared/validation";
 import { MAP_PINS_LIMIT, type MapFilterQuery, type MapPin, type MapScope } from "@trs/shared/map";
 import type { SuggestedUser } from "../types";
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, setAccessToken } from "./auth";
+import { preparePhoto } from "./prepare-photo";
 import type {
   AuthResponse,
   ForwardGeocodeResult,
@@ -216,11 +222,23 @@ export async function updateSpot(id: string, params: UpdateSpotParams): Promise<
   return data;
 }
 
-/** Upload a photo, then add it to the spot's gallery; answers with the whole gallery. */
+/**
+ * Shrink a photo, upload it, then add it to the spot's gallery; answers
+ * with the whole gallery. If the gallery refuses it, the file that just
+ * reached storage is thrown away rather than left there with no row.
+ */
 export async function addSpotImage(id: string, uri: string, fileName = "photo.jpg"): Promise<SpotImage[]> {
-  const uploaded = await uploadPhoto(uri, fileName);
-  const { data } = await client.post<SpotImage[]>(API_ROUTES.spots.images(id), uploaded);
-  return data;
+  const prepared = await preparePhoto(uri, fileName, UPLOAD_PRESETS.spot);
+  const uploaded = await uploadPhoto(prepared.uri, fileName);
+  try {
+    const { data } = await client.post<SpotImage[]>(API_ROUTES.spots.images(id), uploaded);
+    return data;
+  } catch (error) {
+    void discardUploads([uploaded.photoKey]).catch(() => {
+      // Best effort — the nightly sweep picks up anything left behind
+    });
+    throw error;
+  }
 }
 
 /** Take a photo out of the gallery (the file goes too). */

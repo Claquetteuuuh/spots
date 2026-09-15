@@ -267,7 +267,14 @@ The workflow runs: install → generate → test → **prisma migrate deploy** �
 
 `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `R2_ACCOUNT_ID`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`,
-`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID`
+`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_ID`,
+`CRON_SECRET`
+
+`CRON_SECRET` is what the nightly storage sweep authenticates with
+(`/api/cron/storage-cleanup`, scheduled in `vercel.json`). Vercel sends it
+as a bearer token on every cron invocation. **Without it the route refuses
+every caller and no orphan is ever collected** — an endpoint that deletes
+stored photos must not be open. Any long random string will do.
 
 Optional: `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `RESEND_API_KEY`, `EMAIL_FROM`
 

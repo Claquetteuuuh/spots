@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd ../.. && pnpm install && pnpm db:generate",
   "buildCommand": "pnpm build",
-  "ignoreCommand": "exit 0"
+  "ignoreCommand": "exit 0",
+  "crons": [
+    {
+      "path": "/api/cron/storage-cleanup",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

@@ -54,10 +54,13 @@ repos:
         always_run: true
         pass_filenames: false
 
+      # One package at a time. Run in parallel, three test runners fight
+      # for the same cores and suites that wait on a render or an
+      # animation start failing on the clock rather than on the code.
       - id: test-suite
         name: test-suite
         language: system
-        entry: pnpm test
+        entry: pnpm turbo test --concurrency=1
         always_run: true
         pass_filenames: false
 
