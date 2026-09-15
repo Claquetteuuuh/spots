@@ -19,6 +19,8 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { UPLOAD_PRESETS } from "@trs/shared/constants";
+import { preparePhoto } from "../../lib/prepare-photo";
 import * as Location from "expo-location";
 import { WebView } from "react-native-webview";
 import { ColorWheelSheet } from "../../components/spots/ColorWheelSheet";
@@ -454,9 +456,14 @@ export function AddSpotScreen() {
     // belong to — it is discarded again in the catch below.
     let uploads: { photoUrl: string; photoKey: string }[] = [];
     try {
-      // Upload all photos in parallel
+      // Upload all photos in parallel, each shrunk on the phone first:
+      // a 12 MP original is eight megabytes over mobile data
       const settled = await Promise.allSettled(
-        photos.map((p, i) => uploadPhoto(p.uri, `spot-${Date.now()}-${i}.jpg`))
+        photos.map(async (p, i) => {
+          const name = `spot-${Date.now()}-${i}.jpg`;
+          const prepared = await preparePhoto(p.uri, name, UPLOAD_PRESETS.spot);
+          return uploadPhoto(prepared.uri, name);
+        })
       );
       uploads = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
       const failed = settled.find(

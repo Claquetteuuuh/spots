@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { MAX_POST_BYTES } from "@trs/shared/constants";
+import { MAX_POST_BYTES, UPLOAD_PRESETS } from "@trs/shared/constants";
 import { en } from "@trs/shared/i18n";
-import { UPLOAD_MAX_EDGE, downscaleForUpload, prepareForUpload } from "../downscale";
+import { downscaleForUpload, prepareForUpload } from "../downscale";
 
 /** A file of a given size, as the picker would hand one over. */
 function file(bytes: number, name = "shot.jpg", type = "image/jpeg") {
@@ -52,10 +52,8 @@ describe("downscaleForUpload", () => {
     expect(smaller.type).toBe("image/webp");
     expect(smaller.name).toBe("shot.webp");
     expect(smaller.size).toBe(500);
-    // 6000 → 2560 on the long edge, the short one in proportion
-    const canvas = document.createElement("canvas");
-    expect(UPLOAD_MAX_EDGE).toBe(2560);
-    expect(canvas).toBeTruthy();
+    // Drawn down to the community preset, which is what travels
+    expect(UPLOAD_PRESETS.community.maxEdge).toBe(1600);
   });
 
   it("keeps the original when re-encoding buys nothing", async () => {
@@ -132,5 +130,33 @@ describe("prepareForUpload", () => {
     await expect(prepareForUpload([file(9_000_000), file(9_000_000)])).rejects.toThrow(
       en.spotPhotos.tooHeavy,
     );
+  });
+});
+
+// ─── A spot's own photos ─────────────────────────────────────────────
+
+describe("presets", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("draws a community photo smaller than a spot's own", async () => {
+    decodesTo(6000, 4000);
+    paints(200_000);
+    // …after `paints`, which stubs the same method
+    const widths: number[] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (
+      this: HTMLCanvasElement,
+    ) {
+      widths.push(this.width);
+      return { drawImage: vi.fn() } as unknown as CanvasRenderingContext2D;
+    });
+
+    await downscaleForUpload(file(5_000_000), UPLOAD_PRESETS.spot);
+    await downscaleForUpload(file(5_000_000), UPLOAD_PRESETS.community);
+
+    // 6000px on the long edge, drawn down to each preset
+    expect(widths).toEqual([UPLOAD_PRESETS.spot.maxEdge, UPLOAD_PRESETS.community.maxEdge]);
   });
 });

@@ -58,10 +58,12 @@ vi.mock("@/components/dialog", () => ({
   noticeDialog: vi.fn(),
 }));
 
-vi.mock("@trs/shared/constants", () => ({
+// Keep the real constants and narrow only what this page is tested on,
+// so a new one does not break the mock.
+vi.mock("@trs/shared/constants", async (importActual) => ({
+  ...(await importActual<typeof import("@trs/shared/constants")>()),
   ACCEPTED_IMAGE_TYPES: ["image/jpeg", "image/png"],
   MAX_PHOTO_SIZE_BYTES: 5 * 1024 * 1024,
-  MAX_POST_BYTES: 4 * 1024 * 1024,
 }));
 
 vi.mock("@/lib/auth-context", () => ({

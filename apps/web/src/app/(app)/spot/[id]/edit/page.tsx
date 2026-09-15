@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { downscaleForUpload } from "@/lib/downscale";
 import type { Spot, SpotImage } from "@/lib/api-client";
 import { confirmDialog } from "@/components/dialog";
 import { useAuth } from "@/lib/auth-context";
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/lib/use-t";
-import { COMPOSITION_TYPES, type SpotAccessibility } from "@trs/shared/constants";
+import { COMPOSITION_TYPES, type SpotAccessibility, UPLOAD_PRESETS } from "@trs/shared/constants";
 import { PAGE_WIDE, PageHeader } from "@/components/page";
 import { CharacterCount, SelectionCount } from "@/components/ui/limit-hint";
 import { CompositionIcon } from "@/components/composition-icon";
@@ -186,7 +187,10 @@ export default function EditSpotPage({
     setPhotoBusy(true);
     setError(null);
     try {
-      const uploaded = await apiClient.upload.photo(file);
+      // Shrunk here first: a 12 MP original is eight megabytes
+      const uploaded = await apiClient.upload.photo(
+        await downscaleForUpload(file, UPLOAD_PRESETS.spot),
+      );
       setImages(await apiClient.spots.addImage(spot.id, { photoUrl: uploaded.url, photoKey: uploaded.key }));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.error"));

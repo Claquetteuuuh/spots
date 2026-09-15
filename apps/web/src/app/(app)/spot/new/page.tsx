@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { downscaleForUpload } from "@/lib/downscale";
 import type { ForwardGeocodeResult } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
   MAX_PHOTO_SIZE_BYTES,
   MAX_PHOTO_SIZE_MB,
   type SpotAccessibility,
+  UPLOAD_PRESETS,
 } from "@trs/shared/constants";
 import { AccessibilityPicker } from "@/components/accessibility-picker";
 import { useCamera } from "@/lib/use-camera";
@@ -859,9 +861,12 @@ function AddSpotForm() {
     let uploads: { url: string; key: string }[] = [];
 
     try {
-      // 1. Upload all photos
+      // 1. Upload all photos, shrunk here first: a 12 MP original is
+      //    eight megabytes, and nothing on screen is served by it
       const settled = await Promise.allSettled(
-        photos.map((p) => apiClient.upload.photo(p.file)),
+        photos.map(async (p) =>
+          apiClient.upload.photo(await downscaleForUpload(p.file, UPLOAD_PRESETS.spot)),
+        ),
       );
       uploads = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
       const failed = settled.find(

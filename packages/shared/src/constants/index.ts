@@ -269,6 +269,48 @@ export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
  * spare for the caption and the multipart framing.
  */
 export const MAX_POST_BYTES = 4 * 1024 * 1024;
+
+/**
+ * How a photo is shrunk before it leaves the phone or the browser.
+ *
+ * The server re-encodes whatever arrives, so this is not about what ends
+ * up in the bucket: it is about what crosses a phone's connection. A 12 MP
+ * photo is eight megabytes; nobody waits for that, and nothing on screen
+ * is served by it.
+ */
+export interface UploadPreset {
+  /** Longest edge, in pixels. */
+  maxEdge: number;
+  /** 0 → 1, as the encoder reads it. */
+  quality: number;
+}
+
+export const UPLOAD_PRESETS = {
+  /**
+   * A spot's own photos — the thing the app is for. Kept a notch above
+   * the rest: they are shown full screen and zoomed into.
+   */
+  spot: { maxEdge: 2048, quality: 0.82 },
+  /**
+   * A community post: several at a time, often over mobile data. Sized
+   * the way a messaging app sizes a photo — small enough to send without
+   * thinking about it.
+   */
+  community: { maxEdge: 1600, quality: 0.72 },
+} as const satisfies Record<string, UploadPreset>;
+
+/**
+ * Each pass draws a post smaller than the last. The first is the preset
+ * asked for; the others are there for the rare post that still will not
+ * fit inside a request body.
+ */
+export function shrinkPasses(preset: UploadPreset): UploadPreset[] {
+  return [
+    preset,
+    { maxEdge: Math.round(preset.maxEdge * 0.8), quality: preset.quality - 0.07 },
+    { maxEdge: Math.round(preset.maxEdge * 0.64), quality: preset.quality - 0.12 },
+  ];
+}
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",

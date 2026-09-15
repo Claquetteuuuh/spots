@@ -1,4 +1,4 @@
-import { MAX_POST_BYTES } from "@trs/shared/constants";
+import { MAX_POST_BYTES, UPLOAD_PRESETS, shrinkPasses, type UploadPreset } from "@trs/shared/constants";
 import { t } from "@/lib/i18n";
 
 /**
@@ -9,18 +9,8 @@ import { t } from "@/lib/i18n";
  * so a post is shrunk here until it fits.
  */
 
-/** Tried in order, until the whole post fits the budget. */
-const PASSES = [
-  { maxEdge: 2560, quality: 0.85 },
-  { maxEdge: 1800, quality: 0.78 },
-  { maxEdge: 1280, quality: 0.7 },
-];
-
 /** How long a browser gets to draw a photo it decodes the slow way. */
 const DECODE_TIMEOUT_MS = 8000;
-
-export const UPLOAD_MAX_EDGE = PASSES[0].maxEdge;
-export const UPLOAD_QUALITY = PASSES[0].quality;
 
 /**
  * Decode a chosen file. `createImageBitmap` is the fast path and the one
@@ -87,7 +77,7 @@ async function reencode(file: File, maxEdge: number, quality: number): Promise<F
  */
 export async function downscaleForUpload(
   file: File,
-  { maxEdge = UPLOAD_MAX_EDGE, quality = UPLOAD_QUALITY } = {},
+  { maxEdge, quality }: UploadPreset = UPLOAD_PRESETS.community,
 ): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
   try {
@@ -107,10 +97,13 @@ const weigh = (files: File[]) => files.reduce((total, file) => total + file.size
  * Each pass draws them smaller; if even the last one is too heavy, the
  * photographer is told rather than left with a 413.
  */
-export async function prepareForUpload(files: File[]): Promise<File[]> {
+export async function prepareForUpload(
+  files: File[],
+  preset: UploadPreset = UPLOAD_PRESETS.community,
+): Promise<File[]> {
   let prepared = files;
 
-  for (const pass of PASSES) {
+  for (const pass of shrinkPasses(preset)) {
     prepared = await Promise.all(files.map((file) => downscaleForUpload(file, pass)));
     if (weigh(prepared) <= MAX_POST_BYTES) return prepared;
   }
