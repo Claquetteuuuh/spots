@@ -40,6 +40,12 @@ jest.mock("expo-image-picker", () => ({
 
 // Every photo is shrunk on the phone before it goes up; the native module
 // is not there in a test, so it answers with a file of its own.
+// The file system answers with the weight of a prepared photo
+const mockSize = { value: 100_000 };
+jest.mock("expo-file-system", () => ({
+  File: jest.fn().mockImplementation(() => ({ get size() { return mockSize.value; } })),
+}));
+
 jest.mock("expo-image-manipulator", () => ({
   SaveFormat: { JPEG: "jpeg" },
   ImageManipulator: {
@@ -74,6 +80,9 @@ jest.mock("../../../lib/api", () => ({
 
 const mockedApi = api as jest.Mocked<typeof api>;
 const mockedPicker = ImagePicker as jest.Mocked<typeof ImagePicker>;
+const mockedManipulator = jest.requireMock("expo-image-manipulator") as {
+  ImageManipulator: { manipulate: jest.Mock };
+};
 
 const OWNER_ID = "owner-1";
 const EMPTY: Paginated<SpotPhoto> = { items: [], nextCursor: null };
@@ -327,6 +336,29 @@ describe("SpotPhotosSection", () => {
         "Blue hour",
         expect.any(Function), // what fills the ring on the way up
       );
+    });
+
+    it("draws the post smaller again when it would not fit on the wire", async () => {
+      // Two photos weighed per pass: over budget together at first,
+      // under it once they have been drawn smaller
+      const weights = [3_000_000, 3_000_000, 900_000, 900_000];
+      let read = 0;
+      Object.defineProperty(mockSize, "value", {
+        configurable: true,
+        get: () => weights[Math.min(read++, weights.length - 1)],
+      });
+      pickerReturns(
+        { uri: "file:///huge.jpg", fileName: "huge.jpg" },
+        { uri: "file:///huge2.jpg", fileName: "huge2.jpg" },
+      );
+      await renderSection();
+      await screen.findByText("spotPhotos.noPhotos");
+
+      await fireEvent.press(screen.getByTestId("add-spot-photo"));
+
+      // The composer opens: the photos were brought under the budget
+      expect(await screen.findByTestId("spot-photo-caption")).toBeTruthy();
+      expect(mockedManipulator.ImageManipulator.manipulate).toHaveBeenCalledTimes(4);
     });
 
     it("drops a photo taken back out of the selection", async () => {

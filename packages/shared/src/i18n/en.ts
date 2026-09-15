@@ -391,6 +391,7 @@ export const en = {
     photosChosen: "{{count}} chosen",
     maxPhotos: "Up to {{count}} photos",
     tooManyPhotos: "Only {{count}} photos per post",
+    tooHeavy: "These photos are too heavy to send together. Try posting fewer at a time.",
     removePhoto: "Remove this photo",
     post: "Post",
     openPhotos: "Open the photos",

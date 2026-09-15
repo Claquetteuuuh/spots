@@ -35,6 +35,11 @@ describe("extractErrorMessage", () => {
     expect(fr.common.networkError).toBe("Vérifiez votre connexion internet");
   });
 
+  it("explains a 413, which the platform sends with nothing in it", () => {
+    const tooBig = axiosError({ status: 413, data: "" });
+    expect(extractErrorMessage(tooBig, "fallback")).toBe("spotPhotos.tooHeavy");
+  });
+
   it("passes on what the server actually refused", () => {
     const refused = axiosError({ status: 404, data: { error: "Spot not found" } });
     expect(extractErrorMessage(refused, "fallback")).toBe("Spot not found");

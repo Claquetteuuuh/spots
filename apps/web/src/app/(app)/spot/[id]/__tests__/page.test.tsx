@@ -61,6 +61,7 @@ vi.mock("@/components/dialog", () => ({
 vi.mock("@trs/shared/constants", () => ({
   ACCEPTED_IMAGE_TYPES: ["image/jpeg", "image/png"],
   MAX_PHOTO_SIZE_BYTES: 5 * 1024 * 1024,
+  MAX_POST_BYTES: 4 * 1024 * 1024,
 }));
 
 vi.mock("@/lib/auth-context", () => ({
@@ -405,6 +406,9 @@ describe("SpotDetailPage — the community's posts", () => {
       fireEvent.click(screen.getByText("spotPhotos.post"));
     });
 
+    // The photos are shrunk before they are sent, so the call comes a
+    // few turns after the click
+    await waitFor(() => expect(mockSpotsUploadPhoto).toHaveBeenCalled());
     expect(mockSpotsUploadPhoto).toHaveBeenCalledWith(
       "spot-1",
       files,

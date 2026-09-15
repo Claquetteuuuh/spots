@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { UPLOAD_MAX_EDGE, downscaleForUpload } from "../downscale";
+import { MAX_POST_BYTES } from "@trs/shared/constants";
+import { en } from "@trs/shared/i18n";
+import { UPLOAD_MAX_EDGE, downscaleForUpload, prepareForUpload } from "../downscale";
 
 /** A file of a given size, as the picker would hand one over. */
 function file(bytes: number, name = "shot.jpg", type = "image/jpeg") {
@@ -10,6 +12,19 @@ function file(bytes: number, name = "shot.jpg", type = "image/jpeg") {
 /** Pretend the browser can decode an image of this size. */
 function decodesTo(width: number, height: number) {
   vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width, height, close: vi.fn() })));
+}
+
+/** Pretend only an <img> can decode it — Safari's answer for HEIC. */
+function stubImageDecoding(width: number, height: number) {
+  vi.stubGlobal("URL", { ...URL, createObjectURL: () => "blob:x", revokeObjectURL: () => {} });
+  Object.defineProperty(Image.prototype, "src", {
+    configurable: true,
+    set(this: HTMLImageElement) {
+      Object.defineProperty(this, "width", { value: width, configurable: true });
+      Object.defineProperty(this, "height", { value: height, configurable: true });
+      setTimeout(() => this.onload?.(new Event("load")), 0);
+    },
+  });
 }
 
 /** …and can paint it back out at `bytes`. */
@@ -66,5 +81,56 @@ describe("downscaleForUpload", () => {
   it("leaves anything that is not an image alone", async () => {
     const notAPhoto = file(10, "notes.txt", "text/plain");
     expect(await downscaleForUpload(notAPhoto)).toBe(notAPhoto);
+  });
+});
+
+// ─── A whole post, small enough to leave ─────────────────────────────
+
+describe("prepareForUpload", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("decodes what createImageBitmap cannot — an iPhone's HEIC", async () => {
+    // Safari refuses HEIC here, yet draws it happily in an <img>
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => {
+      throw new Error("unsupported");
+    }));
+    stubImageDecoding(4032, 3024);
+    paints(400_000);
+
+    const [prepared] = await prepareForUpload([file(6_000_000, "IMG_0001.HEIC", "image/heic")]);
+
+    // …and the 6 MB original is not what travels
+    expect(prepared.type).toBe("image/webp");
+    expect(prepared.size).toBe(400_000);
+  });
+
+  it("draws the post smaller again until it fits the wire", async () => {
+    decodesTo(4032, 3024);
+    // The first pass is still over budget; the second one fits
+    const sizes = [3_000_000, 900_000];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    let pass = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((cb) => {
+      const size = sizes[Math.min(Math.floor(pass++ / 2), sizes.length - 1)];
+      cb(new Blob([new Uint8Array(size)], { type: "image/webp" }));
+    });
+
+    const prepared = await prepareForUpload([file(9_000_000), file(9_000_000)]);
+
+    expect(prepared.reduce((n, f) => n + f.size, 0)).toBeLessThanOrEqual(MAX_POST_BYTES);
+  });
+
+  it("says so rather than letting the platform answer 413", async () => {
+    decodesTo(4032, 3024);
+    paints(3_000_000); // every pass stays over budget
+
+    await expect(prepareForUpload([file(9_000_000), file(9_000_000)])).rejects.toThrow(
+      en.spotPhotos.tooHeavy,
+    );
   });
 });

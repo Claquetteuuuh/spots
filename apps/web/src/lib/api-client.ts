@@ -267,6 +267,12 @@ function upload<T>(
         resolve((json as { data: T }).data);
         return;
       }
+      // The platform refuses an oversized body before the route sees it,
+      // so there is no message to pass on — only a bare 413.
+      if (xhr.status === 413) {
+        reject(new Error(t("spotPhotos.tooHeavy")));
+        return;
+      }
       reject(new Error((json as ApiError | null)?.error ?? `Request failed (${xhr.status})`));
     });
 

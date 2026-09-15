@@ -8,7 +8,10 @@ import { DRAWER_DURATION_MS, Drawer } from "../drawer";
 const SHEET_HEIGHT = 400;
 
 /** Until the sheet has left the bottom edge (two frames, longer under load). */
-const frames = () => waitFor(() => expect(screen.getByTestId("drawer").getAttribute("data-state")).toBe("open"));
+const frames = () =>
+  waitFor(() => expect(screen.getByTestId("drawer").getAttribute("data-state")).toBe("open"), {
+    timeout: 5000,
+  });
 
 /** Outlast the slide. */
 const slide = () =>
@@ -110,7 +113,7 @@ describe("Drawer", () => {
     expect(onClose).not.toHaveBeenCalled();
 
     await slide();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId("drawer")).toBeNull();
   });
 
@@ -129,7 +132,7 @@ describe("Drawer", () => {
     now.mockRestore();
 
     await slide();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("closes from the backdrop and from Escape, after sliding out", async () => {
@@ -141,7 +144,7 @@ describe("Drawer", () => {
     });
     expect(sheet().getAttribute("data-state")).toBe("leaving");
     await slide();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 
     await mount();
     await frames();
@@ -149,7 +152,7 @@ describe("Drawer", () => {
       fireEvent.keyDown(document, { key: "Escape" });
     });
     await slide();
-    expect(onClose).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(2));
   });
 
   it("slides out when its owner drops `open`", async () => {

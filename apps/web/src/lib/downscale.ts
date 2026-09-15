@@ -1,43 +1,119 @@
+import { MAX_POST_BYTES } from "@trs/shared/constants";
+import { t } from "@/lib/i18n";
+
 /**
- * Shrinking a photo before it leaves the browser. The server re-encodes
- * everything it stores, so this is not about what ends up in the bucket —
- * it is about not pushing a 12 MP original across a phone's connection
- * first. The app does the same thing natively.
+ * Shrinking photos before they leave the browser. The server re-encodes
+ * everything it stores, so this is not about what ends up in the bucket:
+ * it is about what crosses the network. A serverless request body is
+ * capped, and the platform answers a bare 413 when a post is over it —
+ * so a post is shrunk here until it fits.
  */
 
-/** The longest edge the server would keep anyway (`lib/image.ts`). */
-export const UPLOAD_MAX_EDGE = 2560;
-export const UPLOAD_QUALITY = 0.85;
+/** Tried in order, until the whole post fits the budget. */
+const PASSES = [
+  { maxEdge: 2560, quality: 0.85 },
+  { maxEdge: 1800, quality: 0.78 },
+  { maxEdge: 1280, quality: 0.7 },
+];
+
+/** How long a browser gets to draw a photo it decodes the slow way. */
+const DECODE_TIMEOUT_MS = 8000;
+
+export const UPLOAD_MAX_EDGE = PASSES[0].maxEdge;
+export const UPLOAD_QUALITY = PASSES[0].quality;
+
+/**
+ * Decode a chosen file. `createImageBitmap` is the fast path and the one
+ * that fails on HEIC — the format an iPhone hands over — where the OS
+ * can still draw it through an `<img>`. Without this fallback a HEIC
+ * photo travelled at full size, and four of them met a 413.
+ */
+async function decode(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
+  try {
+    return await createImageBitmap(file);
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.decoding = "async";
+      await new Promise<void>((resolve, reject) => {
+        // A decode that neither loads nor errors would leave the post
+        // waiting for ever: the photo goes up as it is instead.
+        const timer = setTimeout(() => reject(new Error("undecodable")), DECODE_TIMEOUT_MS);
+        image.onload = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        image.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error("undecodable"));
+        };
+        image.src = url;
+      });
+      return image;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+/** Draw the photo at `maxEdge` and re-encode it; null when nothing is gained. */
+async function reencode(file: File, maxEdge: number, quality: number): Promise<File | null> {
+  const source = await decode(file);
+  const longest = Math.max(source.width, source.height);
+  if (!longest) return null;
+  const scale = Math.min(1, maxEdge / longest);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(source.width * scale);
+  canvas.height = Math.round(source.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  (source as ImageBitmap).close?.();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", quality),
+  );
+  if (!blob) return null;
+
+  return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
+}
 
 /**
  * A smaller copy of a chosen photo, or the photo itself when shrinking it
- * would not help — it is already small, the browser cannot decode it
- * (HEIC, mostly), or the result came out no lighter.
+ * would not help — it is already small, or the result came out no
+ * lighter than what it came from.
  */
-export async function downscaleForUpload(file: File): Promise<File> {
+export async function downscaleForUpload(
+  file: File,
+  { maxEdge = UPLOAD_MAX_EDGE, quality = UPLOAD_QUALITY } = {},
+): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
-
   try {
-    const bitmap = await createImageBitmap(file);
-    const longest = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(1, UPLOAD_MAX_EDGE / longest);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close?.();
-
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/webp", UPLOAD_QUALITY),
-    );
-    if (!blob || blob.size >= file.size) return file;
-
-    return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.webp`, { type: "image/webp" });
+    const smaller = await reencode(file, maxEdge, quality);
+    return smaller && smaller.size < file.size ? smaller : file;
   } catch {
-    // A photo the browser cannot decode still goes up as it is
+    // A photo the browser cannot decode at all still goes up as it is
     return file;
   }
+}
+
+/** What a set of files weighs together. */
+const weigh = (files: File[]) => files.reduce((total, file) => total + file.size, 0);
+
+/**
+ * Every photo of a post, shrunk enough for the post to fit on the wire.
+ * Each pass draws them smaller; if even the last one is too heavy, the
+ * photographer is told rather than left with a 413.
+ */
+export async function prepareForUpload(files: File[]): Promise<File[]> {
+  let prepared = files;
+
+  for (const pass of PASSES) {
+    prepared = await Promise.all(files.map((file) => downscaleForUpload(file, pass)));
+    if (weigh(prepared) <= MAX_POST_BYTES) return prepared;
+  }
+
+  throw new Error(t("spotPhotos.tooHeavy"));
 }

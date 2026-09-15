@@ -4,8 +4,10 @@ import { Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { File } from "expo-file-system";
 import { useTranslation } from "react-i18next";
 import { MAX_POST_PHOTOS } from "@trs/shared/mentions";
+import { MAX_POST_BYTES } from "@trs/shared/constants";
 import { useTheme } from "../../theme";
 import { useAuthStore } from "../../stores/auth-store";
 import { addSpotPhoto, deleteSpotPhoto, getSpotPhotos, type OutgoingPhoto } from "../../lib/api";
@@ -25,11 +27,16 @@ interface SpotPhotosSectionProps {
 }
 
 /**
- * The longest edge a posted photo needs. The server re-encodes anyway;
- * shrinking here is what keeps a 12 MP phone photo off a mobile network.
+ * How a posted photo is shrunk. The server re-encodes anyway; doing it
+ * here keeps a 12 MP phone photo off a mobile network — and keeps the
+ * whole post under the request body the platform accepts, which it
+ * otherwise refuses with a bare 413. Each pass draws them smaller.
  */
-const UPLOAD_MAX_EDGE = 2560;
-const UPLOAD_QUALITY = 0.82;
+const PASSES = [
+  { maxEdge: 2560, quality: 0.82 },
+  { maxEdge: 1800, quality: 0.75 },
+  { maxEdge: 1280, quality: 0.68 },
+];
 
 /**
  * What the community posted under a spot: each post its author, its text
@@ -89,17 +96,48 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
   };
 
   /** Shrink and re-encode before the photo ever leaves the phone. */
-  const prepare = async (uri: string, fileName: string): Promise<OutgoingPhoto> => {
+  const prepare = async (
+    uri: string,
+    fileName: string,
+    pass: (typeof PASSES)[number],
+  ): Promise<OutgoingPhoto> => {
     try {
       const ctx = ImageManipulator.manipulate(uri);
-      ctx.resize({ width: UPLOAD_MAX_EDGE });
+      ctx.resize({ width: pass.maxEdge });
       const rendered = await ctx.renderAsync();
-      const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: UPLOAD_QUALITY });
+      const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: pass.quality });
       return { uri: saved.uri, fileName };
     } catch {
       // A photo the phone cannot re-encode still goes up as it is
       return { uri, fileName };
     }
+  };
+
+  /** What a prepared photo weighs, as the file system has it. */
+  const weigh = (photo: OutgoingPhoto): number => {
+    try {
+      return new File(photo.uri).size ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  /**
+   * Every photo of the post, shrunk enough for the post to fit on the
+   * wire. If even the last pass is too heavy the photographer is told,
+   * rather than left with a 413 from the platform.
+   */
+  const prepareAll = async (
+    assets: { uri: string; fileName: string }[],
+  ): Promise<OutgoingPhoto[]> => {
+    let prepared: OutgoingPhoto[] = [];
+    for (const pass of PASSES) {
+      prepared = await Promise.all(assets.map((a) => prepare(a.uri, a.fileName, pass)));
+      const total = prepared.reduce((sum, photo) => sum + weigh(photo), 0);
+      // A file system that will not answer leaves us with 0: take the pass
+      if (total <= MAX_POST_BYTES) return prepared;
+    }
+    throw new Error(t("spotPhotos.tooHeavy"));
   };
 
   const pickPhotos = async () => {
@@ -113,14 +151,19 @@ export function SpotPhotosSection({ spotId, ownerId }: SpotPhotosSectionProps) {
     });
     if (result.canceled || result.assets.length === 0) return;
 
-    const chosen = await Promise.all(
-      result.assets
-        .slice(0, MAX_POST_PHOTOS)
-        .map((asset, i) => prepare(asset.uri, asset.fileName ?? `photo-${Date.now()}-${i}.jpg`)),
-    );
-    setPending(chosen);
-    setCaption("");
-    setIsComposing(true);
+    try {
+      const chosen = await prepareAll(
+        result.assets.slice(0, MAX_POST_PHOTOS).map((asset, i) => ({
+          uri: asset.uri,
+          fileName: asset.fileName ?? `photo-${Date.now()}-${i}.jpg`,
+        })),
+      );
+      setPending(chosen);
+      setCaption("");
+      setIsComposing(true);
+    } catch (err) {
+      void noticeDialog({ title: t("common.error"), message: extractErrorMessage(err, t("common.error")) });
+    }
   };
 
   const submitPost = async () => {

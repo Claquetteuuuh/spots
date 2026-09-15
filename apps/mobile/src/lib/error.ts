@@ -32,6 +32,12 @@ export function extractErrorMessage(error: unknown, fallback: string): string {
       return i18n.t("common.networkError");
     }
 
+    // The platform refuses an oversized body before the route sees it,
+    // so there is no message to pass on — only a bare 413.
+    if (error.response.status === 413) {
+      return i18n.t("spotPhotos.tooHeavy");
+    }
+
     const body = error.response?.data as ApiErrorBody | undefined;
     if (body) {
       // Validation error with field details — build a readable message

@@ -66,7 +66,7 @@ describe("AddSpotPage", () => {
     await act(async () => {
       render(<AddSpotPage />);
     });
-    const nextBtn = screen.getByText("Next");
+    const nextBtn = await screen.findByText("Next");
     expect(nextBtn).toBeDisabled();
   });
 

@@ -260,6 +260,15 @@ export function dicebearRasterUrl(url: string, size = 256): string {
  */
 export const MAX_PHOTO_SIZE_MB = 20;
 export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+
+/**
+ * What a whole post may weigh on the wire. A serverless request body is
+ * capped at 4.5 MB and the platform refuses anything larger with a bare
+ * 413 — before the route sees it, so nothing kinder can be said from
+ * there. Both apps shrink a post until it fits under this, with room to
+ * spare for the caption and the multipart framing.
+ */
+export const MAX_POST_BYTES = 4 * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
